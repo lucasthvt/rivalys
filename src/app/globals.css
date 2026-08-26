@@ -1,26 +1,151 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Rivalys design tokens
+   --------------------------------------------------------------------------
+   The palette borrows from land-survey instruments rather than software
+   dashboards: pale survey paper, ink contour lines, a brass benchmark-plate
+   accent for calls to action, and a muted teal for "ground regained"
+   (done / success) states.
+
+   Priority and status colors are deliberately NOT a red/yellow/green
+   stoplight: the product frames competitive gaps as opportunities to act
+   on, never as alarms, so clay/brass/sage/teal/slate stand in for
+   high/medium/low/done/dismissed.
+   ========================================================================== */
+
+@theme {
+  /* Stone — paper / neutral ground. Stable across color schemes. */
+  --color-stone-50: #f7f8f3;
+  --color-stone-100: #edefe7;
+  --color-stone-200: #dde1d4;
+  --color-stone-300: #c6cdb9;
+  --color-stone-400: #98a190;
+  --color-stone-600: #656d5e;
+  --color-stone-800: #2b3329;
+
+  /* Ink — primary type color. Stable. */
+  --color-ink: #1b2119;
+
+  /* Brass — benchmark-plate accent: primary actions, medium priority. */
+  --color-brass-100: #f3e6c8;
+  --color-brass-300: #dbb968;
+  --color-brass-500: #c69a3f;
+  --color-brass-700: #8a621f;
+
+  /* Clay — needs attention soon. Warm rust, not alarm red. */
+  --color-clay-100: #f3ddc9;
+  --color-clay-500: #b95f34;
+  --color-clay-700: #833f1e;
+
+  /* Sage — low priority, no rush. */
+  --color-sage-100: #e2e7d6;
+  --color-sage-500: #74855e;
+  --color-sage-700: #45532f;
+
+  /* Teal — ground regained: done / success. */
+  --color-teal-100: #d9e7e0;
+  --color-teal-500: #2e7a67;
+  --color-teal-700: #1c4d40;
+
+  /* Slate — dismissed / muted status. */
+  --color-slate-100: #e3e5de;
+  --color-slate-500: #797f75;
+  --color-slate-700: #494f46;
+
+  /* Type scale gets a touch of room to breathe on display sizes. */
+  --tracking-tightish: -0.01em;
+}
+
+/* Semantic tokens — the only layer allowed to change with color scheme.
+   Everything else in the app should reference these, not the raw palette. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: var(--color-stone-100);
+  --surface: var(--color-stone-50);
+  --surface-hover: var(--color-stone-200);
+  --surface-border: var(--color-stone-200);
+  --foreground: var(--color-ink);
+  --foreground-muted: var(--color-stone-600);
+  --accent: var(--color-brass-500);
+  --accent-strong: var(--color-brass-700);
+  --ring: var(--color-brass-700);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-border: var(--surface-border);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-ring: var(--ring);
+
+  --font-display: var(--font-space-grotesk), "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #171d15;
+    --surface: #1f261b;
+    --surface-hover: #29321f;
+    --surface-border: #313b28;
+    --foreground: #edefe7;
+    --foreground-muted: #9aa392;
+    --accent: #d9ae57;
+    --accent-strong: #f3e6c8;
+    --ring: #d9ae57;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-brass-300);
+  color: var(--color-ink);
+}
+
+/* Subtle topographic texture, used sparingly behind hero/section surfaces.
+   Kept intentionally faint — it is atmosphere, not the signature element. */
+.bg-contour {
+  background-image: repeating-radial-gradient(
+    circle at 15% 20%,
+    transparent 0,
+    transparent 42px,
+    var(--color-stone-300) 43px,
+    transparent 44px
+  );
+  background-size: 100% 100%;
+  opacity: 0.35;
+}
+
+/* Hero elevation-chart line draw-in. Disabled entirely under
+   prefers-reduced-motion so the chart simply renders complete. */
+@media (prefers-reduced-motion: no-preference) {
+  .chart-path-draw {
+    stroke-dasharray: 1100;
+    stroke-dashoffset: 1100;
+    animation: draw-line 1.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+}
+
+@keyframes draw-line {
+  to {
+    stroke-dashoffset: 0;
+  }
 }

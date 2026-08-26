@@ -149,3 +149,100 @@ body {
     stroke-dashoffset: 0;
   }
 }
+
+/* ==========================================================================
+   Signal palette — marketing landing + global Nav
+   --------------------------------------------------------------------------
+   A deliberately separate raw-token layer from the terrain palette above.
+   The landing (page.tsx) and Nav are permanently dark — a genre convention
+   for this kind of product marketing page — and own their look with these
+   raw utilities (bg-void, text-signal-bright, ...) rather than remapping
+   --background/--foreground/--accent. That keeps this relaunch from ever
+   leaking into auth/onboarding, which reads those semantic tokens through
+   the shared ui/ components.
+
+   Priority in the "example tasks" strip is still not a stoplight: instead
+   of three hues, it's read as signal strength — one blue at three
+   intensities, brightest where the gap matters most.
+   ========================================================================== */
+@theme {
+  --color-void: #101319;
+  --color-void-raised: #161a24;
+  --color-signal: #1f4fd8;
+  --color-signal-bright: #6c90ff;
+  --color-mist: #b4b9c6;
+  --color-paper: #fbfbfc;
+
+  --font-brand: var(--font-bricolage), "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+}
+
+.bg-signal-grid {
+  background-image: radial-gradient(var(--color-mist) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+.text-glow-signal {
+  text-shadow: 0 0 40px color-mix(in srgb, var(--color-signal-bright) 60%, transparent);
+}
+
+.shadow-signal-lg {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-signal) 45%, transparent),
+    0 24px 70px -24px color-mix(in srgb, var(--color-signal) 65%, transparent);
+}
+
+.shadow-signal-sm {
+  box-shadow: 0 0 24px -4px color-mix(in srgb, var(--color-signal-bright) 55%, transparent);
+}
+
+@keyframes signal-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .signal-pulse {
+    animation: signal-pulse 2.6s ease-in-out infinite;
+  }
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marquee-track {
+    animation: marquee-scroll 32s linear infinite;
+  }
+
+  .marquee-pause:hover .marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-up {
+    animation: reveal-up 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

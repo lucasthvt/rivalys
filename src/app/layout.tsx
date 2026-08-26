@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Space_Grotesk, Inter, IBM_Plex_Mono, Bricolage_Grotesque } from "next/font/google";
 import { Nav } from "@/components/layout/Nav";
 import "./globals.css";
 
@@ -7,6 +7,16 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
+  display: "swap",
+});
+
+// Brand display face for the marketing landing + Nav wordmark only (see
+// globals.css § Signal palette) — kept separate from --font-display so the
+// terrain-themed screens (Card/Button consumers) are unaffected.
+const bricolageGrotesque = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -33,7 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} ${bricolageGrotesque.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <Nav />

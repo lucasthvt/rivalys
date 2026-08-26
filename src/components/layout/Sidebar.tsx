@@ -11,12 +11,29 @@ const NAV_ITEMS = [
 ] as const;
 
 /**
- * App-shell sidebar for the authenticated screens (/dashboard, /tasks) —
- * replaces the marketing Nav there (see Nav.tsx's HIDE_NAV_PREFIXES), same
- * "signal" palette so the whole product reads as one continuous dark
- * surface from landing through to the app itself.
+ * Navigation rail for the authenticated screens (/dashboard, /tasks) — replaces the
+ * marketing Nav there (see Nav.tsx's HIDE_NAV_PREFIXES), same "signal" palette so the
+ * whole product reads as one continuous dark surface from landing through to the app.
+ *
+ * Static beside the content from `md` up; below that it slides in as an off-canvas
+ * drawer whose open state is owned by AppShell (which also renders the backdrop and
+ * the mobile top bar).
+ *
+ * Closed-on-mobile uses `invisible` rather than the `inert` attribute: both keep the
+ * off-screen links out of the tab order, but `inert` is a DOM attribute with no
+ * breakpoint awareness, so it would also disable the permanently-visible desktop
+ * sidebar. `invisible md:visible` is the same guarantee, scoped to the breakpoint
+ * where it applies.
  */
-export function Sidebar({ userLabel }: { userLabel: string }) {
+export function Sidebar({
+  userLabel,
+  drawerOpen,
+  onClose,
+}: {
+  userLabel: string;
+  drawerOpen: boolean;
+  onClose: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
@@ -25,21 +42,38 @@ export function Sidebar({ userLabel }: { userLabel: string }) {
     setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
+    onClose();
     router.push("/login");
     router.refresh();
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-surface-border bg-surface">
-      <Link href="/" className="flex items-center gap-2.5 px-5 py-5 text-paper">
-        <span
-          aria-hidden="true"
-          className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-signal-bright to-signal font-brand text-xs font-bold text-void shadow-signal-sm"
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col border-r border-surface-border bg-surface transition-transform duration-200 ease-out motion-reduce:transition-none md:static md:z-auto md:visible md:translate-x-0 ${
+        drawerOpen ? "visible translate-x-0" : "invisible -translate-x-full"
+      }`}
+    >
+      <div className="flex items-center justify-between px-5 py-5">
+        <Link href="/" onClick={onClose} className="flex items-center gap-2.5 text-paper">
+          <span
+            aria-hidden="true"
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-signal-bright to-signal font-brand text-xs font-bold text-void shadow-signal-sm"
+          >
+            R
+          </span>
+          <span className="font-brand text-[1.05rem] font-semibold tracking-tight">Rivalys</span>
+        </Link>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer le menu"
+          className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg text-mist transition-colors hover:bg-surface-hover hover:text-paper md:hidden"
         >
-          R
-        </span>
-        <span className="font-brand text-[1.05rem] font-semibold tracking-tight">Rivalys</span>
-      </Link>
+          <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
+            <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
 
       <nav aria-label="Navigation de l'application" className="flex flex-1 flex-col gap-1 px-3 py-2">
         {NAV_ITEMS.map((item) => {
@@ -49,6 +83,7 @@ export function Sidebar({ userLabel }: { userLabel: string }) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               aria-current={isActive ? "page" : undefined}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive

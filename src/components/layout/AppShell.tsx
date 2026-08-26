@@ -30,8 +30,17 @@ export function AppShell({ userLabel, children }: { userLabel: string; children:
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [drawerOpen]);
 
+  // min-h-screen, pas min-h-full : `min-height: 100%` ne se résout pas dans cette chaîne
+  // de conteneurs flex (le parent n'a pas de hauteur définie), il retombe sur `auto` et le
+  // conteneur ne fait alors que la hauteur de son contenu — la sidebar, étirée sur ce
+  // conteneur trop court, s'arrêtait en plein milieu de la page.
+  //
+  // 100vh est exact ici parce que Nav est masquée sur /dashboard et /tasks (voir
+  // HIDE_NAV_PREFIXES dans Nav.tsx) : rien au-dessus de cet élément, donc rien à
+  // soustraire. Si Nav devait réapparaître sur ces routes, il faudrait un calc() qui
+  // déduit sa hauteur.
   return (
-    <div className="flex min-h-full flex-1 flex-col md:flex-row">
+    <div className="flex min-h-screen flex-1 flex-col md:flex-row">
       <div className="flex h-14 shrink-0 items-center gap-3 border-b border-surface-border bg-surface px-4 md:hidden">
         <button
           type="button"

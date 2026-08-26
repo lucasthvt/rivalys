@@ -6,6 +6,7 @@
 // real extracted data, by a plain template.
 
 import type { ExtractedSiteData, GapCategory, GapPriority } from "@/lib/supabase/database.types";
+import { labelPlatforms, missingPlatforms } from "./social";
 
 export interface GapCandidate {
   category: GapCategory;
@@ -78,6 +79,54 @@ export function detectPricingGaps(
   }
 
   return gaps;
+}
+
+/**
+ * Social-presence rule: the competitor's homepage links to social platforms ours doesn't.
+ *
+ * Both inputs come from detectSocialPlatforms() reading each site's own published links —
+ * a public, verifiable fact. The claim is scoped tightly to what was actually observed
+ * ("son site renvoie vers X"), never widened into "il est actif sur X" or any statement
+ * about follower counts or engagement, which we have no honest way to know.
+ *
+ * `bothSitesObserved` guards the same failure mode as pricing_page_found does for the
+ * pricing rules: an empty platform list is only meaningful if we actually read that site's
+ * homepage. If either side was never observed (see readSocialPlatforms returning null), an
+ * empty list means "unknown", not "confirmed none", so no gap is emitted at all.
+ *
+ * `note` is optional enrichment (see perplexity.ts). When it's null the gap is still created
+ * with its factual description; the enrichment never gates detection.
+ */
+export function detectSocialPresenceGap(
+  ownPlatforms: readonly string[],
+  competitorPlatforms: readonly string[],
+  competitorLabel: string,
+  bothSitesObserved: boolean,
+  note: string | null = null,
+): GapCandidate | null {
+  if (!bothSitesObserved) return null;
+
+  const missing = missingPlatforms(ownPlatforms, competitorPlatforms);
+  if (missing.length === 0) return null;
+
+  const label = competitorLabelOrFallback(competitorLabel);
+  const names = labelPlatforms(missing);
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} et ${names.at(-1)}`;
+
+  const description =
+    `Le site de ${label} renvoie vers ${list}, alors que le tien ne renvoie vers aucun de ces réseaux. ` +
+    `C'est un canal d'acquisition visible publiquement sur lequel tu n'apparais pas.` +
+    (note ? `\n\n${note}` : "");
+
+  return {
+    // Static title (the platform list lives in the description): the dedup key at the call
+    // site is category+title, so a title that embedded the platform names or their count
+    // would spawn a near-duplicate open gap every time the competitor added one account.
+    category: "social_presence",
+    title: "Ton concurrent affiche des réseaux sociaux que tu n'affiches pas",
+    description,
+    priority: "medium",
+  };
 }
 
 /**

@@ -1,0 +1,82 @@
+// Perplexity Agent API — used ONLY to add factual colour to a social-presence gap that has
+// already been detected deterministically from the competitor's own site links (see
+// social.ts). The gap itself is never created by this call, so a Perplexity failure, outage,
+// or missing key degrades the description, never the detection.
+//
+// Endpoint note: this targets the Agent API (POST /v1/agent), not the legacy Sonar
+// /chat/completions endpoint, which Perplexity retires on 2026-09-27.
+
+export class PerplexityError extends Error {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = "PerplexityError";
+  }
+}
+
+const AGENT_ENDPOINT = "https://api.perplexity.ai/v1/agent";
+const AGENT_TIMEOUT_MS = 30_000;
+
+export function isPerplexityConfigured(): boolean {
+  return Boolean(process.env.PERPLEXITY_API_KEY?.trim());
+}
+
+interface AgentResponse {
+  output?: Array<{
+    type?: string;
+    content?: Array<{ type?: string; text?: string }>;
+  }>;
+}
+
+/** Pulls the assistant's text out of the Agent API's `output` item array. */
+function readOutputText(payload: AgentResponse): string | null {
+  for (const item of payload.output ?? []) {
+    if (item.type !== "message") continue;
+    for (const block of item.content ?? []) {
+      if (block.type === "output_text" && typeof block.text === "string" && block.text.trim()) {
+        return block.text.trim();
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Runs one web-grounded query on the `fast` preset (1 web search, ~1k input tokens — the
+ * cheapest configuration). Returns null rather than throwing on any failure: every caller
+ * treats this as optional enrichment.
+ */
+export async function askPerplexity(input: string): Promise<string | null> {
+  const apiKey = process.env.PERPLEXITY_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AGENT_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(AGENT_ENDPOINT, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ preset: "fast", input }),
+    });
+
+    if (!res.ok) {
+      console.warn(`askPerplexity: réponse ${res.status}, enrichissement ignoré.`);
+      return null;
+    }
+
+    const payload = (await res.json()) as AgentResponse;
+    return readOutputText(payload);
+  } catch (err) {
+    console.warn("askPerplexity: appel impossible, enrichissement ignoré.", err);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

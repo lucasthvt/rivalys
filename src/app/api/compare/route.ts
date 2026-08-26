@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchSite, SiteFetchError, type FetchedSite } from "@/lib/compare/fetch-site";
-import { stripHtml } from "@/lib/compare/html";
 import { extractSiteData, classifyPositioning, ExtractionError } from "@/lib/compare/extract";
-import { isStoredExtractedData, type StoredExtractedData } from "@/lib/compare/site-data";
-import { detectPricingGaps, buildPositioningGap, type GapCandidate } from "@/lib/compare/detect-gaps";
+import {
+  isStoredExtractedData,
+  readSocialPlatforms,
+  type StoredExtractedData,
+} from "@/lib/compare/site-data";
+import {
+  detectPricingGaps,
+  buildPositioningGap,
+  detectSocialPresenceGap,
+  type GapCandidate,
+} from "@/lib/compare/detect-gaps";
+import { detectSocialPlatforms, labelPlatforms, missingPlatforms } from "@/lib/compare/social";
+import { askPerplexity, isPerplexityConfigured } from "@/lib/compare/perplexity";
 import { countByPriority, computeScore } from "@/lib/compare/score";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -167,6 +177,27 @@ export async function POST() {
   const positioningGap = buildPositioningGap(ownData, competitorData, veryDifferent, competitorLabel);
   if (positioningGap) candidates.push(positioningGap);
 
+  // Social presence: detected from each site's own published links (deterministic), then
+  // optionally enriched with one web-grounded Perplexity call. Both sides must actually have
+  // been observed — see readSocialPlatforms' null-vs-[] contract.
+  const ownSocial = readSocialPlatforms(ownData);
+  const competitorSocial = readSocialPlatforms(competitorData);
+
+  if (ownSocial !== null && competitorSocial !== null) {
+    const missing = missingPlatforms(ownSocial, competitorSocial);
+    const socialNote = missing.length > 0
+      ? await describeCompetitorSocial(competitorLabel, competitor.url, missing)
+      : null;
+    const socialGap = detectSocialPresenceGap(
+      ownSocial,
+      competitorSocial,
+      competitorLabel,
+      true,
+      socialNote,
+    );
+    if (socialGap) candidates.push(socialGap);
+  }
+
   const { data: existingOpenGaps, error: existingGapsError } = await supabase
     .from("detected_gaps")
     .select("category, title")
@@ -241,12 +272,46 @@ export async function POST() {
 
 async function fetchAndExtract(url: string): Promise<{ raw: FetchedSite; data: StoredExtractedData }> {
   const raw = await fetchSite(url);
-  const data = await extractSiteData({
-    homepageText: stripHtml(raw.homepageHtml),
-    pricingText: raw.pricingHtml ? stripHtml(raw.pricingHtml) : null,
+  const extracted = await extractSiteData({
+    homepageText: raw.homepageText,
+    pricingText: raw.pricingText,
     pricingPageFound: raw.pricingUrl !== null,
   });
-  return { raw, data };
+  // Social platforms come from the site's own published links, not from the LLM — see
+  // social.ts. Stored alongside the extraction so the gap rule can compare both sides.
+  return {
+    raw,
+    data: { ...extracted, social_platforms: detectSocialPlatforms(raw.homepageLinks) },
+  };
+}
+
+/**
+ * Optional one-line enrichment for a social-presence gap, via Perplexity's web-grounded
+ * Agent API. Called only when the gap already exists (so it costs nothing on the common
+ * path) and returns null on any failure — the gap stands on its own factual description.
+ */
+async function describeCompetitorSocial(
+  competitorLabel: string,
+  competitorUrl: string,
+  missing: readonly string[],
+): Promise<string | null> {
+  if (!isPerplexityConfigured() || missing.length === 0) return null;
+
+  const platforms = labelPlatforms(missing).join(", ");
+  const answer = await askPerplexity(
+    `À propos de l'entreprise SaaS "${competitorLabel}" (site : ${competitorUrl}), ` +
+      `décris en UNE phrase factuelle et neutre le type de contenu qu'elle publie publiquement sur ${platforms}. ` +
+      `Base-toi uniquement sur des sources publiques que tu peux vérifier. ` +
+      `Si tu ne trouves pas d'information fiable, réponds exactement : INCONNU. ` +
+      `Ne donne aucun chiffre d'audience, aucun nombre d'abonnés, aucune estimation.`,
+  );
+
+  if (!answer) return null;
+  const trimmed = answer.trim();
+  // The model was told to say INCONNU rather than guess — honour that instead of pasting a
+  // hedged non-answer into the user's task list.
+  if (/^inconnu\b/i.test(trimmed)) return null;
+  return `Ce qu'on observe publiquement : ${trimmed}`;
 }
 
 function describeFailure(label: string, reason: unknown): string {

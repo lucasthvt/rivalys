@@ -29,6 +29,30 @@ function decodeEntities(text: string): string {
 /** Cap on cleaned text length sent to Claude, to keep prompts small and cheap. */
 export const MAX_CLEANED_TEXT_LENGTH = 15_000;
 
+const HREF_RE = /<a\b[^>]*?\shref\s*=\s*["']([^"']+)["']/gi;
+
+/**
+ * Pulls absolute outbound links out of raw HTML, resolved against `baseUrl`. Used only on
+ * the direct-fetch fallback path — when Firecrawl handles the page it returns a `links`
+ * array of its own, built after JS rendering, which is strictly better.
+ */
+export function extractLinks(html: string, baseUrl: string): string[] {
+  const links = new Set<string>();
+  for (const match of html.matchAll(HREF_RE)) {
+    const href = decodeEntities(match[1]).trim();
+    if (!href || href.startsWith("#")) continue;
+    try {
+      const resolved = new URL(href, baseUrl);
+      if (resolved.protocol === "http:" || resolved.protocol === "https:") {
+        links.add(resolved.toString());
+      }
+    } catch {
+      continue; // unparseable href (javascript:, mailto:, malformed) — skip
+    }
+  }
+  return [...links];
+}
+
 /**
  * Strips scripts/styles/tags from raw HTML, keeping visible text and a rough line
  * structure (one line per block-level element) so pricing rows stay legible.

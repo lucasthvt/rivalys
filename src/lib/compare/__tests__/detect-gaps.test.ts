@@ -5,7 +5,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { detectPricingGaps, buildPositioningGap } from "../detect-gaps";
+import { detectPricingGaps, buildPositioningGap, detectSocialPresenceGap } from "../detect-gaps";
 import type { ExtractedSiteData } from "@/lib/supabase/database.types";
 
 function makeSite(overrides: Partial<ExtractedSiteData> = {}): ExtractedSiteData {
@@ -166,6 +166,68 @@ describe("detectPricingGaps", () => {
     const gaps = detectPricingGaps(own, competitor, "Concurrent X", true, false);
 
     assert.deepEqual(gaps, []);
+  });
+});
+
+describe("detectSocialPresenceGap", () => {
+  test("flags a medium-priority gap listing the platforms only the competitor links to", () => {
+    const gap = detectSocialPresenceGap(["linkedin"], ["linkedin", "youtube"], "Concurrent X", true);
+
+    assert.ok(gap);
+    assert.equal(gap?.category, "social_presence");
+    assert.equal(gap?.priority, "medium");
+    assert.match(gap!.description, /YouTube/);
+    assert.match(gap!.description, /Concurrent X/);
+    // LinkedIn is on both sides — it must not be presented as a gap.
+    assert.ok(!gap!.description.includes("LinkedIn"));
+  });
+
+  test("joins several missing platforms readably", () => {
+    const gap = detectSocialPresenceGap([], ["linkedin", "youtube", "tiktok"], "Concurrent X", true);
+
+    assert.match(gap!.description, /LinkedIn, YouTube et TikTok/);
+  });
+
+  test("returns null when we're on every platform the competitor is", () => {
+    assert.equal(detectSocialPresenceGap(["linkedin"], ["linkedin"], "Concurrent X", true), null);
+  });
+
+  test("returns null when the competitor links to no social platform", () => {
+    assert.equal(detectSocialPresenceGap([], [], "Concurrent X", true), null);
+  });
+
+  test("returns null when a site wasn't observed, even if the lists would produce a gap", () => {
+    // An empty own-platform list is only comparable when we actually read our own homepage;
+    // otherwise this would claim "you have no social accounts" from a failed fetch.
+    assert.equal(detectSocialPresenceGap([], ["linkedin"], "Concurrent X", false), null);
+  });
+
+  test("keeps a stable title regardless of how many platforms are missing", () => {
+    const one = detectSocialPresenceGap([], ["linkedin"], "Concurrent X", true);
+    const three = detectSocialPresenceGap([], ["linkedin", "youtube", "tiktok"], "Concurrent X", true);
+
+    // The call site dedupes on category+title, so a count-dependent title would reopen a
+    // near-duplicate gap every time the competitor added an account.
+    assert.equal(one?.title, three?.title);
+  });
+
+  test("appends the enrichment note when one is supplied", () => {
+    const gap = detectSocialPresenceGap([], ["youtube"], "Concurrent X", true, "Note factuelle.");
+
+    assert.match(gap!.description, /Note factuelle\./);
+  });
+
+  test("still produces the gap when no enrichment note is available", () => {
+    const gap = detectSocialPresenceGap([], ["youtube"], "Concurrent X", true, null);
+
+    assert.ok(gap);
+    assert.match(gap!.description, /YouTube/);
+  });
+
+  test("falls back to a generic label when competitorLabel is empty", () => {
+    const gap = detectSocialPresenceGap([], ["youtube"], "   ", true);
+
+    assert.match(gap!.description, /ton concurrent/i);
   });
 });
 

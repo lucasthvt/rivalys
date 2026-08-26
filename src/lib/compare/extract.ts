@@ -22,7 +22,23 @@ function getClient(): Anthropic {
   return cachedClient;
 }
 
-const EXTRACTION_MODEL = "claude-opus-5";
+// Sonnet 5 rather than Opus 5: this is schema-constrained extraction from already-cleaned
+// text, not open-ended reasoning — the task Sonnet is built for, at $2/$10 per MTok instead
+// of $5/$25 (roughly half the cost of a full comparison run). Haiku 4.5 would be cheaper
+// still, but it supports neither adaptive thinking nor `effort` (both used below), and its
+// retirement window opens 2026-10-15.
+const EXTRACTION_MODEL = "claude-sonnet-5";
+
+/**
+ * Both prompts below demand bare JSON, but a model can still wrap its answer in a markdown
+ * fence. Stripping it here costs nothing and turns an avoidable "invalid JSON" failure into
+ * a successful parse; anything else is left untouched so genuinely malformed output still
+ * fails loudly rather than being silently patched up.
+ */
+function stripCodeFence(text: string): string {
+  const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n?```$/i.exec(text.trim());
+  return fenced ? fenced[1].trim() : text;
+}
 
 const EXTRACTION_SYSTEM_PROMPT = `Tu es un extracteur de données factuelles pour Rivalys, un outil qui compare des sites de SaaS entre eux à partir de leurs pages publiques.
 
@@ -123,7 +139,7 @@ export async function extractSiteData(input: {
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(stripCodeFence(text));
   } catch (err) {
     throw new ExtractionError("La réponse de Claude n'est pas un JSON valide.", err);
   }
@@ -170,7 +186,7 @@ export async function classifyPositioning(
     const text = extractTextBlock(response.content);
     if (!text) return false;
 
-    const parsed = JSON.parse(text) as unknown;
+    const parsed = JSON.parse(stripCodeFence(text)) as unknown;
     if (
       typeof parsed === "object" &&
       parsed !== null &&

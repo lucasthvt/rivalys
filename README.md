@@ -10,6 +10,8 @@ Rivalys compare ton SaaS à ton plus gros concurrent sur des données publiques 
 - Supabase (Postgres, Auth, RLS)
 - Tailwind CSS v4
 - `@anthropic-ai/sdk` (extraction structurée des pages pricing, côté serveur uniquement)
+- Firecrawl (récupération des pages publiques, optionnel — voir plus bas)
+- Perplexity Agent API (enrichissement des écarts réseaux sociaux, optionnel)
 - Recharts (graphique d'évolution du score)
 
 ## Lancer le projet en local
@@ -70,6 +72,30 @@ Utilisée côté serveur uniquement (`src/lib/compare/extract.ts`) pour extraire
 1. Crée une clé sur [console.anthropic.com](https://console.anthropic.com/settings/keys).
 2. Renseigne-la dans `.env.local` sous `ANTHROPIC_API_KEY`.
 
+## Firecrawl (optionnel)
+
+Utilisé côté serveur (`src/lib/compare/firecrawl.ts`) pour récupérer les pages publiques : rend le JavaScript (donc gère les sites en React/Vue), retourne du markdown propre et la liste des liens sortants de la page.
+
+**Uniquement l'opération `scrape` (une page à la fois), jamais `crawl` ou `map`** — conformément à la contrainte "pas de scraping massif ou automatisé" du brief.
+
+Sans `FIRECRAWL_API_KEY`, le comparateur bascule automatiquement sur un fetch HTTP direct (le code d'origine, conservé) : la qualité baisse sur les sites très dynamiques, mais rien ne casse. Idem si Firecrawl est indisponible ou à court de crédits en cours de route.
+
+Coût : 2 crédits par site analysé (page d'accueil + page de pricing), soit 4 par actualisation. Le palier gratuit (1 000 crédits/mois) couvre ~250 actualisations.
+
+Clé à créer sur [firecrawl.dev](https://www.firecrawl.dev/).
+
+## Perplexity (optionnel)
+
+Utilisé côté serveur (`src/lib/compare/perplexity.ts`) pour ajouter **une phrase factuelle** à un écart "réseaux sociaux" déjà détecté.
+
+Point important : l'écart lui-même n'est jamais créé par Perplexity. Il vient d'une règle déterministe qui compare les liens sociaux publiés par chaque site (`src/lib/compare/social.ts`). Perplexity ne fait qu'enrichir la description, et un échec (clé absente, API indisponible, réponse "INCONNU") laisse l'écart intact sans sa phrase d'enrichissement.
+
+L'appel n'a lieu que lorsqu'un écart social existe réellement — donc pas à chaque actualisation.
+
+Cible l'**Agent API** (`POST /v1/agent`), pas l'endpoint Sonar `/chat/completions` qui est retiré le 27 septembre 2026. Preset `fast` : ~$0.005 par appel.
+
+Clé à créer sur [perplexity.ai/account/api](https://www.perplexity.ai/account/api/group).
+
 ## Variables d'environnement
 
 Voir `.env.example` :
@@ -79,12 +105,16 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ANTHROPIC_API_KEY=
+FIRECRAWL_API_KEY=
+PERPLEXITY_API_KEY=
 ```
+
+Les deux dernières sont optionnelles : sans elles, le comparateur fonctionne en mode dégradé (fetch direct, pas d'enrichissement social).
 
 ## Structure
 
 - `src/app/login`, `src/app/signup`, `src/app/onboarding` — auth Supabase + onboarding en 5 étapes
-- `src/app/api/compare` + `src/lib/compare/` — pipeline du comparateur : fetch des sites, extraction Claude, règles de détection d'écarts codées en dur, calcul du score
+- `src/app/api/compare` + `src/lib/compare/` — pipeline du comparateur : fetch des sites (Firecrawl ou direct), extraction Claude, détection des réseaux sociaux, règles de détection d'écarts codées en dur, calcul du score
 - `src/app/dashboard`, `src/app/tasks` — dashboard et liste de tâches (issues des écarts détectés)
 - `src/components/ui` — design system partagé (Button, Card, Badge, ProgressBar)
 - `supabase/migrations/` — schéma SQL + policies RLS

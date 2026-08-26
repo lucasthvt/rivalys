@@ -10,6 +10,13 @@ export type { ExtractedSiteData, PricingTier };
  */
 export interface StoredExtractedData extends ExtractedSiteData {
   pricing_page_found: boolean;
+  /**
+   * Social platform ids (see social.ts) the site links to from its own homepage. Optional
+   * because snapshots written before social detection existed don't carry it — readSocialPlatforms()
+   * below normalizes that absence to [], which callers must treat as "not observed", never
+   * as "confirmed to have none".
+   */
+  social_platforms?: string[];
 }
 
 function isPricingTier(value: unknown): value is PricingTier {
@@ -40,4 +47,19 @@ export function isExtractedSiteData(value: unknown): value is ExtractedSiteData 
 export function isStoredExtractedData(value: unknown): value is StoredExtractedData {
   if (!isExtractedSiteData(value)) return false;
   return typeof (value as unknown as Record<string, unknown>).pricing_page_found === "boolean";
+}
+
+/**
+ * Reads social_platforms off a stored snapshot.
+ *
+ * Returns null — not [] — when the field is absent, which happens on snapshots written
+ * before social detection existed. The distinction matters: [] means "we read this site's
+ * homepage and it linked to no social platform" (a fact we can compare), while null means
+ * "we never looked" (nothing we're entitled to conclude from). Collapsing the two would let
+ * a missing observation be presented to the user as a confirmed absence.
+ */
+export function readSocialPlatforms(data: StoredExtractedData): string[] | null {
+  const raw = (data as unknown as Record<string, unknown>).social_platforms;
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((p): p is string => typeof p === "string");
 }

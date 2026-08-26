@@ -8,8 +8,9 @@ export default function Home() {
       <CategoryMarquee />
       <HowItWorks />
       <FeatureShowcase />
+      <Capabilities />
       <WhatWeDont />
-      <FinalCta />
+      <Faq />
       <Footer />
     </div>
   );
@@ -53,7 +54,7 @@ function Hero() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
             {[
               "Données publiques uniquement",
-              "Zéro carte bancaire",
+              "Un concurrent suivi en profondeur",
               "Résultat en quelques minutes",
             ].map((fact) => (
               <span
@@ -71,7 +72,7 @@ function Hero() {
               href="/signup"
               className="inline-flex h-13 items-center justify-center rounded-full bg-signal px-7 text-base font-semibold text-paper shadow-signal-lg transition-all duration-150 hover:bg-signal-bright hover:text-void"
             >
-              Comparer mon SaaS — gratuit
+              Comparer mon SaaS
             </Link>
             <Link
               href="/login"
@@ -361,6 +362,102 @@ function FeatureShowcase() {
   );
 }
 
+interface CapabilityItem {
+  title: string;
+  body: string;
+  icon: ReactNode;
+}
+
+const CAPABILITIES: CapabilityItem[] = [
+  {
+    title: "Détection par règles, pas par hasard",
+    body: "Chaque écart suit une règle explicite — essai gratuit, palier gratuit, nombre de paliers, positionnement. Jamais une génération libre imprévisible.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+        <path d="M5 12.5l4 4L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Priorité claire, jamais un mur d'alertes",
+    body: "Haute, moyenne, basse — pas de rouge/orange/vert qui panique. Les 3 tâches les plus importantes remontent en haut de ton dashboard.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+        <path d="M6 4v16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M6 5h9l-2.5 3.5L15 12H6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Historique du score",
+    body: "Un point à chaque recalcul. Tu vois si tu regagnes du terrain ou si tu en perds, semaine après semaine — pas juste une photo à l'instant T.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+        <path d="M4 17l5-5 4 3 7-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 20h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Actualisation à la demande",
+    body: "Pas de cron qui tourne dans ton dos. Un bouton \"Actualiser\" dans ton dashboard, à ton rythme — jamais un fetch à chaque clic non plus.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+        <path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M18 4v3h-3M6 20v-3h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Confidentialité par construction",
+    body: "Row Level Security sur chaque table de la base. Personne d'autre que toi ne peut voir ton comparatif ou tes tâches.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+        <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Jamais de donnée inventée",
+    body: "Page de pricing introuvable, site qui bloque le fetch ? On te le dit clairement plutôt que d'estimer un chiffre au hasard.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+];
+
+function Capabilities() {
+  return (
+    <section className="border-b border-white/[0.06]">
+      <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
+        <div className="max-w-xl">
+          <p className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-signal-bright">
+            [ Fonctionnalités ]
+          </p>
+          <h2 className="mt-3 font-brand text-3xl font-semibold tracking-tight text-paper sm:text-4xl">
+            Tout ce dont tu as besoin, rien de plus.
+          </h2>
+        </div>
+
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {CAPABILITIES.map((item) => (
+            <div key={item.title} className="rounded-2xl border border-white/10 bg-void-raised p-6">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-signal-bright/20 bg-signal/10 text-signal-bright">
+                {item.icon}
+              </span>
+              <h3 className="mt-4 font-brand text-base font-semibold text-paper">{item.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-mist">{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function WhatWeDont() {
   const items = [
     {
@@ -402,31 +499,68 @@ function WhatWeDont() {
   );
 }
 
-function FinalCta() {
+const FAQ_ITEMS = [
+  {
+    q: "Vous scrapez tout le web pour trouver mes concurrents ?",
+    a: "Non. Rivalys ne va chercher des données que pour les deux URL que tu donnes explicitement — la tienne et celle de ton concurrent. Aucun crawl autonome, aucune base de concurrents pré-remplie.",
+  },
+  {
+    q: "Les données sont mises à jour en temps réel ?",
+    a: "Non, et c'est volontaire. La mise à jour est périodique (hebdomadaire ou mensuelle selon ton palier), avec mise en cache. Tu peux aussi forcer une actualisation manuelle depuis ton dashboard.",
+  },
+  {
+    q: "D'où viennent les données sur mon concurrent ?",
+    a: "Uniquement de ses pages publiques — accueil et pricing. Rivalys ne prétend jamais connaître son MRR, son churn, ou tout autre chiffre business privé.",
+  },
+  {
+    q: "Et si vous ne trouvez pas sa page de pricing ?",
+    a: "On te le dit clairement, avec le champ concerné marqué comme non disponible — jamais une estimation inventée pour combler le vide.",
+  },
+  {
+    q: "Mes données sont-elles visibles par d'autres utilisateurs ?",
+    a: "Non. Row Level Security activée sur chaque table : tu ne vois que ton propre comparatif, personne d'autre ne voit le tien.",
+  },
+  {
+    q: "Je peux suivre plusieurs concurrents ?",
+    a: "En MVP, un seul concurrent principal par compte. Le schéma est déjà prêt pour en suivre plusieurs — ça arrivera dans une prochaine version.",
+  },
+  {
+    q: "C'est payant ?",
+    a: "Oui, Rivalys est un outil payant — pas de version gratuite indéfinie. Voir la page Tarifs pour le détail des paliers.",
+  },
+];
+
+function Faq() {
   return (
-    <section className="relative overflow-hidden border-b border-white/[0.06]">
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[22rem] w-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal/20 blur-[100px]"
-        aria-hidden="true"
-      />
-      <div className="relative mx-auto w-full max-w-6xl px-6 py-20 text-center lg:py-28">
-        <h2 className="mx-auto max-w-2xl font-brand text-3xl font-semibold tracking-tight text-paper sm:text-4xl">
-          Prêt à voir où tu te situes ?
-        </h2>
-        <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-mist">
-          Deux URL. Une comparaison. Une liste de tâches qui a du sens.
-        </p>
-        <div className="mt-8 flex justify-center">
-          <Link
-            href="/signup"
-            className="inline-flex h-13 items-center justify-center rounded-full bg-signal px-7 text-base font-semibold text-paper shadow-signal-lg transition-all duration-150 hover:bg-signal-bright hover:text-void"
-          >
-            Comparer mon SaaS — gratuit
-          </Link>
+    <section id="faq" className="border-b border-white/[0.06]">
+      <div className="mx-auto w-full max-w-3xl px-6 py-20 lg:py-24">
+        <div className="max-w-xl">
+          <p className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-signal-bright">
+            [ Questions fréquentes ]
+          </p>
+          <h2 className="mt-3 font-brand text-3xl font-semibold tracking-tight text-paper sm:text-4xl">
+            Ce qu&rsquo;on te demande le plus.
+          </h2>
         </div>
-        <p className="mx-auto mt-4 max-w-md font-mono text-[0.68rem] uppercase tracking-wide text-mist">
-          Mise à jour hebdomadaire ou mensuelle selon ton palier — jamais en temps réel
-        </p>
+
+        <div className="mt-10 flex flex-col divide-y divide-white/[0.06] border-t border-white/[0.06]">
+          {FAQ_ITEMS.map((item) => (
+            <details key={item.q} className="group py-5">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
+                <span className="font-brand text-base font-medium text-paper sm:text-lg">{item.q}</span>
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="h-4 w-4 shrink-0 text-mist transition-transform duration-200 group-open:rotate-45"
+                  aria-hidden="true"
+                >
+                  <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </summary>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-mist">{item.a}</p>
+            </details>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -434,12 +568,39 @@ function FinalCta() {
 
 function Footer() {
   return (
-    <footer>
-      <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-mist sm:flex-row">
-        <p>© 2026 Rivalys — comparateur concurrentiel honnête pour fondateurs de SaaS.</p>
-        <Link href="/login" className="transition-colors hover:text-paper">
-          Se connecter
-        </Link>
+    <footer className="border-t border-white/[0.06]">
+      <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-10 px-6 py-16">
+        <div className="flex flex-col items-start gap-4">
+          <Link href="/" className="flex items-center gap-2.5 text-paper">
+            <span
+              aria-hidden="true"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-signal-bright to-signal font-brand text-xs font-bold text-void"
+            >
+              R
+            </span>
+            <span className="font-brand text-[1.05rem] font-semibold tracking-tight">Rivalys</span>
+          </Link>
+          <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-mist/60">
+            © 2026 Rivalys — tous droits réservés
+          </p>
+        </div>
+
+        <div className="text-right">
+          <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-mist/60">Légal</p>
+          <ul className="mt-4 flex flex-col items-end gap-2">
+            {[
+              { href: "/mentions-legales", label: "Mentions légales" },
+              { href: "/cgu", label: "CGU" },
+              { href: "/confidentialite", label: "Confidentialité" },
+            ].map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className="text-sm text-mist transition-colors hover:text-paper">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </footer>
   );

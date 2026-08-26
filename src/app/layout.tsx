@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, IBM_Plex_Mono, Bricolage_Grotesque } from "next/font/google";
+import { Inter, IBM_Plex_Mono, Bricolage_Grotesque } from "next/font/google";
 import { Nav } from "@/components/layout/Nav";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  display: "swap",
-});
-
-// Brand display face for the marketing landing + Nav wordmark only (see
-// globals.css § Signal palette) — kept separate from --font-display so the
-// terrain-themed screens (Card/Button consumers) are unaffected.
+// The single display face for the whole app — see globals.css § Signal
+// palette. --font-display (used by Card/Button/every heading) and
+// --font-brand (the Nav/landing wordmark) both point at this.
 const bricolageGrotesque = Bricolage_Grotesque({
   variable: "--font-bricolage",
   subsets: ["latin"],
@@ -43,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} ${bricolageGrotesque.variable} h-full antialiased`}
+      className={`${inter.variable} ${plexMono.variable} ${bricolageGrotesque.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <Nav />
@@ -51,16 +44,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           min-h-0 stops this flex child from being forced to its content's
           intrinsic min-height, so it actually shrinks to "viewport minus
           Nav" instead of always growing to at least 100vh on top of that.
-          NOTE (coordination point — not fully fixed by this wrapper alone):
-          this only controls the space this wrapper itself claims. A child
-          page that sets `min-h-screen` on ITS OWN root container declares
-          `min-height: 100vh` directly on that element, which this parent
-          flex container cannot override — the child would still render at
-          100vh *inside* an already-shorter parent, adding Nav's 64px
-          (h-16) as extra scroll. /dashboard and /tasks currently do this.
-          The real fix has to happen in those pages (owned by a different
-          agent/scope): replace `min-h-screen` with `min-h-[calc(100vh-4rem)]`,
-          or drop it entirely and let this flex-1 parent supply the height.
+          Routes that hide Nav (see Nav.tsx's HIDE_NAV_PREFIXES — /login,
+          /signup, /onboarding, /dashboard, /tasks) have no sibling above
+          this wrapper, so it correctly fills the full viewport height for
+          them; those pages should use `min-h-full`/`flex-1`, never their
+          own `min-h-screen`, to inherit that height instead of double-
+          counting it.
         */}
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </body>

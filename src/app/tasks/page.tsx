@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
-import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
-import { sortGapsByPriority, MONO_STACK } from "@/components/tasks/priority";
+import { sortGapsByPriority } from "@/components/tasks/priority";
 import { GapListItem } from "@/components/tasks/gap-list-item";
 import { EmptyState } from "@/components/tasks/empty-state";
-
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600"] });
-const plexSans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500"] });
+import { AppShell } from "@/components/layout/AppShell";
 
 export default async function TasksPage() {
   const supabase = await createClient();
@@ -21,13 +18,15 @@ export default async function TasksPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarding_completed")
+    .select("onboarding_completed, first_name")
     .eq("id", user.id)
     .maybeSingle();
 
   if (profile?.onboarding_completed !== true) {
     redirect("/onboarding");
   }
+
+  const userLabel = profile?.first_name?.trim() || user.email || "Toi";
 
   const { data: gapsRaw, error } = await supabase
     .from("detected_gaps")
@@ -39,19 +38,16 @@ export default async function TasksPage() {
   const highCount = gaps.filter((g) => g.priority === "high").length;
 
   return (
-    <main className={`${plexSans.className} min-h-[calc(100vh-4rem)] bg-[#0F1613] text-[#EDF2EE]`}>
+    <AppShell userLabel={userLabel}>
       <div className="mx-auto max-w-3xl px-6 py-16 sm:px-8">
-        <header className="mb-10 border-b border-[#2A362F] pb-6">
-          <p
-            className="text-[11px] uppercase tracking-[0.2em] text-[#5C7568]"
-            style={{ fontFamily: MONO_STACK }}
-          >
+        <header className="mb-10 border-b border-surface-border pb-6">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
             Tâches
           </p>
-          <h1 className={`${spaceGrotesk.className} mt-2 text-2xl sm:text-[28px]`}>
+          <h1 className="font-display mt-2 text-2xl sm:text-[28px]">
             Écarts à combler
           </h1>
-          <p className="mt-2 text-sm text-[#8CA093]">
+          <p className="mt-2 text-sm text-foreground-muted">
             {gaps.length === 0
               ? "Aucun écart ouvert pour l'instant."
               : `${gaps.length} écart${gaps.length > 1 ? "s" : ""} ouvert${
@@ -78,6 +74,6 @@ export default async function TasksPage() {
           </ul>
         )}
       </div>
-    </main>
+    </AppShell>
   );
 }

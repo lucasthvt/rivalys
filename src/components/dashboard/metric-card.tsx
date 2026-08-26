@@ -1,5 +1,3 @@
-import { MONO_STACK } from "@/components/tasks/priority";
-
 export function MetricCard({
   label,
   value,
@@ -10,21 +8,17 @@ export function MetricCard({
   sublabel?: string;
 }) {
   return (
-    <div className="border border-[#2A362F] bg-[#17211C] px-5 py-4">
-      <p
-        className="text-[11px] uppercase tracking-[0.16em] text-[#5C7568]"
-        style={{ fontFamily: MONO_STACK }}
-      >
+    <div className="border border-surface-border bg-surface px-5 py-4">
+      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
         {label}
       </p>
       <p
-        className="mt-2 truncate text-[28px] leading-tight tracking-tight text-[#EDF2EE]"
-        style={{ fontFamily: MONO_STACK }}
+        className="font-mono mt-2 truncate text-[28px] leading-tight tracking-tight text-foreground"
         title={value}
       >
         {value}
       </p>
-      {sublabel && <p className="mt-1.5 text-xs text-[#8CA093]">{sublabel}</p>}
+      {sublabel && <p className="mt-1.5 text-xs text-foreground-muted">{sublabel}</p>}
     </div>
   );
 }

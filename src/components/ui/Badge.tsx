@@ -26,14 +26,14 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  "priority-high": "bg-clay-100 text-clay-700 dark:bg-clay-500/20 dark:text-clay-100",
-  "priority-medium": "bg-brass-100 text-brass-700 dark:bg-brass-500/20 dark:text-brass-100",
-  "priority-low": "bg-sage-100 text-sage-700 dark:bg-sage-500/20 dark:text-sage-100",
+  "priority-high": "bg-clay-500/20 text-clay-100",
+  "priority-medium": "bg-brass-500/20 text-brass-100",
+  "priority-low": "bg-sage-500/20 text-sage-100",
   "status-open": "border border-surface-border bg-transparent text-foreground-muted",
-  "status-done": "bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-100",
-  "status-dismissed": "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-100",
-  neutral: "bg-stone-200 text-stone-800 dark:bg-white/10 dark:text-stone-100",
-  brand: "bg-accent text-ink",
+  "status-done": "bg-teal-500/20 text-teal-100",
+  "status-dismissed": "bg-slate-500/15 text-slate-100",
+  neutral: "bg-white/10 text-stone-100",
+  brand: "bg-accent text-accent-foreground",
 };
 
 const dotStyles: Record<BadgeVariant, string> = {
@@ -44,7 +44,7 @@ const dotStyles: Record<BadgeVariant, string> = {
   "status-done": "bg-teal-500",
   "status-dismissed": "bg-slate-500",
   neutral: "bg-stone-400",
-  brand: "bg-ink",
+  brand: "bg-paper",
 };
 
 const sizeStyles: Record<"sm" | "md", string> = {

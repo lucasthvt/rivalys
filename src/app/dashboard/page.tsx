@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
-import { sortGapsByPriority, MONO_STACK } from "@/components/tasks/priority";
+import { sortGapsByPriority } from "@/components/tasks/priority";
 import { GapListItem } from "@/components/tasks/gap-list-item";
 import { EmptyState } from "@/components/tasks/empty-state";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -9,9 +8,7 @@ import { ComparisonTable } from "@/components/dashboard/comparison-table";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { RefreshButton } from "@/components/dashboard/refresh-button";
 import { parseExtractedData } from "@/components/dashboard/extracted-data";
-
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600"] });
-const plexSans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500"] });
+import { AppShell } from "@/components/layout/AppShell";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -26,13 +23,15 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarding_completed")
+    .select("onboarding_completed, first_name")
     .eq("id", user.id)
     .maybeSingle();
 
   if (profile?.onboarding_completed !== true) {
     redirect("/onboarding");
   }
+
+  const userLabel = profile?.first_name?.trim() || user.email || "Toi";
 
   const [gapsRes, scoreRes, competitorRes] = await Promise.all([
     supabase
@@ -56,16 +55,13 @@ export default async function DashboardPage() {
   // so surface a clear error state instead of a fabricated-looking dashboard.
   if (gapsRes.error || scoreRes.error) {
     return (
-      <main className={`${plexSans.className} min-h-[calc(100vh-4rem)] bg-[#0F1613] text-[#EDF2EE]`}>
+      <AppShell userLabel={userLabel}>
         <div className="mx-auto max-w-5xl px-6 py-16 sm:px-8">
-          <header className="mb-10 border-b border-[#2A362F] pb-6">
-            <p
-              className="text-[11px] uppercase tracking-[0.2em] text-[#5C7568]"
-              style={{ fontFamily: MONO_STACK }}
-            >
+          <header className="mb-10 border-b border-surface-border pb-6">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
               Tableau de bord
             </p>
-            <h1 className={`${spaceGrotesk.className} mt-2 text-2xl sm:text-[28px]`}>
+            <h1 className="font-display mt-2 text-2xl sm:text-[28px]">
               Où tu perds du terrain
             </h1>
           </header>
@@ -74,7 +70,7 @@ export default async function DashboardPage() {
             description={(gapsRes.error ?? scoreRes.error)?.message}
           />
         </div>
-      </main>
+      </AppShell>
     );
   }
 
@@ -120,17 +116,14 @@ export default async function DashboardPage() {
   const highCount = gaps.filter((g) => g.priority === "high").length;
 
   return (
-    <main className={`${plexSans.className} min-h-[calc(100vh-4rem)] bg-[#0F1613] text-[#EDF2EE]`}>
+    <AppShell userLabel={userLabel}>
       <div className="mx-auto max-w-5xl px-6 py-16 sm:px-8">
-        <header className="mb-10 flex flex-col gap-6 border-b border-[#2A362F] pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <header className="mb-10 flex flex-col gap-6 border-b border-surface-border pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p
-              className="text-[11px] uppercase tracking-[0.2em] text-[#5C7568]"
-              style={{ fontFamily: MONO_STACK }}
-            >
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
               Tableau de bord
             </p>
-            <h1 className={`${spaceGrotesk.className} mt-2 text-2xl sm:text-[28px]`}>
+            <h1 className="font-display mt-2 text-2xl sm:text-[28px]">
               Où tu perds du terrain
             </h1>
           </div>
@@ -151,12 +144,9 @@ export default async function DashboardPage() {
           <MetricCard label="Concurrent suivi" value={competitorLabel} />
         </section>
 
-        <section className="mb-8 border border-[#2A362F] bg-[#17211C]">
-          <div className="border-b border-[#2A362F] px-5 py-4">
-            <h2
-              className="text-[11px] uppercase tracking-[0.16em] text-[#5C7568]"
-              style={{ fontFamily: MONO_STACK }}
-            >
+        <section className="mb-8 border border-surface-border bg-surface">
+          <div className="border-b border-surface-border px-5 py-4">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Actions prioritaires
             </h2>
           </div>
@@ -185,17 +175,14 @@ export default async function DashboardPage() {
           />
         </section>
 
-        <section className="border border-[#2A362F] bg-[#17211C] px-5 py-4">
-          <h2
-            className="mb-4 text-[11px] uppercase tracking-[0.16em] text-[#5C7568]"
-            style={{ fontFamily: MONO_STACK }}
-          >
+        <section className="border border-surface-border bg-surface px-5 py-4">
+          <h2 className="font-mono mb-4 text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
             Évolution du score
           </h2>
           <ScoreChart points={scorePoints} />
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }
 

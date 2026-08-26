@@ -9,12 +9,12 @@ type AuthFieldProps = InputHTMLAttributes<HTMLInputElement> & {
 export function AuthField({ label, id, className, ...inputProps }: AuthFieldProps) {
   return (
     <label htmlFor={id} className="block">
-      <span className="[font-family:var(--font-mono-auth)] text-[11px] font-medium uppercase tracking-[0.16em] text-[#6B7A6C]">
+      <span className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-foreground-muted">
         {label}
       </span>
       <input
         id={id}
-        className={`mt-2 w-full border-0 border-b border-[#DAD6C7] bg-transparent px-0 py-2 text-base text-[#1F2A22] outline-none transition-colors placeholder:text-[#A9B0A2] focus:border-[#B8791A] ${className ?? ""}`}
+        className={`mt-2 w-full border-0 border-b border-surface-border bg-transparent px-0 py-2 text-base text-foreground outline-none transition-colors placeholder:text-foreground-muted/60 focus:border-accent ${className ?? ""}`}
         {...inputProps}
       />
     </label>
@@ -28,8 +28,6 @@ export function AuthField({ label, id, className, ...inputProps }: AuthFieldProp
  */
 export const authPrimaryButton = buttonVariants({ variant: "primary", size: "lg", fullWidth: true });
 
-export const authErrorBox =
-  "border-l-2 border-[#A5402E] bg-[#A5402E]/[0.06] px-4 py-3 text-sm text-[#7A2E20]";
+export const authErrorBox = "border-l-2 border-flare bg-flare/10 px-4 py-3 text-sm text-flare";
 
-export const authInfoBox =
-  "border-l-2 border-[#2F5D45] bg-[#2F5D45]/[0.06] px-4 py-3 text-sm text-[#234A37]";
+export const authInfoBox = "border-l-2 border-mint bg-mint/10 px-4 py-3 text-sm text-mint";

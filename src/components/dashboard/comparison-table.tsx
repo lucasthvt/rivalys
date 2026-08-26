@@ -1,4 +1,3 @@
-import { MONO_STACK } from "@/components/tasks/priority";
 import { EmptyState } from "@/components/tasks/empty-state";
 import type { ExtractedSiteData } from "@/lib/supabase/database.types";
 
@@ -22,17 +21,17 @@ function BoolCell({
   isDisadvantage: boolean;
 }) {
   if (!data) {
-    return <span className="text-[#5C7568]">Pas encore de données</span>;
+    return <span className="text-foreground-muted/70">Pas encore de données</span>;
   }
   const value = data[field];
   return (
     <span
       className={
         isDisadvantage
-          ? "font-medium text-[#FF6B47]"
+          ? "font-medium text-flare"
           : value
-            ? "text-[#49D6A8]"
-            : "text-[#EDF2EE]"
+            ? "text-mint"
+            : "text-foreground"
       }
     >
       {value ? "Oui" : "Non"}
@@ -55,19 +54,13 @@ export function ComparisonTable({
   const noData = !own && !competitor;
 
   return (
-    <div className="border border-[#2A362F] bg-[#17211C]">
-      <div className="flex items-center justify-between gap-3 border-b border-[#2A362F] px-5 py-4">
-        <h2
-          className="text-[11px] uppercase tracking-[0.16em] text-[#5C7568]"
-          style={{ fontFamily: MONO_STACK }}
-        >
+    <div className="border border-surface-border bg-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-surface-border px-5 py-4">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
           Toi vs {competitorLabel}
         </h2>
         {loadError && (
-          <span
-            className="text-[11px] uppercase tracking-[0.12em] text-[#FF6B47]"
-            style={{ fontFamily: MONO_STACK }}
-          >
+          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-flare">
             Erreur de chargement
           </span>
         )}
@@ -88,23 +81,20 @@ export function ComparisonTable({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[480px] border-collapse text-sm">
             <thead>
-              <tr
-                className="border-b border-[#2A362F] text-left text-[11px] uppercase tracking-[0.12em] text-[#5C7568]"
-                style={{ fontFamily: MONO_STACK }}
-              >
+              <tr className="font-mono border-b border-surface-border text-left text-[11px] uppercase tracking-[0.12em] text-foreground-muted/70">
                 <th className="px-5 py-3 font-medium">Critère</th>
                 <th className="px-5 py-3 font-medium">Toi</th>
                 <th className="px-5 py-3 font-medium">{competitorLabel}</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-[#2A362F] align-top">
-                <td className="px-5 py-4 text-[#8CA093]">Paliers de pricing</td>
-                <td className="px-5 py-4 text-[#EDF2EE]">{formatTiers(own)}</td>
-                <td className="px-5 py-4 text-[#EDF2EE]">{formatTiers(competitor)}</td>
+              <tr className="border-b border-surface-border align-top">
+                <td className="px-5 py-4 text-foreground-muted">Paliers de pricing</td>
+                <td className="px-5 py-4 text-foreground">{formatTiers(own)}</td>
+                <td className="px-5 py-4 text-foreground">{formatTiers(competitor)}</td>
               </tr>
-              <tr className="border-b border-[#2A362F]">
-                <td className="px-5 py-4 text-[#8CA093]">Essai gratuit</td>
+              <tr className="border-b border-surface-border">
+                <td className="px-5 py-4 text-foreground-muted">Essai gratuit</td>
                 <td className="px-5 py-4">
                   <BoolCell
                     data={own}
@@ -119,7 +109,7 @@ export function ComparisonTable({
                 </td>
               </tr>
               <tr>
-                <td className="px-5 py-4 text-[#8CA093]">Palier gratuit</td>
+                <td className="px-5 py-4 text-foreground-muted">Palier gratuit</td>
                 <td className="px-5 py-4">
                   <BoolCell
                     data={own}

@@ -73,15 +73,15 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-[#F6F4EC] lg:grid lg:grid-cols-[0.85fr_1fr]">
+    <div className="flex min-h-screen flex-1 flex-col bg-background lg:grid lg:grid-cols-[0.85fr_1fr]">
       <AuthMapPanel />
 
       <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:px-16">
         <div className="w-full max-w-sm">
-          <p className="[font-family:var(--font-mono-auth)] text-[11px] font-medium uppercase tracking-[0.16em] text-[#B8791A]">
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-signal-bright">
             Créer un compte
           </p>
-          <h1 className="mt-2 [font-family:var(--font-display-auth)] text-3xl text-[#1F2A22]">
+          <h1 className="mt-2 font-display text-3xl text-foreground">
             Commençons.
           </h1>
 
@@ -126,9 +126,9 @@ export default function SignupPage() {
             </form>
           )}
 
-          <p className="mt-8 text-sm text-[#46524A]">
+          <p className="mt-8 text-sm text-foreground-muted">
             Déjà un compte ?{" "}
-            <Link href="/login" className="font-medium text-[#1F2A22] underline underline-offset-4">
+            <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
               Se connecter
             </Link>
           </p>

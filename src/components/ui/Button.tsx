@@ -29,9 +29,9 @@ const baseStyles =
   "disabled:pointer-events-none disabled:opacity-50";
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-ink hover:bg-accent-strong active:bg-accent-strong",
+  primary: "bg-accent text-accent-foreground hover:bg-accent-strong active:bg-accent-strong",
   secondary:
-    "border border-surface-border bg-transparent text-foreground hover:border-ink hover:bg-surface-hover",
+    "border border-surface-border bg-transparent text-foreground hover:border-foreground/40 hover:bg-surface-hover",
   ghost: "bg-transparent text-foreground-muted hover:bg-surface-hover hover:text-foreground",
 };
 

@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { dismissGap, markGapDone } from "@/app/tasks/actions";
-import { MONO_STACK } from "./priority";
 
 type Action = "done" | "dismiss";
 
@@ -30,8 +29,7 @@ export function GapActions({ gapId }: { gapId: string }) {
           type="button"
           onClick={() => run("done")}
           disabled={isPending}
-          style={{ fontFamily: MONO_STACK }}
-          className="border border-[#2A362F] px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-[#8CA093] transition-colors hover:border-[#49D6A8] hover:text-[#49D6A8] disabled:cursor-not-allowed disabled:opacity-40"
+          className="border border-surface-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground-muted transition-colors hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending === "done" ? "…" : "Fait"}
         </button>
@@ -39,13 +37,12 @@ export function GapActions({ gapId }: { gapId: string }) {
           type="button"
           onClick={() => run("dismiss")}
           disabled={isPending}
-          style={{ fontFamily: MONO_STACK }}
-          className="border border-[#2A362F] px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-[#8CA093] transition-colors hover:border-[#EDF2EE] hover:text-[#EDF2EE] disabled:cursor-not-allowed disabled:opacity-40"
+          className="border border-surface-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground-muted transition-colors hover:border-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending === "dismiss" ? "…" : "Ignorer"}
         </button>
       </div>
-      {error && <p className="max-w-[200px] text-right text-xs text-[#FF6B47]">{error}</p>}
+      {error && <p className="max-w-[200px] text-right text-xs text-flare">{error}</p>}
     </div>
   );
 }

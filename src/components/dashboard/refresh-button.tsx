@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MONO_STACK } from "@/components/tasks/priority";
 
 interface CompareResponse {
   ok: boolean;
@@ -45,12 +44,11 @@ export function RefreshButton() {
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        style={{ fontFamily: MONO_STACK }}
-        className="border border-[#2A362F] bg-[#17211C] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-[#EDF2EE] transition-colors hover:border-[#49D6A8] hover:text-[#49D6A8] disabled:cursor-not-allowed disabled:opacity-50"
+        className="font-mono border border-surface-border bg-surface px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-foreground transition-colors hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? "Analyse en cours…" : "Actualiser"}
       </button>
-      {error && <p className="max-w-[220px] text-right text-xs text-[#FF6B47]">{error}</p>}
+      {error && <p className="max-w-[220px] text-right text-xs text-flare">{error}</p>}
     </div>
   );
 }

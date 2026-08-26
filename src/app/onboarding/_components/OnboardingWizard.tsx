@@ -159,15 +159,15 @@ export function OnboardingWizard() {
 
   if (analyzing) {
     return (
-      <div className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden bg-[#1F2A22] px-6 text-center">
-        <ContourMarks className="pointer-events-none absolute h-[520px] w-[520px] animate-pulse text-[#3F4F41] motion-reduce:animate-none" />
-        <p className="relative z-10 [font-family:var(--font-mono-auth)] text-[11px] uppercase tracking-[0.2em] text-[#C7CBB8]">
+      <div className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden bg-background px-6 text-center">
+        <ContourMarks className="pointer-events-none absolute h-[520px] w-[520px] animate-pulse text-signal-bright/[0.08] motion-reduce:animate-none" />
+        <p className="relative z-10 font-mono text-[11px] uppercase tracking-[0.2em] text-mist">
           Rivalys
         </p>
-        <p className="relative z-10 mt-4 max-w-sm [font-family:var(--font-display-auth)] text-2xl text-[#F0EEE3] sm:text-3xl">
+        <p className="relative z-10 mt-4 max-w-sm font-display text-2xl text-paper sm:text-3xl">
           On regarde le terrain d&apos;en face...
         </p>
-        <p className="relative z-10 mt-3 text-sm text-[#A9B6A2]">
+        <p className="relative z-10 mt-3 text-sm text-mist">
           Analyse de {form.competitorUrl || "ton concurrent"} en cours.
         </p>
       </div>
@@ -175,10 +175,10 @@ export function OnboardingWizard() {
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-[#F6F4EC] px-6 py-10 sm:px-10 lg:px-16">
+    <div className="flex min-h-screen flex-1 flex-col bg-background px-6 py-10 sm:px-10 lg:px-16">
       <div className="mx-auto w-full max-w-xl">
         <div className="flex items-center justify-between">
-          <span className="[font-family:var(--font-mono-auth)] text-[11px] font-medium uppercase tracking-[0.28em] text-[#6B7A6C]">
+          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-foreground-muted">
             Rivalys
           </span>
         </div>
@@ -196,7 +196,7 @@ export function OnboardingWizard() {
 
           {step === 0 ? (
             <div>
-              <h1 className="[font-family:var(--font-display-auth)] text-3xl text-[#1F2A22] sm:text-4xl">
+              <h1 className="font-display text-3xl text-foreground sm:text-4xl">
                 Comment tu t&apos;appelles ?
               </h1>
               <div className="mt-8 max-w-sm">
@@ -215,7 +215,7 @@ export function OnboardingWizard() {
 
           {step === 1 ? (
             <div>
-              <h1 className="[font-family:var(--font-display-auth)] text-3xl text-[#1F2A22] sm:text-4xl">
+              <h1 className="font-display text-3xl text-foreground sm:text-4xl">
                 Ton SaaS est plutôt B2B ou B2C ?
               </h1>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -237,7 +237,7 @@ export function OnboardingWizard() {
 
           {step === 2 ? (
             <div>
-              <h1 className="[font-family:var(--font-display-auth)] text-3xl text-[#1F2A22] sm:text-4xl">
+              <h1 className="font-display text-3xl text-foreground sm:text-4xl">
                 Dans quel secteur ?
               </h1>
               <div className="mt-8 max-w-sm">
@@ -266,7 +266,7 @@ export function OnboardingWizard() {
 
           {step === 3 ? (
             <div>
-              <h1 className="[font-family:var(--font-display-auth)] text-3xl text-[#1F2A22] sm:text-4xl">
+              <h1 className="font-display text-3xl text-foreground sm:text-4xl">
                 Parle-nous de ton produit en une phrase.
               </h1>
               <div className="mt-8 flex max-w-sm flex-col gap-8">
@@ -296,10 +296,10 @@ export function OnboardingWizard() {
 
           {step === 4 ? (
             <div>
-              <h1 className="[font-family:var(--font-display-auth)] text-3xl text-[#1F2A22] sm:text-4xl">
+              <h1 className="font-display text-3xl text-foreground sm:text-4xl">
                 Quel est ton plus gros concurrent ?
               </h1>
-              <p className="mt-3 max-w-sm text-sm text-[#46524A]">
+              <p className="mt-3 max-w-sm text-sm text-foreground-muted">
                 On compare uniquement ce qui est déjà public sur son site — pricing, avis,
                 positionnement.
               </p>

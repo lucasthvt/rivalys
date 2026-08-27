@@ -16,6 +16,12 @@ import {
 import { detectSocialPlatforms, labelPlatforms, missingPlatforms } from "@/lib/compare/social";
 import { askPerplexity, isPerplexityConfigured } from "@/lib/compare/perplexity";
 import { countByPriority, computeScore } from "@/lib/compare/score";
+import {
+  checkAnalysisRateLimit,
+  parseLastRunAt,
+  rateLimitMessage,
+  retryAfterSeconds,
+} from "@/lib/compare/rate-limit";
 import type { Json } from "@/lib/supabase/database.types";
 
 /**
@@ -26,7 +32,12 @@ import type { Json } from "@/lib/supabase/database.types";
  * Claude, store snapshots, apply hardcoded gap-detection rules, dedupe against already-open
  * gaps, insert new ones, and recompute the score.
  *
- * Response: { ok: true, gapsCount: number } | { ok: false, error: string }
+ * Rate-limited to one run per user per 24 h (see rate-limit.ts) — every run costs real
+ * Firecrawl/Claude/Perplexity credits, and CLAUDE.md forbids a full fetch on every click.
+ *
+ * Response: { ok: true, gapsCount: number }
+ *         | { ok: false, error: string }
+ *         | { ok: false, error: string, retryAfterIso: string }   (429, + Retry-After header)
  */
 export async function POST() {
   const supabase = await createClient();
@@ -71,6 +82,66 @@ export async function POST() {
   }
   if (!competitor) {
     return NextResponse.json({ ok: false, error: "no competitor configured" }, { status: 400 });
+  }
+
+  // Rate limit, before every paid step (site fetches, Claude extraction, Perplexity
+  // enrichment) and after only the two cheap indexed reads above, which the check itself
+  // needs.
+  //
+  // The cooldown exists to stop someone re-analysing THE SAME PAIR repeatedly, not to block
+  // work that has never been done. So a competitor with no snapshot of its own is always
+  // allowed through: that is either a first analysis, or one that follows a competitor
+  // change (setCompetitor deletes the previous competitor's snapshots precisely because
+  // they describe a site the user no longer tracks — see app/concurrent/actions.ts).
+  // Without this exemption, adding a competitor within 24 h of a previous run would be
+  // refused, which reads as the product being broken.
+  const { data: competitorSnapshot, error: competitorSnapshotError } = await supabase
+    .from("site_snapshots")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("target_type", "competitor")
+    .eq("competitor_id", competitor.id)
+    .limit(1)
+    .maybeSingle();
+  if (competitorSnapshotError) {
+    return NextResponse.json(
+      { ok: false, error: "Erreur lors de la vérification de la dernière analyse." },
+      { status: 500 },
+    );
+  }
+
+  const now = new Date();
+  if (competitorSnapshot) {
+    const { data: lastSnapshot, error: lastSnapshotError } = await supabase
+      .from("site_snapshots")
+      .select("fetched_at")
+      .eq("user_id", user.id)
+      .order("fetched_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastSnapshotError) {
+      // Fail closed, like the other read failures: if we cannot tell when the last run
+      // happened, spending money is the wrong default.
+      return NextResponse.json(
+        { ok: false, error: "Erreur lors de la vérification de la dernière analyse." },
+        { status: 500 },
+      );
+    }
+
+    const rateLimit = checkAnalysisRateLimit(parseLastRunAt(lastSnapshot?.fetched_at), now);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: rateLimitMessage(rateLimit.retryAt, now),
+          retryAfterIso: rateLimit.retryAt.toISOString(),
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(retryAfterSeconds(rateLimit.retryAt, now)) },
+        },
+      );
+    }
   }
 
   const competitorLabel = competitor.name?.trim() || safeHostname(competitor.url) || "ton concurrent";

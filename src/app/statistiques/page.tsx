@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyState } from "@/components/tasks/empty-state";
+import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { GapStats } from "@/components/dashboard/gap-stats";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 
@@ -35,23 +36,37 @@ export default async function StatistiquesPage() {
 
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
 
-  const [allGapsRes, scoreRes] = await Promise.all([
+  const [allGapsRes, scoreRes, competitorRes] = await Promise.all([
     supabase.from("detected_gaps").select("category, status, resolved_at"),
     supabase.from("score_history").select("*").order("recorded_at", { ascending: true }),
+    supabase
+      .from("competitors")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("is_primary", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
+
+  // Aucun concurrent suivi : il n'existe aucun historique à agréger. Des
+  // compteurs à zéro se liraient comme un bilan, alors qu'aucune analyse n'a
+  // jamais tourné.
+  if (!competitorRes.data && !competitorRes.error) {
+    return (
+      <AppShell userLabel={userLabel}>
+        <div className="mx-auto max-w-4xl px-6 py-16 sm:px-8">
+          <Header />
+          <NoCompetitorState description="L'historique se remplit à chaque analyse. Ajoute un concurrent pour lancer la première." />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell userLabel={userLabel}>
       <div className="mx-auto max-w-4xl px-6 py-16 sm:px-8">
-        <header className="mb-10 border-b border-surface-border pb-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
-            Statistiques
-          </p>
-          <h1 className="font-display mt-2 text-2xl sm:text-[28px]">Le terrain regagné</h1>
-          <p className="mt-2 max-w-xl text-sm text-foreground-muted">
-            L&rsquo;historique complet de tes écarts détectés, comblés et ignorés.
-          </p>
-        </header>
+        <Header />
 
         <section className="mb-8 border border-surface-border bg-surface">
           <div className="border-b border-surface-border px-5 py-4">
@@ -86,5 +101,19 @@ export default async function StatistiquesPage() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function Header() {
+  return (
+    <header className="mb-10 border-b border-surface-border pb-6">
+      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
+        Statistiques
+      </p>
+      <h1 className="font-display mt-2 text-2xl sm:text-[28px]">Le terrain regagné</h1>
+      <p className="mt-2 max-w-xl text-sm text-foreground-muted">
+        L&rsquo;historique complet de tes écarts détectés, comblés et ignorés.
+      </p>
+    </header>
   );
 }

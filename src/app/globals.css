@@ -245,3 +245,38 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ==========================================================================
+   Relevé de score — dashboard
+   --------------------------------------------------------------------------
+   Le score est déterministe : 100 moins une pénalité par écart ouvert. La
+   barre montre donc la totalité de l'échelle, la part tenue en plein et les
+   points perdus en hachures — plutôt qu'un simple nombre sans justification.
+   Les hachures disent « ce terrain existe, tu ne l'occupes pas », là où un
+   vide dirait seulement « il manque quelque chose ».
+   ========================================================================== */
+.meter-hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--color-mist) 22%, transparent) 0,
+    color-mix(in srgb, var(--color-mist) 22%, transparent) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+
+@keyframes meter-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .meter-fill {
+    transform-origin: left center;
+    animation: meter-fill 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+}

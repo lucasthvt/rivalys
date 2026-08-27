@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/tasks", label: "Tâches", icon: ChecklistIcon },
   { href: "/score", label: "Score", icon: GaugeIcon },
   { href: "/statistiques", label: "Statistiques", icon: ChartIcon },
+  { href: "/concurrent", label: "Concurrent", icon: TargetIcon },
 ] as const;
 
 /**
@@ -186,6 +187,26 @@ function ChartIcon({ className }: { className?: string }) {
       <rect x="4" y="10" width="3" height="4" rx="0.6" stroke="currentColor" strokeWidth="1.4" />
       <rect x="8.5" y="6" width="3" height="8" rx="0.6" stroke="currentColor" strokeWidth="1.4" />
       <rect x="13" y="3" width="3" height="11" rx="0.6" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function TargetIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      className={`h-[18px] w-[18px] shrink-0 ${className ?? ""}`}
+      aria-hidden="true"
+    >
+      <circle cx="10" cy="10" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="10" cy="10" r="2.2" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

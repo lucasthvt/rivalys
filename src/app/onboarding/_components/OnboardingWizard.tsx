@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import type { SaasType } from "@/lib/supabase/database.types";
+import { isLikelyUrl } from "@/lib/url";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { ContourMarks } from "../../login/_components/ContourMarks";
 import { completeOnboarding } from "../actions";
 import {
   BigField,
@@ -16,7 +16,12 @@ import {
   wizardPrimaryButton,
 } from "./Fields";
 
-const TOTAL_STEPS = 5;
+/**
+ * Onboarding collects the founder's own product only. The competitor is added
+ * afterwards, from /concurrent inside the app — so it can also be changed
+ * later, which a one-shot wizard field never allowed.
+ */
+const TOTAL_STEPS = 4;
 
 const INDUSTRY_SUGGESTIONS = ["Productivité", "Marketing", "RH", "Finance", "E-commerce"];
 
@@ -26,7 +31,6 @@ type OnboardingFormState = {
   industry: string;
   productDescription: string;
   saasUrl: string;
-  competitorUrl: string;
 };
 
 const INITIAL_STATE: OnboardingFormState = {
@@ -35,20 +39,7 @@ const INITIAL_STATE: OnboardingFormState = {
   industry: "",
   productDescription: "",
   saasUrl: "",
-  competitorUrl: "",
 };
-
-function isLikelyUrl(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  try {
-    const url = new URL(withScheme);
-    return url.hostname.includes(".");
-  } catch {
-    return false;
-  }
-}
 
 export function OnboardingWizard() {
   const router = useRouter();
@@ -57,7 +48,6 @@ export function OnboardingWizard() {
   const [form, setForm] = useState<OnboardingFormState>(INITIAL_STATE);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
 
   function update<K extends keyof OnboardingFormState>(key: K, value: OnboardingFormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -73,49 +63,10 @@ export function OnboardingWizard() {
         return form.industry.trim().length > 0;
       case 3:
         return form.productDescription.trim().length > 0 && isLikelyUrl(form.saasUrl);
-      case 4:
-        return isLikelyUrl(form.competitorUrl);
       default:
         return false;
     }
   })();
-
-  /**
-   * Kicks off the first comparator run. Never throws and never blocks the
-   * founder's path to their dashboard — a manual "actualiser" there covers
-   * the retry. Returns whether the analysis actually succeeded so the
-   * caller can flag a failed first run without swallowing it silently.
-   */
-  async function triggerFirstComparison(): Promise<boolean> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    try {
-      const res = await fetch("/api/compare", { method: "POST", signal: controller.signal });
-
-      let payload: { ok?: boolean; error?: string } | null = null;
-      try {
-        payload = await res.json();
-      } catch {
-        // Empty or non-JSON body — fall through, res.ok below still decides.
-      }
-
-      if (!res.ok || !payload?.ok) {
-        console.warn(
-          "Premier comparateur échoué :",
-          payload?.error ?? `HTTP ${res.status}`,
-        );
-        return false;
-      }
-
-      return true;
-    } catch (err) {
-      // Network error, timeout/abort, /api/compare not reachable, etc.
-      console.warn("Premier comparateur : requête impossible.", err);
-      return false;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -137,7 +88,6 @@ export function OnboardingWizard() {
       industry: form.industry,
       productDescription: form.productDescription,
       saasUrl: form.saasUrl,
-      competitorUrl: form.competitorUrl,
     });
 
     if (!result.ok) {
@@ -146,32 +96,15 @@ export function OnboardingWizard() {
       return;
     }
 
-    setAnalyzing(true);
-    const analysisSucceeded = await triggerFirstComparison();
-    router.push(analysisSucceeded ? "/dashboard" : "/dashboard?firstRunFailed=1");
+    // No analysis to launch here: there is no competitor yet. The dashboard
+    // points to /concurrent for that.
+    router.push("/dashboard");
     router.refresh();
   }
 
   function handleBack() {
     setSubmitError(null);
     setStep((s) => Math.max(0, s - 1));
-  }
-
-  if (analyzing) {
-    return (
-      <div className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden bg-background px-6 text-center">
-        <ContourMarks className="pointer-events-none absolute h-[520px] w-[520px] animate-pulse text-signal-bright/[0.08] motion-reduce:animate-none" />
-        <p className="relative z-10 font-mono text-[11px] uppercase tracking-[0.2em] text-mist">
-          Rivalys
-        </p>
-        <p className="relative z-10 mt-4 max-w-sm font-display text-2xl text-paper sm:text-3xl">
-          On regarde le terrain d&apos;en face...
-        </p>
-        <p className="relative z-10 mt-3 text-sm text-mist">
-          Analyse de {form.competitorUrl || "ton concurrent"} en cours.
-        </p>
-      </div>
-    );
   }
 
   return (
@@ -294,31 +227,6 @@ export function OnboardingWizard() {
             </div>
           ) : null}
 
-          {step === 4 ? (
-            <div>
-              <h1 className="font-display text-3xl text-foreground sm:text-4xl">
-                Quel est ton plus gros concurrent ?
-              </h1>
-              <p className="mt-3 max-w-sm text-sm text-foreground-muted">
-                On compare uniquement ce qui est déjà public sur son site — pricing, avis,
-                positionnement.
-              </p>
-              <div className="mt-8 max-w-sm">
-                <BigField
-                  id="competitorUrl"
-                  label="URL du concurrent"
-                  type="text"
-                  inputMode="url"
-                  autoFocus
-                  required
-                  value={form.competitorUrl}
-                  onChange={(e) => update("competitorUrl", e.target.value)}
-                  placeholder="concurrent.com"
-                />
-              </div>
-            </div>
-          ) : null}
-
           <div className="mt-10 flex items-center gap-3">
             {step > 0 ? (
               <button
@@ -334,7 +242,7 @@ export function OnboardingWizard() {
               {submitting
                 ? "Enregistrement..."
                 : step === TOTAL_STEPS - 1
-                  ? "Lancer l'analyse"
+                  ? "Terminer"
                   : "Continuer"}
             </button>
           </div>

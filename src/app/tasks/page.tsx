@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sortGapsByPriority } from "@/components/tasks/priority";
 import { GapListItem } from "@/components/tasks/gap-list-item";
 import { EmptyState } from "@/components/tasks/empty-state";
+import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { AppShell } from "@/components/layout/AppShell";
 
 export default async function TasksPage() {
@@ -28,14 +29,29 @@ export default async function TasksPage() {
 
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
 
-  const { data: gapsRaw, error } = await supabase
-    .from("detected_gaps")
-    .select("*")
-    .eq("status", "open")
-    .order("created_at", { ascending: false });
+  const [gapsRes, competitorRes] = await Promise.all([
+    supabase
+      .from("detected_gaps")
+      .select("*")
+      .eq("status", "open")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("competitors")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("is_primary", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  const gaps = sortGapsByPriority(gapsRaw ?? []);
+  const error = gapsRes.error;
+  const gaps = sortGapsByPriority(gapsRes.data ?? []);
   const highCount = gaps.filter((g) => g.priority === "high").length;
+
+  // Distinguish "no competitor tracked" from "the query failed": an empty list
+  // caused by a read error must never be presented as a completed analysis.
+  const noCompetitor = !competitorRes.data && !competitorRes.error;
 
   return (
     <AppShell userLabel={userLabel}>
@@ -48,11 +64,13 @@ export default async function TasksPage() {
             Écarts à combler
           </h1>
           <p className="mt-2 text-sm text-foreground-muted">
-            {gaps.length === 0
-              ? "Aucun écart ouvert pour l'instant."
-              : `${gaps.length} écart${gaps.length > 1 ? "s" : ""} ouvert${
-                  gaps.length > 1 ? "s" : ""
-                }${highCount > 0 ? ` · ${highCount} en priorité haute` : ""}.`}
+            {noCompetitor
+              ? "Aucun concurrent suivi pour l'instant."
+              : gaps.length === 0
+                ? "Aucun écart ouvert pour l'instant."
+                : `${gaps.length} écart${gaps.length > 1 ? "s" : ""} ouvert${
+                    gaps.length > 1 ? "s" : ""
+                  }${highCount > 0 ? ` · ${highCount} en priorité haute` : ""}.`}
           </p>
         </header>
 
@@ -61,6 +79,8 @@ export default async function TasksPage() {
             title="Impossible de charger les tâches"
             description={error.message}
           />
+        ) : noCompetitor ? (
+          <NoCompetitorState description="Les tâches sont générées à partir des écarts détectés face à un concurrent. Sans concurrent suivi, il n'y a rien à comparer — et on n'invente pas de conseils génériques." />
         ) : gaps.length === 0 ? (
           <EmptyState
             title="Aucun écart détecté pour l'instant"

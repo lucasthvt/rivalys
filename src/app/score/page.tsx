@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyState } from "@/components/tasks/empty-state";
+import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
 import { CATEGORY_LABEL, sortGapsByPriority } from "@/components/tasks/priority";
 import { parseExtractedData, parseObservationFlags } from "@/components/dashboard/extracted-data";
@@ -69,6 +70,20 @@ export default async function ScorePage() {
             title="Impossible de calculer le détail du score"
             description={gapsRes.error.message}
           />
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Sans concurrent suivi, aucun écart n'a pu être détecté : le score partirait
+  // de 100 et se lirait comme « rien à rattraper », alors qu'aucune comparaison
+  // n'a eu lieu. On le dit au lieu de l'afficher.
+  if (!competitorRes.data && !competitorRes.error) {
+    return (
+      <AppShell userLabel={userLabel}>
+        <div className="mx-auto max-w-4xl px-6 py-16 sm:px-8">
+          <Header />
+          <NoCompetitorState description="Le score mesure ce qu'il te reste à rattraper face à un concurrent. Tant qu'aucun n'est suivi, il n'y a rien à calculer." />
         </div>
       </AppShell>
     );

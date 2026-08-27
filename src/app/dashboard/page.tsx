@@ -4,13 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 import { sortGapsByPriority } from "@/components/tasks/priority";
 import { GapListItem } from "@/components/tasks/gap-list-item";
 import { EmptyState } from "@/components/tasks/empty-state";
+import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { ComparisonTable } from "@/components/dashboard/comparison-table";
+import { ScoreMeter } from "@/components/dashboard/score-meter";
+import { FaceOff } from "@/components/dashboard/face-off";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { RefreshButton } from "@/components/dashboard/refresh-button";
 import { GapStats } from "@/components/dashboard/gap-stats";
 import { parseExtractedData } from "@/components/dashboard/extracted-data";
 import { AppShell } from "@/components/layout/AppShell";
+import { countByPriority } from "@/lib/compare/score";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -62,14 +65,7 @@ export default async function DashboardPage() {
     return (
       <AppShell userLabel={userLabel}>
         <div className="mx-auto max-w-5xl px-6 py-16 sm:px-8">
-          <header className="mb-10 border-b border-surface-border pb-6">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
-              Tableau de bord
-            </p>
-            <h1 className="font-display mt-2 text-2xl sm:text-[28px]">
-              Où tu perds du terrain
-            </h1>
-          </header>
+          <DashboardHeader />
           <EmptyState
             title="Impossible de charger le tableau de bord"
             description={(gapsRes.error ?? scoreRes.error)?.message}
@@ -84,6 +80,21 @@ export default async function DashboardPage() {
   const latestScore = scorePoints.at(-1)?.score ?? null;
   const competitor = competitorRes.data;
   const competitorLoadError = Boolean(competitorRes.error);
+
+  // Nothing to compare against yet: every panel below would render its own
+  // empty shell (score "—", 0 écart, comparatif vide) and read like an
+  // analysis that found nothing. Send the user to /concurrent instead — that
+  // is the one action that unblocks the whole product.
+  if (!competitor && !competitorLoadError) {
+    return (
+      <AppShell userLabel={userLabel}>
+        <div className="mx-auto max-w-5xl px-6 py-16 sm:px-8">
+          <DashboardHeader />
+          <NoCompetitorState description="Le comparateur a besoin d'un second site pour trouver le moindre écart. Ajoute le concurrent que tu veux suivre, puis lance une première analyse." />
+        </div>
+      </AppShell>
+    );
+  }
 
   // Latest snapshot for each side. The competitor snapshot is scoped to the
   // primary competitor's id so this stays correct once a user can follow
@@ -135,33 +146,40 @@ export default async function DashboardPage() {
           <RefreshButton />
         </header>
 
-        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard
-            label="Score global"
-            value={latestScore === null ? "—" : String(latestScore)}
-            sublabel={latestScore === null ? "Pas encore calculé" : undefined}
-            href="/score"
-            linkLabel="Pourquoi ce score"
+        {/*
+          Le score porte seul l'emphase de l'écran : c'est le seul des trois chiffres qui
+          répond à « où j'en suis ». Les deux autres (écarts ouverts, concurrent suivi) sont
+          des faits de contexte, relégués sous la barre.
+        */}
+        <div className="mb-8">
+          <ScoreMeter
+            counts={countByPriority(gaps)}
+            scoreFromHistory={latestScore}
           />
+        </div>
+
+        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <MetricCard
             label="Écarts ouverts"
             value={String(gaps.length)}
-            sublabel={gaps.length > 0 ? `${highCount} en priorité haute` : undefined}
+            sublabel={gaps.length > 0 ? `${highCount} en priorité haute` : "Rien à rattraper"}
+            href="/tasks"
+            linkLabel="Voir les tâches"
           />
-          <MetricCard label="Concurrent suivi" value={competitorLabel} />
+          <MetricCard label="Concurrent suivi" value={competitorLabel} href="/concurrent" linkLabel="Changer" />
         </section>
 
         <section className="mb-8 border border-surface-border bg-surface">
           <div className="border-b border-surface-border px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              Actions prioritaires
+              À faire maintenant
             </h2>
           </div>
           {priorityActions.length === 0 ? (
             <div className="px-5 py-10">
               <EmptyState
-                title="Aucune action prioritaire"
-                description="Aucun écart ouvert détecté pour l'instant."
+                title="Rien à traiter"
+                description="Aucun écart ouvert. La prochaine analyse en détectera peut-être."
               />
             </div>
           ) : (
@@ -171,6 +189,15 @@ export default async function DashboardPage() {
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="mb-8">
+          <FaceOff
+            own={ownData}
+            competitor={competitorData}
+            competitorLabel={competitorLabel}
+            loadError={snapshotLoadError}
+          />
         </section>
 
         <section className="mb-8 border border-surface-border bg-surface">
@@ -197,15 +224,6 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="mb-8">
-          <ComparisonTable
-            own={ownData}
-            competitor={competitorData}
-            competitorLabel={competitorLabel}
-            loadError={snapshotLoadError}
-          />
-        </section>
-
         <section className="border border-surface-border bg-surface px-5 py-4">
           <h2 className="font-mono mb-4 text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
             Évolution du score
@@ -214,6 +232,17 @@ export default async function DashboardPage() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function DashboardHeader() {
+  return (
+    <header className="mb-10 border-b border-surface-border pb-6">
+      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
+        Tableau de bord
+      </p>
+      <h1 className="font-display mt-2 text-2xl sm:text-[28px]">Où tu perds du terrain</h1>
+    </header>
   );
 }
 

@@ -15,6 +15,7 @@ const HIDE_NAV_PREFIXES = [
   "/tasks",
   "/score",
   "/statistiques",
+  "/concurrent",
 ];
 
 export function NavBar({ isAuthenticated }: { isAuthenticated: boolean }) {

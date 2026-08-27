@@ -27,6 +27,12 @@ export interface ObservationFlags {
    * Same contract as readSocialPlatforms in lib/compare/site-data.ts.
    */
   socialPlatforms: string[] | null;
+  /**
+   * Review platforms the site is publicly listed on (presence only — never a rating or a
+   * review count), or null when the snapshot predates review detection or its lookup failed.
+   * Same null-vs-[] contract as socialPlatforms above.
+   */
+  reviewPlatforms: string[] | null;
 }
 
 /**
@@ -36,7 +42,7 @@ export interface ObservationFlags {
  */
 export function parseObservationFlags(json: unknown): ObservationFlags {
   if (!json || typeof json !== "object" || Array.isArray(json)) {
-    return { pricingPageFound: false, socialPlatforms: null };
+    return { pricingPageFound: false, socialPlatforms: null, reviewPlatforms: null };
   }
 
   const data = json as Record<string, unknown>;
@@ -45,6 +51,9 @@ export function parseObservationFlags(json: unknown): ObservationFlags {
     pricingPageFound: data.pricing_page_found === true,
     socialPlatforms: Array.isArray(data.social_platforms)
       ? data.social_platforms.filter((p): p is string => typeof p === "string")
+      : null,
+    reviewPlatforms: Array.isArray(data.review_platforms)
+      ? data.review_platforms.filter((p): p is string => typeof p === "string")
       : null,
   };
 }

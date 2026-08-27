@@ -17,6 +17,14 @@ export interface StoredExtractedData extends ExtractedSiteData {
    * as "confirmed to have none".
    */
   social_platforms?: string[];
+  /**
+   * Review-platform ids (see reviews.ts) the site is listed on — presence only, never a
+   * rating or a review count. Optional for the same reason as social_platforms, plus one
+   * more: the field is deliberately omitted when the lookup for that side failed, so
+   * readReviewPlatforms() below returns null and the comparison is skipped rather than
+   * built on an observation that never completed.
+   */
+  review_platforms?: string[];
 }
 
 function isPricingTier(value: unknown): value is PricingTier {
@@ -60,6 +68,18 @@ export function isStoredExtractedData(value: unknown): value is StoredExtractedD
  */
 export function readSocialPlatforms(data: StoredExtractedData): string[] | null {
   const raw = (data as unknown as Record<string, unknown>).social_platforms;
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((p): p is string => typeof p === "string");
+}
+
+/**
+ * Reads review_platforms off a stored snapshot, with exactly the same null-vs-[] contract as
+ * readSocialPlatforms: [] means "we checked this site and found no public listing", null
+ * means "we never checked" (old snapshot, or a lookup that failed). Only [] may be compared;
+ * treating null as [] would turn a missing check into "tu n'es référencé nulle part".
+ */
+export function readReviewPlatforms(data: StoredExtractedData): string[] | null {
+  const raw = (data as unknown as Record<string, unknown>).review_platforms;
   if (!Array.isArray(raw)) return null;
   return raw.filter((p): p is string => typeof p === "string");
 }

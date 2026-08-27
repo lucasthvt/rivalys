@@ -5,6 +5,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   detectPricingAdvantages,
+  detectReviewAdvantage,
   detectSocialAdvantage,
   detectAllAdvantages,
 } from "../advantages";
@@ -126,8 +127,37 @@ describe("detectSocialAdvantage", () => {
   });
 });
 
+describe("detectReviewAdvantage", () => {
+  test("flags review platforms we're listed on and the competitor isn't", () => {
+    const adv = detectReviewAdvantage(["g2", "capterra"], ["g2"], "Concurrent X", true);
+
+    assert.ok(adv);
+    assert.equal(adv?.category, "reviews");
+    assert.match(adv!.description, /Capterra/);
+    assert.match(adv!.description, /Concurrent X/);
+    // G2 is on both sides — not an advantage.
+    assert.ok(!adv!.description.includes("G2"));
+  });
+
+  test("returns null when the competitor matches or exceeds us", () => {
+    assert.equal(detectReviewAdvantage(["g2"], ["g2", "capterra"], "C", true), null);
+  });
+
+  test("returns null when a site wasn't observed", () => {
+    assert.equal(detectReviewAdvantage(["g2"], [], "C", false), null);
+  });
+
+  test("never mentions a rating, a star count or a review count", () => {
+    const adv = detectReviewAdvantage(["g2", "trustpilot"], [], "Concurrent X", true);
+    const forbidden = /\b(notes?|étoiles?|stars?)\b|\bnombre d'avis\b|\d\s*\/\s*5\b/i;
+
+    assert.doesNotMatch(adv!.description, forbidden);
+    assert.doesNotMatch(adv!.title, forbidden);
+  });
+});
+
 describe("detectAllAdvantages", () => {
-  test("combines pricing and social advantages", () => {
+  test("combines pricing, social and review advantages", () => {
     const found = detectAllAdvantages({
       own: makeSite({ has_free_trial: true }),
       competitor: makeSite({ has_free_trial: false }),
@@ -137,12 +167,36 @@ describe("detectAllAdvantages", () => {
       ownPlatforms: ["linkedin"],
       competitorPlatforms: [],
       bothSitesObserved: true,
+      ownReviewPlatforms: ["g2"],
+      competitorReviewPlatforms: [],
+      bothSitesReviewsObserved: true,
     });
 
-    assert.equal(found.length, 2);
+    assert.equal(found.length, 3);
     assert.deepEqual(
       found.map((a) => a.category),
-      ["pricing", "social_presence"],
+      ["pricing", "social_presence", "reviews"],
+    );
+  });
+
+  test("skips the review advantage when review observation is incomplete, keeping the others", () => {
+    const found = detectAllAdvantages({
+      own: makeSite({ has_free_trial: true }),
+      competitor: makeSite({ has_free_trial: false }),
+      competitorLabel: "Concurrent X",
+      ownPricingFound: true,
+      competitorPricingFound: true,
+      ownPlatforms: [],
+      competitorPlatforms: [],
+      bothSitesObserved: true,
+      ownReviewPlatforms: ["g2"],
+      competitorReviewPlatforms: [],
+      bothSitesReviewsObserved: false,
+    });
+
+    assert.deepEqual(
+      found.map((a) => a.category),
+      ["pricing"],
     );
   });
 
@@ -156,6 +210,9 @@ describe("detectAllAdvantages", () => {
       ownPlatforms: [],
       competitorPlatforms: [],
       bothSitesObserved: true,
+      ownReviewPlatforms: [],
+      competitorReviewPlatforms: [],
+      bothSitesReviewsObserved: true,
     });
 
     assert.deepEqual(found, []);

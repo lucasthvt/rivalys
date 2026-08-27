@@ -7,6 +7,7 @@
 
 import type { ExtractedSiteData, GapCategory, GapPriority } from "@/lib/supabase/database.types";
 import { labelPlatforms, missingPlatforms } from "./social";
+import { labelReviewPlatforms, missingReviewPlatforms } from "./reviews";
 
 export interface GapCandidate {
   category: GapCategory;
@@ -17,6 +18,11 @@ export interface GapCandidate {
 
 function competitorLabelOrFallback(label: string): string {
   return label.trim() || "ton concurrent";
+}
+
+/** "A", "A et B", "A, B et C" — French enumeration for a gap description. */
+function joinNames(names: readonly string[]): string {
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} et ${names.at(-1)}`;
 }
 
 /**
@@ -110,8 +116,7 @@ export function detectSocialPresenceGap(
   if (missing.length === 0) return null;
 
   const label = competitorLabelOrFallback(competitorLabel);
-  const names = labelPlatforms(missing);
-  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} et ${names.at(-1)}`;
+  const list = joinNames(labelPlatforms(missing));
 
   const description =
     `Le site de ${label} renvoie vers ${list}, alors que le tien ne renvoie vers aucun de ces réseaux. ` +
@@ -125,6 +130,53 @@ export function detectSocialPresenceGap(
     category: "social_presence",
     title: "Ton concurrent affiche des réseaux sociaux que tu n'affiches pas",
     description,
+    priority: "medium",
+  };
+}
+
+/**
+ * Review-platform rule: the competitor has a public listing on G2 / Capterra / Trustpilot /
+ * Product Hunt where we have none.
+ *
+ * PRESENCE ONLY. No rating, no star count, no review count enters this gap — a rating read
+ * once and shown weeks later is a false statement about the competitor, and ranking the user
+ * against a score is exactly the anxiogenic comparison CLAUDE.md rules out. Being listed, by
+ * contrast, is stable, checkable, and fixable: the resulting task is "crée ta fiche".
+ *
+ * The wording stays scoped to what was actually observed ("aucune fiche n'a été trouvée"),
+ * never widened to "tu n'es référencé nulle part" — presence is easy to confirm, universal
+ * absence is not, and we don't assert what we can't check.
+ *
+ * `bothSitesObserved` guards the same failure mode as elsewhere in this file: an empty list
+ * only means "listed nowhere we could find" if that side was actually checked. When either
+ * side is unobserved (readReviewPlatforms returning null), no gap is emitted.
+ */
+export function detectReviewPresenceGap(
+  ownPlatforms: readonly string[],
+  competitorPlatforms: readonly string[],
+  competitorLabel: string,
+  bothSitesObserved: boolean,
+): GapCandidate | null {
+  if (!bothSitesObserved) return null;
+
+  const missing = missingReviewPlatforms(ownPlatforms, competitorPlatforms);
+  if (missing.length === 0) return null;
+
+  const label = competitorLabelOrFallback(competitorLabel);
+  const list = joinNames(labelReviewPlatforms(missing));
+
+  return {
+    // Static title, platform names in the description — same reason as the social rule: the
+    // call site dedupes on category+title, so a title listing the platforms would open a
+    // near-duplicate gap each time one more listing appeared.
+    category: "reviews",
+    title: "Ton concurrent est référencé sur des plateformes d'avis, pas toi",
+    description:
+      `Une fiche publique de ${label} a été trouvée sur ${list}, alors qu'aucune fiche n'a été ` +
+      `trouvée pour ton SaaS sur ces plateformes. C'est un canal de découverte et de ` +
+      `réassurance sur lequel tu n'apparais pas — y créer ta fiche est gratuit et se fait en une fois.`,
+    // Medium: être référencé est concret et actionnable, mais moins directement lié au
+    // revenu qu'un écart de pricing.
     priority: "medium",
   };
 }

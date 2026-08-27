@@ -49,6 +49,22 @@ export default async function StatistiquesPage() {
       .maybeSingle(),
   ]);
 
+  // score_history ne porte pas de competitor_id : ses points décrivent l'état au moment de
+  // chaque analyse, quel que soit le concurrent suivi alors. Si le concurrent courant n'a
+  // jamais été analysé (cas typique juste après un changement, qui supprime ses relevés),
+  // toute la courbe porte sur le précédent — même règle que sur le tableau de bord.
+  const competitorSnapshotRes = competitorRes.data
+    ? await supabase
+        .from("site_snapshots")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("target_type", "competitor")
+        .eq("competitor_id", competitorRes.data.id)
+        .limit(1)
+        .maybeSingle()
+    : { data: null, error: null };
+  const analysedForCurrentCompetitor = competitorSnapshotRes.data !== null;
+
   // Aucun concurrent suivi : il n'existe aucun historique à agréger. Des
   // compteurs à zéro se liraient comme un bilan, alors qu'aucune analyse n'a
   // jamais tourné.
@@ -97,6 +113,12 @@ export default async function StatistiquesPage() {
             />
           ) : (
             <ScoreChart points={scoreRes.data ?? []} />
+          )}
+          {!analysedForCurrentCompetitor && (scoreRes.data ?? []).length > 0 && (
+            <p className="mt-3 border-t border-surface-border pt-3 text-xs leading-relaxed text-foreground-muted/70">
+              Ces relevés portent sur le concurrent suivi précédemment. La courbe repartira à
+              la première analyse du concurrent actuel.
+            </p>
           )}
         </section>
       </div>

@@ -7,12 +7,16 @@
 // /chat/completions endpoint, which Perplexity retires on 2026-09-27.
 
 export class PerplexityError extends Error {
-  constructor(
-    message: string,
-    public readonly cause?: unknown,
-  ) {
+  // `cause` is declared and assigned here rather than through a constructor parameter
+  // property: parameter properties are the one TS-only construct Node's strip-only type
+  // stripping refuses outright, and reviews.ts (which imports this module for its lookup)
+  // is unit-tested under `node --test`. Behaviour is unchanged.
+  readonly cause?: unknown;
+
+  constructor(message: string, cause?: unknown) {
     super(message);
     this.name = "PerplexityError";
+    this.cause = cause;
   }
 }
 

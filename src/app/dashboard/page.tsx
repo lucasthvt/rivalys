@@ -131,6 +131,14 @@ export default async function DashboardPage() {
   const priorityActions = gaps.slice(0, 3);
   const highCount = gaps.filter((g) => g.priority === "high").length;
 
+  // Un score n'existe que si le concurrent actuellement suivi a été analysé. Changer de
+  // concurrent supprime ses relevés (voir app/concurrent/actions.ts), donc cette valeur
+  // repasse à false et le score redevient « — » plutôt que d'afficher 100 : zéro écart
+  // ouvert signifie alors « rien n'a été mesuré », pas « rien à rattraper ».
+  // score_history ne peut pas servir de signal ici — ses points peuvent décrire un
+  // concurrent précédent.
+  const analysedForCurrentCompetitor = competitorSnapshotRes.data !== null;
+
   return (
     <AppShell userLabel={userLabel}>
       <div className="mx-auto max-w-5xl px-6 py-16 sm:px-8">
@@ -154,6 +162,7 @@ export default async function DashboardPage() {
         <div className="mb-8">
           <ScoreMeter
             counts={countByPriority(gaps)}
+            analysed={analysedForCurrentCompetitor}
             scoreFromHistory={latestScore}
           />
         </div>
@@ -229,6 +238,19 @@ export default async function DashboardPage() {
             Évolution du score
           </h2>
           <ScoreChart points={scorePoints} />
+          {/*
+            score_history ne porte pas de competitor_id : ses points décrivent l'état au
+            moment de chaque analyse, quel que soit le concurrent suivi alors. Quand le
+            concurrent actuel n'a encore jamais été analysé, la courbe affichée porte donc
+            entièrement sur le précédent. On le dit, plutôt que de laisser lire une
+            continuité qui n'existe pas.
+          */}
+          {!analysedForCurrentCompetitor && scorePoints.length > 0 && (
+            <p className="mt-3 border-t border-surface-border pt-3 text-xs leading-relaxed text-foreground-muted/70">
+              Ces relevés portent sur le concurrent suivi précédemment. La courbe repartira à
+              la première analyse de {competitorLabel}.
+            </p>
+          )}
         </section>
       </div>
     </AppShell>

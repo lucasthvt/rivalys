@@ -5,7 +5,12 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { detectPricingGaps, buildPositioningGap, detectSocialPresenceGap } from "../detect-gaps";
+import {
+  detectPricingGaps,
+  buildPositioningGap,
+  detectReviewPresenceGap,
+  detectSocialPresenceGap,
+} from "../detect-gaps";
 import type { ExtractedSiteData } from "@/lib/supabase/database.types";
 
 function makeSite(overrides: Partial<ExtractedSiteData> = {}): ExtractedSiteData {
@@ -226,6 +231,63 @@ describe("detectSocialPresenceGap", () => {
 
   test("falls back to a generic label when competitorLabel is empty", () => {
     const gap = detectSocialPresenceGap([], ["youtube"], "   ", true);
+
+    assert.match(gap!.description, /ton concurrent/i);
+  });
+});
+
+describe("detectReviewPresenceGap", () => {
+  test("flags a medium-priority gap naming only the platforms the competitor is on", () => {
+    const gap = detectReviewPresenceGap(["g2"], ["g2", "capterra"], "Concurrent X", true);
+
+    assert.ok(gap);
+    assert.equal(gap?.category, "reviews");
+    assert.equal(gap?.priority, "medium");
+    assert.match(gap!.description, /Capterra/);
+    assert.match(gap!.description, /Concurrent X/);
+    // G2 is on both sides — it must not be presented as a gap.
+    assert.ok(!gap!.description.includes("G2"));
+  });
+
+  test("joins several missing platforms readably", () => {
+    const gap = detectReviewPresenceGap([], ["g2", "capterra", "trustpilot"], "Concurrent X", true);
+
+    assert.match(gap!.description, /G2, Capterra et Trustpilot/);
+  });
+
+  test("returns null when we're listed everywhere the competitor is", () => {
+    assert.equal(detectReviewPresenceGap(["g2"], ["g2"], "Concurrent X", true), null);
+  });
+
+  test("returns null when the competitor is listed nowhere", () => {
+    assert.equal(detectReviewPresenceGap([], [], "Concurrent X", true), null);
+  });
+
+  test("returns null when a site wasn't observed, even if the lists would produce a gap", () => {
+    // An empty own list is only comparable when we actually checked; otherwise this would
+    // claim "aucune fiche trouvée pour toi" from a lookup that never ran.
+    assert.equal(detectReviewPresenceGap([], ["g2"], "Concurrent X", false), null);
+  });
+
+  test("keeps a stable title regardless of how many platforms are missing", () => {
+    const one = detectReviewPresenceGap([], ["g2"], "Concurrent X", true);
+    const three = detectReviewPresenceGap([], ["g2", "capterra", "trustpilot"], "Concurrent X", true);
+
+    // Dedup at the call site is category+title, so a count-dependent title would reopen a
+    // near-duplicate gap every time the competitor got listed somewhere new.
+    assert.equal(one?.title, three?.title);
+  });
+
+  test("never mentions a rating, a star count or a review count", () => {
+    const gap = detectReviewPresenceGap([], ["g2", "trustpilot"], "Concurrent X", true);
+
+    const forbidden = /\b(notes?|étoiles?|stars?)\b|\bnombre d'avis\b|\d\s*\/\s*5\b/i;
+    assert.doesNotMatch(gap!.description, forbidden);
+    assert.doesNotMatch(gap!.title, forbidden);
+  });
+
+  test("falls back to a generic label when competitorLabel is empty", () => {
+    const gap = detectReviewPresenceGap([], ["g2"], "   ", true);
 
     assert.match(gap!.description, /ton concurrent/i);
   });

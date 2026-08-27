@@ -4,16 +4,23 @@ import { fetchSite, SiteFetchError, type FetchedSite } from "@/lib/compare/fetch
 import { extractSiteData, classifyPositioning, ExtractionError } from "@/lib/compare/extract";
 import {
   isStoredExtractedData,
+  readReviewPlatforms,
   readSocialPlatforms,
   type StoredExtractedData,
 } from "@/lib/compare/site-data";
 import {
   detectPricingGaps,
   buildPositioningGap,
+  detectReviewPresenceGap,
   detectSocialPresenceGap,
   type GapCandidate,
 } from "@/lib/compare/detect-gaps";
 import { detectSocialPlatforms, labelPlatforms, missingPlatforms } from "@/lib/compare/social";
+import {
+  detectReviewPlatformsFromLinks,
+  lookupReviewPresence,
+  mergeReviewPlatforms,
+} from "@/lib/compare/reviews";
 import { askPerplexity, isPerplexityConfigured } from "@/lib/compare/perplexity";
 import { countByPriority, computeScore } from "@/lib/compare/score";
 import {
@@ -149,8 +156,8 @@ export async function POST() {
   // Fetch + extract both sides independently — one failing (e.g. the competitor's site
   // blocking us) must never take down the other side's result.
   const [ownResult, competitorResult] = await Promise.allSettled([
-    fetchAndExtract(profile.saas_url),
-    fetchAndExtract(competitor.url),
+    fetchAndExtract(profile.saas_url, safeHostname(profile.saas_url) ?? profile.saas_url),
+    fetchAndExtract(competitor.url, competitorLabel),
   ]);
 
   const failureNotes: string[] = [];
@@ -269,6 +276,18 @@ export async function POST() {
     if (socialGap) candidates.push(socialGap);
   }
 
+  // Review platforms: presence only (never a rating or a review count — see reviews.ts).
+  // Same null-vs-[] guard as social: a side we couldn't check is not a side with no listing.
+  const ownReviews = readReviewPlatforms(ownData);
+  const competitorReviews = readReviewPlatforms(competitorData);
+  const reviewGap = detectReviewPresenceGap(
+    ownReviews ?? [],
+    competitorReviews ?? [],
+    competitorLabel,
+    ownReviews !== null && competitorReviews !== null,
+  );
+  if (reviewGap) candidates.push(reviewGap);
+
   const { data: existingOpenGaps, error: existingGapsError } = await supabase
     .from("detected_gaps")
     .select("category, title")
@@ -341,7 +360,10 @@ export async function POST() {
   return NextResponse.json({ ok: true, gapsCount: insertedCount });
 }
 
-async function fetchAndExtract(url: string): Promise<{ raw: FetchedSite; data: StoredExtractedData }> {
+async function fetchAndExtract(
+  url: string,
+  siteLabel: string,
+): Promise<{ raw: FetchedSite; data: StoredExtractedData }> {
   const raw = await fetchSite(url);
   const extracted = await extractSiteData({
     homepageText: raw.homepageText,
@@ -350,10 +372,47 @@ async function fetchAndExtract(url: string): Promise<{ raw: FetchedSite; data: S
   });
   // Social platforms come from the site's own published links, not from the LLM — see
   // social.ts. Stored alongside the extraction so the gap rule can compare both sides.
-  return {
-    raw,
-    data: { ...extracted, social_platforms: detectSocialPlatforms(raw.homepageLinks) },
+  const data: StoredExtractedData = {
+    ...extracted,
+    social_platforms: detectSocialPlatforms(raw.homepageLinks),
   };
+
+  // Review platforms: presence on G2/Capterra/Trustpilot/Product Hunt, never a rating.
+  // The field is left out entirely when the check couldn't complete, so readReviewPlatforms
+  // returns null and no comparison is built on it.
+  const reviewPlatforms = await observeReviewPlatforms(siteLabel, url, raw.homepageLinks);
+  if (reviewPlatforms !== null) data.review_platforms = reviewPlatforms;
+
+  return { raw, data };
+}
+
+/**
+ * Review-platform presence for one side, cheapest evidence first.
+ *
+ * 1. The site's own links: a G2/Capterra/Product Hunt badge in the footer is proof of a
+ *    listing at zero cost and zero hallucination risk. When that already names a platform we
+ *    stop there — a Perplexity call could only re-confirm what we can see, and this pipeline
+ *    runs at most once per user per 24 h precisely because each run costs real credits.
+ * 2. Otherwise, one web-grounded lookup whose every claim is re-verified against the
+ *    platform's URL shape before it counts (see parseReviewLookupResponse).
+ *
+ * Returns null when a lookup was attempted and failed: "the check broke" must not be stored
+ * as "this site is listed nowhere", which is what an empty array would assert.
+ */
+async function observeReviewPlatforms(
+  siteLabel: string,
+  siteUrl: string,
+  homepageLinks: readonly string[],
+): Promise<string[] | null> {
+  const fromLinks = detectReviewPlatformsFromLinks(homepageLinks);
+  if (fromLinks.length > 0) return fromLinks;
+  // No key configured: the link scan is the whole observation, and the gap wording stays
+  // scoped to it ("aucune fiche n'a été trouvée").
+  if (!isPerplexityConfigured()) return fromLinks;
+
+  const looked = await lookupReviewPresence(siteLabel, siteUrl);
+  if (looked === null) return null;
+  return mergeReviewPlatforms(fromLinks, looked);
 }
 
 /**

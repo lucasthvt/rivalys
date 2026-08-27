@@ -16,17 +16,31 @@ import { explainScore, MAX_SCORE, type GapPriorityCounts } from "@/lib/compare/s
  */
 export function ScoreMeter({
   counts,
+  analysed,
   scoreFromHistory,
 }: {
   counts: GapPriorityCounts;
   /**
-   * Dernier score enregistré. Sert uniquement à détecter une divergence avec le calcul en
+   * Le concurrent actuellement suivi a-t-il déjà été analysé au moins une fois ?
+   *
+   * C'est la seule condition d'existence d'un score, et elle ne se déduit PAS du nombre
+   * d'écarts : zéro écart ouvert veut dire « rien à rattraper » après une analyse, mais
+   * « rien n'a été mesuré » avant. Afficher 100 dans le second cas annoncerait un sans-faute
+   * qui n'a jamais été constaté — c'est la même distinction que null vs [] pour les
+   * plateformes observées (voir site-data.ts).
+   *
+   * Se déduit de l'existence d'un relevé pour CE concurrent, jamais de score_history, dont
+   * les points peuvent décrire un concurrent précédent.
+   */
+  analysed: boolean;
+  /**
+   * Dernier score enregistré. Sert uniquement à signaler une divergence avec le calcul en
    * direct — voir plus bas. Null tant qu'aucune analyse n'a tourné.
    */
   scoreFromHistory: number | null;
 }) {
   const breakdown = explainScore(counts);
-  const hasRun = scoreFromHistory !== null;
+  const hasRun = analysed;
 
   // Part réellement occupée par les pénalités, une fois ramenée à l'échelle. Sans cet
   // écrêtage, un total de pénalités supérieur à 100 produirait des segments dont la somme
@@ -103,7 +117,8 @@ export function ScoreMeter({
 
       {!hasRun ? (
         <p className="mt-4 text-sm text-foreground-muted">
-          Lance une première analyse pour situer ton offre face à ton concurrent.
+          Ce concurrent n&rsquo;a pas encore été analysé. Lance une analyse pour obtenir un
+          score.
         </p>
       ) : lostSegments.length === 0 ? (
         <p className="mt-4 text-sm text-foreground-muted">

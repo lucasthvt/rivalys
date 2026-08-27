@@ -11,6 +11,7 @@
 
 import type { ExtractedSiteData, GapCategory } from "@/lib/supabase/database.types";
 import { labelPlatforms, missingPlatforms } from "./social";
+import { labelReviewPlatforms, missingReviewPlatforms } from "./reviews";
 
 export interface Advantage {
   category: GapCategory;
@@ -20,6 +21,11 @@ export interface Advantage {
 
 function competitorLabelOrFallback(label: string): string {
   return label.trim() || "ton concurrent";
+}
+
+/** « A », « A et B », « A, B et C ». */
+function joinNames(names: readonly string[]): string {
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} et ${names.at(-1)}`;
 }
 
 /**
@@ -84,13 +90,38 @@ export function detectSocialAdvantage(
   if (extra.length === 0) return null;
 
   const label = competitorLabelOrFallback(competitorLabel);
-  const names = labelPlatforms(extra);
-  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} et ${names.at(-1)}`;
+  const list = joinNames(labelPlatforms(extra));
 
   return {
     category: "social_presence",
     title: "Tu affiches des réseaux sociaux qu'il n'affiche pas",
     description: `Ton site renvoie vers ${list}, alors que celui de ${label} n'y renvoie pas.`,
+  };
+}
+
+/**
+ * Miroir de detectReviewPresenceGap. Présence uniquement : aucune note, aucune étoile,
+ * aucun nombre d'avis — ni ici ni ailleurs. La formulation reste limitée à l'observation
+ * (« aucune fiche trouvée » et non « il n'est référencé nulle part »).
+ */
+export function detectReviewAdvantage(
+  ownPlatforms: readonly string[],
+  competitorPlatforms: readonly string[],
+  competitorLabel: string,
+  bothSitesObserved: boolean,
+): Advantage | null {
+  if (!bothSitesObserved) return null;
+
+  const extra = missingReviewPlatforms(competitorPlatforms, ownPlatforms);
+  if (extra.length === 0) return null;
+
+  const label = competitorLabelOrFallback(competitorLabel);
+  const list = joinNames(labelReviewPlatforms(extra));
+
+  return {
+    category: "reviews",
+    title: "Tu es référencé sur des plateformes d'avis où il ne l'est pas",
+    description: `Ton SaaS a une fiche publique sur ${list}, alors qu'aucune fiche de ${label} n'y a été trouvée.`,
   };
 }
 
@@ -103,7 +134,12 @@ export function detectAllAdvantages(input: {
   competitorPricingFound: boolean;
   ownPlatforms: readonly string[];
   competitorPlatforms: readonly string[];
+  /** Les deux pages d'accueil ont bien été relevées (contrat null-vs-[] de readSocialPlatforms). */
   bothSitesObserved: boolean;
+  ownReviewPlatforms: readonly string[];
+  competitorReviewPlatforms: readonly string[];
+  /** Les deux sites ont bien été vérifiés côté plateformes d'avis — indépendant du flag social. */
+  bothSitesReviewsObserved: boolean;
 }): Advantage[] {
   const advantages = detectPricingAdvantages(
     input.own,
@@ -120,6 +156,14 @@ export function detectAllAdvantages(input: {
     input.bothSitesObserved,
   );
   if (social) advantages.push(social);
+
+  const reviews = detectReviewAdvantage(
+    input.ownReviewPlatforms,
+    input.competitorReviewPlatforms,
+    input.competitorLabel,
+    input.bothSitesReviewsObserved,
+  );
+  if (reviews) advantages.push(reviews);
 
   return advantages;
 }

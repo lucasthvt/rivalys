@@ -123,6 +123,13 @@ export default async function ScorePage() {
   const ownFlags = parseObservationFlags(ownSnapshotRes.data?.extracted_data);
   const competitorFlags = parseObservationFlags(competitorSnapshotRes.data?.extracted_data);
 
+  // Même règle que le tableau de bord (voir dashboard/page.tsx) : un score n'existe que si
+  // le concurrent actuellement suivi a été analysé. Sans ce garde-fou, la page afficherait
+  // 100 sur zéro écart après un changement de concurrent — un sans-faute qui n'a jamais été
+  // constaté. Les deux écrans recalculent depuis les mêmes écarts ouverts et appliquent la
+  // même condition d'existence : ils ne peuvent donc pas diverger.
+  const analysedForCurrentCompetitor = competitorSnapshotRes.data !== null;
+
   const advantages =
     ownData && competitorData
       ? detectAllAdvantages({
@@ -135,6 +142,10 @@ export default async function ScorePage() {
           competitorPlatforms: competitorFlags.socialPlatforms ?? [],
           bothSitesObserved:
             ownFlags.socialPlatforms !== null && competitorFlags.socialPlatforms !== null,
+          ownReviewPlatforms: ownFlags.reviewPlatforms ?? [],
+          competitorReviewPlatforms: competitorFlags.reviewPlatforms ?? [],
+          bothSitesReviewsObserved:
+            ownFlags.reviewPlatforms !== null && competitorFlags.reviewPlatforms !== null,
         })
       : [];
 
@@ -146,17 +157,33 @@ export default async function ScorePage() {
         <section className="mb-8 border border-surface-border bg-surface px-5 py-6">
           <div className="flex flex-wrap items-baseline gap-3">
             <span className="font-mono text-[44px] leading-none text-foreground">
-              {breakdown.score}
+              {analysedForCurrentCompetitor ? breakdown.score : "—"}
             </span>
             <span className="font-mono text-sm text-foreground-muted">/ {MAX_SCORE}</span>
           </div>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-foreground-muted">
-            Le score part de {MAX_SCORE} et retire des points pour chaque écart encore ouvert,
-            selon sa priorité. Il ne note pas la qualité de ton produit : il mesure ce qu&rsquo;il
-            te reste à rattraper face à {competitorLabel}.
+            {analysedForCurrentCompetitor ? (
+              <>
+                Le score part de {MAX_SCORE} et retire des points pour chaque écart encore
+                ouvert, selon sa priorité. Il ne note pas la qualité de ton produit : il mesure
+                ce qu&rsquo;il te reste à rattraper face à {competitorLabel}.
+              </>
+            ) : (
+              <>
+                {competitorLabel} n&rsquo;a pas encore été analysé, il n&rsquo;y a donc rien à
+                calculer. Lance une analyse depuis le tableau de bord pour obtenir un score.
+              </>
+            )}
           </p>
         </section>
 
+        {/*
+          Sans analyse du concurrent courant, ces deux sections n'auraient que des zéros à
+          montrer — un calcul complet aboutissant à 100, juste sous un score affiché « — ».
+          Il n'y a rien à expliquer tant que rien n'a été mesuré.
+        */}
+        {analysedForCurrentCompetitor && (
+          <>
         <section className="mb-8 border border-surface-border bg-surface">
           <div className="border-b border-surface-border px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
@@ -250,6 +277,8 @@ export default async function ScorePage() {
             </ul>
           )}
         </section>
+          </>
+        )}
 
         <section className="border border-surface-border bg-surface">
           <div className="border-b border-surface-border px-5 py-4">

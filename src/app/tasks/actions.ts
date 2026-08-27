@@ -21,9 +21,17 @@ async function updateGapStatus(gapId: string, status: GapStatus): Promise<GapAct
 
   // RLS already scopes this update to the caller's own rows; the explicit
   // user_id filter is kept for readability and defense in depth.
+  //
+  // resolved_at is stamped here rather than by a DB trigger so the closure date is
+  // recorded in the same statement as the status it describes — the two can never
+  // drift apart. Reopening a gap (status back to "open") clears it, so a reopened
+  // gap never carries a stale closure date.
   const { error } = await supabase
     .from("detected_gaps")
-    .update({ status })
+    .update({
+      status,
+      resolved_at: status === "open" ? null : new Date().toISOString(),
+    })
     .eq("id", gapId)
     .eq("user_id", user.id);
 

@@ -7,6 +7,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { ComparisonTable } from "@/components/dashboard/comparison-table";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { RefreshButton } from "@/components/dashboard/refresh-button";
+import { GapStats } from "@/components/dashboard/gap-stats";
 import { parseExtractedData } from "@/components/dashboard/extracted-data";
 import { AppShell } from "@/components/layout/AppShell";
 
@@ -33,12 +34,15 @@ export default async function DashboardPage() {
 
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
 
-  const [gapsRes, scoreRes, competitorRes] = await Promise.all([
+  const [gapsRes, allGapsRes, scoreRes, competitorRes] = await Promise.all([
     supabase
       .from("detected_gaps")
       .select("*")
       .eq("status", "open")
       .order("created_at", { ascending: false }),
+    // Every status, for the stats section — which is about the whole history, not just
+    // what's currently open.
+    supabase.from("detected_gaps").select("category, status, resolved_at"),
     supabase.from("score_history").select("*").order("recorded_at", { ascending: true }),
     supabase
       .from("competitors")
@@ -135,6 +139,8 @@ export default async function DashboardPage() {
             label="Score global"
             value={latestScore === null ? "—" : String(latestScore)}
             sublabel={latestScore === null ? "Pas encore calculé" : undefined}
+            href="/score"
+            linkLabel="Pourquoi ce score"
           />
           <MetricCard
             label="Écarts ouverts"
@@ -164,6 +170,24 @@ export default async function DashboardPage() {
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="mb-8 border border-surface-border bg-surface">
+          <div className="border-b border-surface-border px-5 py-4">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
+              Statistiques
+            </h2>
+          </div>
+          <div className="px-5 py-5">
+            {allGapsRes.error ? (
+              <EmptyState
+                title="Impossible de charger les statistiques"
+                description={allGapsRes.error.message}
+              />
+            ) : (
+              <GapStats allGaps={allGapsRes.data ?? []} />
+            )}
+          </div>
         </section>
 
         <section className="mb-8">

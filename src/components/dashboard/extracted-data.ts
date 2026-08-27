@@ -17,6 +17,38 @@ function isPricingTier(value: unknown): value is PricingTier {
  * don't match the expected shape fall back to empty/false rather than being
  * guessed at, since the product must never fabricate competitive data.
  */
+export interface ObservationFlags {
+  /** Whether a dedicated pricing page was actually located for this site. */
+  pricingPageFound: boolean;
+  /**
+   * Social platforms the site links to, or null when the snapshot predates social
+   * detection. Null means "never looked", [] means "looked and found none" — the two must
+   * not be collapsed, or an unobserved site would be presented as confirmed to have none.
+   * Same contract as readSocialPlatforms in lib/compare/site-data.ts.
+   */
+  socialPlatforms: string[] | null;
+}
+
+/**
+ * Reads the observation flags that parseExtractedData deliberately drops (it returns the
+ * canonical ExtractedSiteData shape only). The comparison rules need these to tell a
+ * confirmed absence from an unverified default.
+ */
+export function parseObservationFlags(json: unknown): ObservationFlags {
+  if (!json || typeof json !== "object" || Array.isArray(json)) {
+    return { pricingPageFound: false, socialPlatforms: null };
+  }
+
+  const data = json as Record<string, unknown>;
+
+  return {
+    pricingPageFound: data.pricing_page_found === true,
+    socialPlatforms: Array.isArray(data.social_platforms)
+      ? data.social_platforms.filter((p): p is string => typeof p === "string")
+      : null,
+  };
+}
+
 export function parseExtractedData(json: unknown): ExtractedSiteData | null {
   if (!json || typeof json !== "object" || Array.isArray(json)) return null;
 

@@ -166,6 +166,8 @@ export interface Database {
           priority: GapPriority;
           status: GapStatus;
           created_at: string;
+          /** Null while open, and on gaps closed before this column existed — see the migration. */
+          resolved_at: string | null;
         };
         Insert: {
           id?: string;
@@ -177,6 +179,7 @@ export interface Database {
           priority: GapPriority;
           status?: GapStatus;
           created_at?: string;
+          resolved_at?: string | null;
         };
         Update: {
           id?: string;
@@ -188,6 +191,7 @@ export interface Database {
           priority?: GapPriority;
           status?: GapStatus;
           created_at?: string;
+          resolved_at?: string | null;
         };
         Relationships: [
           {

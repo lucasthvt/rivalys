@@ -54,16 +54,20 @@ export function ScoreMeter({
       widthPercent: line.pointsLost * scale,
     }));
 
+  // Une seule teinte à trois intensités, jamais trois couleurs : la priorité est une force
+  // de signal, pas un feu tricolore (contrainte CLAUDE.md). Les paliers sont écartés
+  // franchement — 80/45/22 plutôt que 70/40/20 — pour rester distinguables sur les segments
+  // étroits d'une pénalité faible.
   const intensityByPriority = {
-    high: "bg-signal-bright/70",
-    medium: "bg-signal-bright/40",
-    low: "bg-signal-bright/20",
+    high: "bg-signal-bright/80",
+    medium: "bg-signal-bright/45",
+    low: "bg-signal-bright/22",
   } as const;
 
   return (
     <section
       aria-labelledby="score-meter-title"
-      className="border border-surface-border bg-surface px-5 py-6 sm:px-7 sm:py-7"
+      className="border border-surface-border bg-surface px-5 py-7 sm:px-8 sm:py-9"
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -74,7 +78,7 @@ export function ScoreMeter({
             Terrain tenu
           </h2>
           <p className="mt-2 flex items-baseline gap-2">
-            <span className="font-mono text-[52px] leading-none tracking-tight text-foreground">
+            <span className="font-mono text-[68px] leading-none tracking-tight text-foreground sm:text-[80px]">
               {hasRun ? breakdown.score : "—"}
             </span>
             <span className="font-mono text-sm text-foreground-muted">/ {MAX_SCORE}</span>
@@ -90,7 +94,7 @@ export function ScoreMeter({
       </div>
 
       <div
-        className="mt-6 flex h-3.5 w-full overflow-hidden rounded-full bg-void"
+        className="mt-7 flex h-5 w-full overflow-hidden rounded-full bg-void"
         role="img"
         aria-label={
           hasRun
@@ -107,7 +111,11 @@ export function ScoreMeter({
             {lostSegments.map((segment) => (
               <span
                 key={segment.priority}
-                className={`meter-hatch h-full border-l border-void ${intensityByPriority[segment.priority]}`}
+                // min-width : une pénalité basse vaut 2 points, soit 2 % de la barre — une
+                // dizaine de pixels où ni les hachures ni l'intensité ne se lisent. Le plancher
+                // garde le segment identifiable ; la valeur exacte est dans la légende juste
+                // en dessous, donc rien n'est faussé par cet arrondi visuel.
+                className={`meter-hatch h-full min-w-[14px] border-l-2 border-void ${intensityByPriority[segment.priority]}`}
                 style={{ width: `${segment.widthPercent}%` }}
               />
             ))}

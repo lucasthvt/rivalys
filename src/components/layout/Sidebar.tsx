@@ -5,9 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+// Toute entrée ajoutée ici doit l'être aussi dans HIDE_NAV_PREFIXES (NavBar.tsx),
+// sinon la nav marketing se superpose à cette sidebar sur la route concernée.
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: GridIcon },
   { href: "/tasks", label: "Tâches", icon: ChecklistIcon },
+  { href: "/score", label: "Score", icon: GaugeIcon },
+  { href: "/statistiques", label: "Statistiques", icon: ChartIcon },
 ] as const;
 
 /**
@@ -144,6 +148,41 @@ function ChecklistIcon({ className }: { className?: string }) {
       <path d="M3 12.5l1.4 1.4L7 11.3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M9.5 5h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       <path d="M9.5 12h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function GaugeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      className={`h-[18px] w-[18px] shrink-0 ${className ?? ""}`}
+      aria-hidden="true"
+    >
+      <path
+        d="M3.5 14.5a7.5 7.5 0 1113 0"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path d="M10 14.5L13.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ChartIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      className={`h-[18px] w-[18px] shrink-0 ${className ?? ""}`}
+      aria-hidden="true"
+    >
+      <path d="M3 17h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <rect x="4" y="10" width="3" height="4" rx="0.6" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="8.5" y="6" width="3" height="8" rx="0.6" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="13" y="3" width="3" height="11" rx="0.6" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   );
 }

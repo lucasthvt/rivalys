@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { sortGapsByPriority } from "@/components/tasks/priority";
@@ -173,10 +174,16 @@ export default async function DashboardPage() {
         </section>
 
         <section className="mb-8 border border-surface-border bg-surface">
-          <div className="border-b border-surface-border px-5 py-4">
+          <div className="flex items-center justify-between gap-3 border-b border-surface-border px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Statistiques
             </h2>
+            <Link
+              href="/statistiques"
+              className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong transition-colors hover:text-foreground"
+            >
+              Tout voir →
+            </Link>
           </div>
           <div className="px-5 py-5">
             {allGapsRes.error ? (

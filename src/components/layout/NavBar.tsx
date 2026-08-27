@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const HIDE_NAV_PREFIXES = ["/login", "/signup", "/onboarding", "/dashboard", "/tasks"];
+// Routes qui portent leur propre chrome (AppShell + Sidebar, ou panneau plein écran) :
+// y superposer la nav marketing dupliquerait le wordmark et la navigation.
+// Toute nouvelle route applicative doit être ajoutée ici en même temps qu'à
+// NAV_ITEMS dans Sidebar.tsx.
+const HIDE_NAV_PREFIXES = [
+  "/login",
+  "/signup",
+  "/onboarding",
+  "/dashboard",
+  "/tasks",
+  "/score",
+  "/statistiques",
+];
 
 export function NavBar({ isAuthenticated }: { isAuthenticated: boolean }) {
   const pathname = usePathname();

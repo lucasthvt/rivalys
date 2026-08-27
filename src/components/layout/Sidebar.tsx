@@ -19,9 +19,12 @@ const NAV_ITEMS = [
  * marketing Nav there (see Nav.tsx's HIDE_NAV_PREFIXES), same "signal" palette so the
  * whole product reads as one continuous dark surface from landing through to the app.
  *
- * Static beside the content from `md` up; below that it slides in as an off-canvas
- * drawer whose open state is owned by AppShell (which also renders the backdrop and
- * the mobile top bar).
+ * De `md` vers le haut : collée (`sticky`) sur toute la hauteur de la fenêtre, pour que
+ * la navigation et le bouton de déconnexion restent atteignables quel que soit le
+ * défilement de la page. En statique, la sidebar s'étirait sur toute la hauteur du
+ * document : sur une page longue, « Se déconnecter » se retrouvait tout en bas.
+ * En dessous de `md`, elle redevient un tiroir hors-écran dont l'état d'ouverture est
+ * détenu par AppShell (qui rend aussi le fond et la barre supérieure mobile).
  *
  * Closed-on-mobile uses `invisible` rather than the `inert` attribute: both keep the
  * off-screen links out of the tab order, but `inert` is a DOM attribute with no
@@ -53,7 +56,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col border-r border-surface-border bg-surface transition-transform duration-200 ease-out motion-reduce:transition-none md:static md:z-auto md:visible md:translate-x-0 ${
+      className={`fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col overflow-y-auto border-r border-surface-border bg-surface transition-transform duration-200 ease-out motion-reduce:transition-none md:sticky md:top-0 md:bottom-auto md:z-auto md:h-screen md:visible md:translate-x-0 ${
         drawerOpen ? "visible translate-x-0" : "invisible -translate-x-full"
       }`}
     >

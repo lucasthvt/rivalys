@@ -1,3 +1,4 @@
+import { Eyebrow } from "@/components/ui/Eyebrow";
 import Link from "next/link";
 
 const PRICING_TIERS: { name: string; tagline: string; features: string[]; highlighted?: boolean }[] = [
@@ -28,9 +29,7 @@ export default function TarifsPage() {
           aria-hidden="true"
         />
         <div className="relative mx-auto w-full max-w-6xl px-6 pb-16 pt-20 text-center lg:pb-20 lg:pt-24">
-          <p className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-signal-bright">
-            [ Tarifs ]
-          </p>
+          <Eyebrow>Tarifs</Eyebrow>
           <h1 className="mx-auto mt-3 max-w-2xl font-brand text-3xl font-semibold tracking-tight text-paper sm:text-4xl">
             Un outil payant, sans surprise.
           </h1>

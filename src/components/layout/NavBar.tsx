@@ -30,13 +30,17 @@ export function NavBar({ isAuthenticated }: { isAuthenticated: boolean }) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-void/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+    // Barre flottante : détachée du bord haut, elle se déplace avec le défilement sans
+    // jamais coller au sommet. Le conteneur externe reste transparent et sans pointeur —
+    // seule la barre elle-même intercepte les clics, pour que la bande vide de part et
+    // d'autre ne bloque pas le contenu qui défile dessous.
+    <header className="pointer-events-none sticky top-0 z-40 px-4 pt-4 sm:px-6">
+      <div className="floating-bar pointer-events-auto mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 pl-5 pr-2">
         <Logo />
 
         <nav
           aria-label="Navigation principale"
-          className="hidden items-center gap-8 font-mono text-[0.7rem] uppercase tracking-[0.12em] text-mist sm:flex"
+          className="hidden items-center gap-7 text-[0.875rem] text-mist sm:flex"
         >
           <Link href="/#comment-ca-marche" className="transition-colors hover:text-paper">
             Comment ça marche

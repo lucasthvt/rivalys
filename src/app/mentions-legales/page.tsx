@@ -1,3 +1,4 @@
+import { Eyebrow } from "@/components/ui/Eyebrow";
 import Link from "next/link";
 
 const SECTIONS = [
@@ -33,9 +34,7 @@ const SECTIONS = [
 export default function MentionsLegalesPage() {
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-20">
-      <p className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-signal-bright">
-        [ Légal ]
-      </p>
+      <Eyebrow>Légal</Eyebrow>
       <h1 className="mt-3 font-brand text-3xl font-semibold tracking-tight text-paper">
         Mentions légales
       </h1>

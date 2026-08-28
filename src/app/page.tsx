@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { Logo } from "@/components/brand/Logo";
+import { Eyebrow } from "@/components/ui/Eyebrow";
 import {
   computeScore,
   MAX_SCORE,
@@ -44,18 +44,6 @@ export default function Home() {
    Dispositifs structurants — l'amorce de cote et la ligne de cote.
    Ils reviennent à chaque section : c'est ce qui tient la page ensemble.
    -------------------------------------------------------------------------- */
-
-function Eyebrow({ children }: { children: ReactNode }) {
-  return (
-    <p className="flex items-center gap-3 font-mono text-[0.68rem] uppercase tracking-[0.16em] text-signal-bright">
-      <span aria-hidden="true" className="flex items-center">
-        <span className="h-2.5 w-px bg-signal-bright/60" />
-        <span className="h-px w-8 bg-signal-bright/60" />
-      </span>
-      {children}
-    </p>
-  );
-}
 
 /**
  * La ligne de cote elle-même. `measured` distingue les deux états du relevé :
@@ -102,30 +90,42 @@ function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-white/[0.06]">
       <div
-        className="bg-signal-grid pointer-events-none absolute inset-0 opacity-[0.13]"
+        className="bg-signal-grid pointer-events-none absolute inset-0 opacity-[0.08]"
         style={{
-          maskImage: "radial-gradient(ellipse 65% 60% at 25% 15%, black 0%, transparent 78%)",
-          WebkitMaskImage: "radial-gradient(ellipse 65% 60% at 25% 15%, black 0%, transparent 78%)",
+          maskImage: "radial-gradient(ellipse 55% 55% at 22% 12%, black 0%, transparent 72%)",
+          WebkitMaskImage: "radial-gradient(ellipse 55% 55% at 22% 12%, black 0%, transparent 72%)",
         }}
         aria-hidden="true"
       />
+      {/*
+        Halo resserré et discret. Sur un fond noir pur, une lueur large finit par teinter
+        toute la moitié haute de la page en violet : le noir cesse d'être noir, et l'accent
+        n'a plus rien contre quoi ressortir. Il doit se lire comme une source lointaine,
+        pas comme un calque de couleur.
+      */}
       <div
-        className="pointer-events-none absolute left-[18%] top-[-14rem] h-[28rem] w-[40rem] -translate-x-1/2 rounded-full bg-signal/25 blur-[120px]"
+        className="pointer-events-none absolute left-[20%] top-[-18rem] h-[26rem] w-[30rem] -translate-x-1/2 rounded-full bg-signal/25 blur-[130px]"
         aria-hidden="true"
       />
 
-      <div className="relative mx-auto w-full max-w-6xl px-6 py-20 lg:py-28">
-        <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-16">
+      <div className="relative mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
+        <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-14">
           <div className="reveal-up">
-            <Eyebrow>Comparateur de faits publics</Eyebrow>
+            <span className="pill font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist">
+              <span
+                className="signal-pulse h-1.5 w-1.5 rounded-full bg-signal-bright"
+                aria-hidden="true"
+              />
+              Comparateur de faits publics
+            </span>
 
-            <h1 className="mt-6 font-brand text-[2.7rem] font-semibold leading-[1.04] tracking-tight text-paper sm:text-6xl">
+            <h1 className="mt-6 font-brand text-[2.9rem] font-bold leading-[1.02] tracking-[-0.03em] text-paper sm:text-[3.9rem] lg:text-[4.4rem]">
               Vois où tu perds
               <br />
               <span className="text-signal-bright text-glow-signal">du terrain.</span>
             </h1>
 
-            <p className="mt-6 max-w-md text-lg leading-relaxed text-mist">
+            <p className="mt-7 max-w-md text-lg leading-relaxed text-mist">
               Donne ton URL et celle de ton plus gros concurrent. Rivalys relève les faits
               publics des deux côtés, cote chaque écart, et le transforme en tâche précise —
               jamais en conseil générique.
@@ -180,7 +180,7 @@ const RELEVE_ROWS: { criterion: string; you: string; rival: string; gap: string 
 function Releve() {
   return (
     <figure
-      className="reveal-up relative rounded-3xl border border-white/10 bg-void-raised p-5 shadow-signal-lg sm:p-7"
+      className="panel-focal reveal-up relative p-5 sm:p-7"
       style={{ animationDelay: "0.12s" }}
     >
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/[0.07] pb-4 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist">
@@ -273,7 +273,7 @@ function WhatWeMeasure() {
       <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
         <div className="max-w-2xl">
           <Eyebrow>Ce qu&rsquo;on relève</Eyebrow>
-          <h2 className="mt-4 font-brand text-3xl font-semibold tracking-tight text-paper sm:text-[2.6rem] sm:leading-[1.1]">
+          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
             Quatre familles de faits. Et leurs limites, écrites noir sur blanc.
           </h2>
           <p className="mt-5 text-base leading-relaxed text-mist">
@@ -283,17 +283,21 @@ function WhatWeMeasure() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] sm:grid-cols-2">
+        <div className="mt-14 grid gap-4 sm:grid-cols-2">
           {MEASURE_FAMILIES.map((family) => (
-            <div key={family.category} className="flex flex-col bg-void-raised p-6 sm:p-7">
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="font-brand text-xl font-semibold text-paper">{family.title}</h3>
-                <code className="font-mono text-[0.62rem] tracking-tight text-mist/50">
-                  {family.category}
-                </code>
-              </div>
+            <div
+              key={family.category}
+              className="panel flex flex-col p-6 transition-colors hover:border-signal-bright/20 sm:p-7"
+            >
+              <code className="pill self-start font-mono text-[0.62rem] tracking-tight text-mist/60">
+                {family.category}
+              </code>
 
-              <ul className="mt-5 flex flex-wrap gap-2">
+              <h3 className="mt-4 font-brand text-xl font-bold tracking-[-0.015em] text-paper">
+                {family.title}
+              </h3>
+
+              <ul className="mt-4 flex flex-wrap gap-2">
                 {family.fields.map((field) => (
                   <li
                     key={field}
@@ -348,7 +352,7 @@ function HowItWorks() {
       <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
         <div className="max-w-xl">
           <Eyebrow>Le parcours</Eyebrow>
-          <h2 className="mt-4 font-brand text-3xl font-semibold tracking-tight text-paper sm:text-[2.6rem] sm:leading-[1.1]">
+          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
             Trois étapes, aucune supposition.
           </h2>
         </div>
@@ -363,7 +367,7 @@ function HowItWorks() {
               <span className="font-mono text-[0.7rem] tracking-[0.12em] text-signal-bright">
                 {step.n}
               </span>
-              <h3 className="mt-3 font-brand text-xl font-semibold text-paper">{step.title}</h3>
+              <h3 className="mt-3 font-brand text-xl font-bold tracking-[-0.015em] text-paper">{step.title}</h3>
               <p className="mt-3 text-sm leading-relaxed text-mist">{step.body}</p>
             </li>
           ))}
@@ -404,7 +408,7 @@ function GapToTask() {
       <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
         <div>
           <Eyebrow>De l&rsquo;écart à la tâche</Eyebrow>
-          <h2 className="mt-4 font-brand text-3xl font-semibold tracking-tight text-paper sm:text-[2.6rem] sm:leading-[1.1]">
+          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
             Une tâche ne peut naître que d&rsquo;un écart mesuré.
           </h2>
           <p className="mt-5 max-w-md text-base leading-relaxed text-mist">
@@ -425,7 +429,7 @@ function GapToTask() {
           {EXAMPLE_TASKS.map((task) => (
             <li
               key={task.title}
-              className="rounded-2xl border border-white/10 bg-void-raised p-5 transition-colors hover:border-signal-bright/25"
+              className="panel p-5 transition-colors hover:border-signal-bright/25"
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex items-center gap-2 font-mono text-[0.64rem] uppercase tracking-[0.1em] text-mist">
@@ -468,10 +472,10 @@ function ScoreSection() {
   return (
     <section className="border-b border-white/[0.06]">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
-        <div className="order-2 rounded-2xl border border-white/10 bg-void-raised p-6 shadow-signal-lg sm:p-8 lg:order-1">
+        <div className="panel order-2 p-6 sm:p-8 lg:order-1">
           <div className="flex items-baseline justify-between font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist">
             <span>Score global</span>
-            <span className="font-brand text-4xl tracking-tight text-paper">{EXAMPLE_SCORE}</span>
+            <span className="font-brand text-4xl font-bold tracking-[-0.03em] text-paper">{EXAMPLE_SCORE}</span>
           </div>
 
           <div className="mt-6 flex h-3 overflow-hidden rounded-full bg-white/[0.05]">
@@ -499,7 +503,7 @@ function ScoreSection() {
 
         <div className="order-1 lg:order-2">
           <Eyebrow>Le score</Eyebrow>
-          <h2 className="mt-4 font-brand text-3xl font-semibold tracking-tight text-paper sm:text-[2.6rem] sm:leading-[1.1]">
+          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
             Un chiffre qui s&rsquo;explique ligne par ligne.
           </h2>
           <p className="mt-5 max-w-md text-base leading-relaxed text-mist">
@@ -547,7 +551,7 @@ function WhatWeDont() {
       <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
         <div className="max-w-xl">
           <Eyebrow>Ce qu&rsquo;on ne fait pas</Eyebrow>
-          <h2 className="mt-4 font-brand text-3xl font-semibold tracking-tight text-paper sm:text-[2.6rem] sm:leading-[1.1]">
+          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
             Honnête par construction, pas seulement par promesse.
           </h2>
         </div>
@@ -555,7 +559,7 @@ function WhatWeDont() {
         <dl className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
           {NOT_DOING.map((item) => (
             <div key={item.title} className="border-t border-white/10 pt-5">
-              <dt className="font-brand text-lg font-semibold text-paper">{item.title}</dt>
+              <dt className="font-brand text-lg font-bold tracking-[-0.015em] text-paper">{item.title}</dt>
               <dd className="mt-2.5 text-sm leading-relaxed text-mist">{item.body}</dd>
             </div>
           ))}
@@ -614,7 +618,7 @@ function Faq() {
       <div className="mx-auto w-full max-w-3xl px-6 py-20 lg:py-24">
         <div className="max-w-xl">
           <Eyebrow>Questions fréquentes</Eyebrow>
-          <h2 className="mt-4 font-brand text-3xl font-semibold tracking-tight text-paper sm:text-[2.6rem] sm:leading-[1.1]">
+          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
             Ce qu&rsquo;on te demande le plus.
           </h2>
         </div>
@@ -656,7 +660,7 @@ function ClosingCta() {
         aria-hidden="true"
       />
       <div className="relative mx-auto w-full max-w-3xl px-6 py-24 text-center lg:py-28">
-        <h2 className="font-brand text-3xl font-semibold leading-[1.1] tracking-tight text-paper sm:text-[2.8rem]">
+        <h2 className="font-brand text-[2rem] font-bold leading-[1.06] tracking-[-0.028em] text-paper sm:text-[3.1rem]">
           Sais quoi faire pour le regagner.
         </h2>
         <p className="mx-auto mt-5 max-w-md text-base leading-relaxed text-mist">

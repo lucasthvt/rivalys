@@ -86,8 +86,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-ring: var(--ring);
 
-  --font-display: var(--font-bricolage), "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-golos), "Golos Text", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-golos), "Golos Text", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
@@ -152,18 +152,23 @@ body {
    the shared ui/ components.
 
    Priority in the "example tasks" strip is still not a stoplight: instead
-   of three hues, it's read as signal strength — one blue at three
+   of three hues, it's read as signal strength — one accent at three
    intensities, brightest where the gap matters most.
+
+   Le fond est un noir pur, pas un bleu très sombre : les surfaces
+   (--color-void-raised) s'en détachent alors par une valeur, pas par une
+   teinte, ce qui laisse l'accent violet être la seule couleur de l'écran.
+   Un fond teinté aurait mis toute la page en concurrence avec lui.
    ========================================================================== */
 @theme {
-  --color-void: #101319;
-  --color-void-raised: #161a24;
-  --color-void-hover: #1c212c;
-  --color-void-border: #232a38;
-  --color-signal: #1f4fd8;
-  --color-signal-bright: #6c90ff;
-  --color-mist: #b4b9c6;
-  --color-paper: #fbfbfc;
+  --color-void: #000000;
+  --color-void-raised: #0e0e12;
+  --color-void-hover: #17171e;
+  --color-void-border: #26262f;
+  --color-signal: #6247e6;
+  --color-signal-bright: #a394ff;
+  --color-mist: #a2a2ae;
+  --color-paper: #fafafa;
 
   /* Non-stoplight status accents, kept distinct from the signal blue so
      "you're ahead" / "you're behind" never compete visually with the brand
@@ -172,7 +177,43 @@ body {
   --color-mint: #49d6a8;
   --color-flare: #ff6b47;
 
-  --font-brand: var(--font-bricolage), "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--font-golos), "Golos Text", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ==========================================================================
+   Dispositifs de surface
+   --------------------------------------------------------------------------
+   Deux formes portent la direction visuelle et reviennent partout : la barre
+   flottante et la pastille. Elles sont ici plutôt qu'en classes utilitaires
+   répétées, pour qu'un ajustement de la matière (flou, opacité du filet) se
+   fasse à un seul endroit.
+   ========================================================================== */
+
+/* La barre de navigation ne touche pas le bord de la fenêtre : elle flotte,
+   détachée, avec un fond translucide et un filet clair. C'est la première
+   chose que l'œil situe sur la page, et ce qui la sépare le plus nettement
+   d'un en-tête collé par défaut. */
+.floating-bar {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-paper) 9%, transparent);
+  background: color-mix(in srgb, var(--color-void-raised) 78%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in srgb, var(--color-paper) 8%, transparent),
+    0 18px 40px -24px rgb(0 0 0 / 0.9);
+}
+
+/* La pastille : intitulé de section, badge du hero, étiquette de carte. Même
+   matière que la barre, en plus discret. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-paper) 10%, transparent);
+  background: color-mix(in srgb, var(--color-paper) 4%, transparent);
+  padding: 0.3rem 0.75rem;
 }
 
 .bg-signal-grid {

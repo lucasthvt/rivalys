@@ -125,7 +125,22 @@ export async function POST() {
   }
 
   const now = new Date();
-  if (competitorSnapshot) {
+
+  // La limite ne s'applique qu'en production. En développement, elle rend le produit
+  // intestable : on ne peut pas vérifier une modification du pipeline plus d'une fois par
+  // jour. Le garde-fou existe pour borner une dépense subie par l'utilisateur final, pas
+  // pour gêner celui qui construit l'outil.
+  //
+  // Chaque exécution coûte malgré tout de vrais crédits Firecrawl, Claude et Perplexity —
+  // d'où l'avertissement en console plutôt qu'un contournement silencieux.
+  const cooldownEnforced = process.env.NODE_ENV === "production";
+  if (!cooldownEnforced) {
+    console.warn(
+      "[compare] Limite de 24 h levée (hors production). Cette analyse consomme des crédits réels.",
+    );
+  }
+
+  if (cooldownEnforced && competitorSnapshot) {
     const { data: lastSnapshot, error: lastSnapshotError } = await supabase
       .from("site_snapshots")
       .select("fetched_at")

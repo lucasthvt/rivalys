@@ -202,6 +202,10 @@ export function detectThirdPartyPresenceGap(
       `On ne peut pas savoir qui les a publiés — un compte officiel, un client, un créateur ` +
       `indépendant ou un détracteur ne se distinguent pas de l'extérieur. Rivalys ne tranche ` +
       `donc pas à ta place : ouvre les liens et juge par toi-même.\n\n` +
+      `Présence détectée, volume non mesurable : ces plateformes ne donnent accès à leurs ` +
+      `statistiques qu'à des partenaires licenciés. Les liens ci-dessous sont des exemples, ` +
+      `pas un inventaire — il en existe probablement d'autres, en particulier sur TikTok, très ` +
+      `mal indexé par la recherche publique.\n\n` +
       `Contenus relevés :\n${links}`,
     priority: "low",
   };

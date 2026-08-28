@@ -29,6 +29,7 @@ import {
   mergeReviewPlatforms,
 } from "@/lib/compare/reviews";
 import { askPerplexity, isPerplexityConfigured } from "@/lib/compare/perplexity";
+import { assessPricingCoverage } from "@/lib/compare/comparability";
 import { countByPriority, computeScore } from "@/lib/compare/score";
 import {
   checkAnalysisRateLimit,
@@ -394,7 +395,18 @@ export async function POST() {
     );
   }
 
-  return NextResponse.json({ ok: true, gapsCount: insertedCount });
+  // Ce que le comparateur n'a pas pu mesurer. Renvoyé dans la réponse parce qu'un appelant
+  // direct de l'endpoint (le brief prévoit un test au curl) verrait sinon un gapsCount bas
+  // sans savoir qu'une moitié des règles n'avait aucune matière. Le dashboard recalcule le
+  // même constat
+  // depuis les relevés stockés, via la même fonction pure : les deux ne peuvent pas diverger.
+  const coverage = assessPricingCoverage(
+    { pageFound: ownData.pricing_page_found, tierCount: ownData.pricing_tiers.length },
+    { pageFound: competitorData.pricing_page_found, tierCount: competitorData.pricing_tiers.length },
+    competitorLabel,
+  );
+
+  return NextResponse.json({ ok: true, gapsCount: insertedCount, coverage });
 }
 
 async function fetchAndExtract(

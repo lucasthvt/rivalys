@@ -11,8 +11,10 @@ import { FaceOff } from "@/components/dashboard/face-off";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { RefreshButton } from "@/components/dashboard/refresh-button";
 import { GapStats } from "@/components/dashboard/gap-stats";
-import { parseExtractedData } from "@/components/dashboard/extracted-data";
+import { parseExtractedData, parseObservationFlags } from "@/components/dashboard/extracted-data";
+import { CoverageNoticePanel } from "@/components/dashboard/coverage-notice";
 import { AppShell } from "@/components/layout/AppShell";
+import { assessPricingCoverage } from "@/lib/compare/comparability";
 import { countByPriority } from "@/lib/compare/score";
 
 export default async function DashboardPage() {
@@ -122,6 +124,8 @@ export default async function DashboardPage() {
   const snapshotLoadError = Boolean(ownSnapshotRes.error || competitorSnapshotRes.error);
   const ownData = parseExtractedData(ownSnapshotRes.data?.extracted_data);
   const competitorData = parseExtractedData(competitorSnapshotRes.data?.extracted_data);
+  const ownFlags = parseObservationFlags(ownSnapshotRes.data?.extracted_data);
+  const competitorFlags = parseObservationFlags(competitorSnapshotRes.data?.extracted_data);
   const competitorLabel = competitorLoadError
     ? "Erreur de chargement"
     : competitor
@@ -139,6 +143,25 @@ export default async function DashboardPage() {
   // concurrent précédent.
   const analysedForCurrentCompetitor = competitorSnapshotRes.data !== null;
 
+  // Ce que le comparateur n'a pas pu mesurer, faute de tarifs publics d'un côté ou de
+  // l'autre. Conditionné aux deux relevés : avant une analyse, l'absence de tarifs ne dit
+  // rien du site, seulement qu'on ne l'a pas encore lu — et l'écran affiche déjà « — »
+  // partout, donc il n'y a rien à qualifier.
+  //
+  // Recalculé ici plutôt que lu depuis la réponse de /api/compare : le constat doit rester
+  // affiché au rechargement de la page, longtemps après l'analyse qui l'a produit.
+  const coverageNotice =
+    analysedForCurrentCompetitor && ownData && competitorData
+      ? assessPricingCoverage(
+          { pageFound: ownFlags.pricingPageFound, tierCount: ownData.pricing_tiers.length },
+          {
+            pageFound: competitorFlags.pricingPageFound,
+            tierCount: competitorData.pricing_tiers.length,
+          },
+          competitorLabel,
+        )
+      : null;
+
   return (
     <AppShell userLabel={userLabel}>
       <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
@@ -153,6 +176,8 @@ export default async function DashboardPage() {
           </div>
           <RefreshButton />
         </header>
+
+        {coverageNotice && <CoverageNoticePanel notice={coverageNotice} />}
 
         {/*
           Grille asymétrique plutôt qu'une pile de blocs pleine largeur : le score occupe

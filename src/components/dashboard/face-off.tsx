@@ -9,9 +9,11 @@ import type { ExtractedSiteData } from "@/lib/supabase/database.types";
  * on les comparait mal. Ici tes valeurs sont à gauche, les siennes à droite, le critère au
  * centre en petit : les deux colonnes se font face, ce qui est exactement le sujet.
  *
- * Le marquage couleur reste strictement adossé aux faits : une valeur passe en flare
- * uniquement quand elle correspond à un écart réellement détecté (il l'a, pas toi), en mint
- * quand c'est l'inverse. Jamais décoratif.
+ * Aucune valeur n'est colorée en rouge ou en vert. Un « Non » en rouge de ton côté
+ * face à un « Oui » en vert du sien transforme un relevé factuel en bulletin de notes,
+ * ce que le produit s'interdit (CLAUDE.md : jamais de classement qui humilie). Le seul
+ * marquage est une étiquette sous la valeur, qui nomme le fait — écart détecté d'un
+ * côté, avance de l'autre — sans le teinter.
  */
 
 function formatTiers(data: ExtractedSiteData | null): string {
@@ -39,9 +41,24 @@ function BoolValue({
     return <span className={`${align} text-sm text-foreground-muted/70`}>Pas de données</span>;
   }
 
-  const tone = isBehind ? "text-flare" : isAhead ? "text-mint" : "text-foreground";
+  // L'étiquette ne s'affiche que sous TA valeur : un « écart détecté » est une ligne
+  // de ta liste de tâches, pas une remarque sur le concurrent. Le mettre des deux
+  // côtés lui inventerait un manque qu'on ne mesure pas.
+  const labelled = side === "own" && (isBehind || isAhead);
+
   return (
-    <span className={`${align} font-mono text-xl ${tone}`}>{value ? "Oui" : "Non"}</span>
+    <div className={align}>
+      <span className="font-mono text-xl text-foreground">{value ? "Oui" : "Non"}</span>
+      {labelled && (
+        <span
+          className={`mt-1 block font-mono text-[10px] uppercase tracking-[0.14em] ${
+            isBehind ? "text-accent-strong" : "text-foreground-muted/70"
+          }`}
+        >
+          {isBehind ? "Écart détecté" : "Tu es devant"}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -134,7 +151,7 @@ export function FaceOff({
               <BoolValue
                 value={competitor ? competitor.has_free_trial : null}
                 side="competitor"
-                isBehind={false}
+                isBehind={trialAhead}
                 isAhead={trialBehind}
               />
             }
@@ -153,7 +170,7 @@ export function FaceOff({
               <BoolValue
                 value={competitor ? competitor.has_free_tier : null}
                 side="competitor"
-                isBehind={false}
+                isBehind={tierAhead}
                 isAhead={tierBehind}
               />
             }

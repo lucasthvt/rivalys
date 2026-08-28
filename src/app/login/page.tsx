@@ -6,6 +6,7 @@ import { Suspense, type FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthMapPanel } from "./_components/AuthMapPanel";
 import { AuthField, authErrorBox, authPrimaryButton } from "./_components/AuthField";
+import { AuthDivider, OAuthButtons } from "./_components/OAuthButtons";
 
 function mapLoginError(message: string): string {
   if (message.includes("Invalid login credentials")) {
@@ -33,9 +34,17 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
+  const nextPath = sanitizeNextPath(searchParams.get("next"));
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // /auth/callback bounces back here with ?error=oauth when the Google
+  // round-trip failed (cancelled, or provider misconfigured).
+  const [error, setError] = useState<string | null>(
+    searchParams.get("error") === "oauth"
+      ? "La connexion Google n'a pas abouti. Réessaie."
+      : null,
+  );
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -74,7 +83,6 @@ function LoginForm() {
     if (!profile?.onboarding_completed) {
       router.push("/onboarding");
     } else {
-      const nextPath = sanitizeNextPath(searchParams.get("next"));
       router.push(nextPath ?? "/dashboard");
     }
     router.refresh();
@@ -93,13 +101,21 @@ function LoginForm() {
             Content de te revoir.
           </h1>
 
-          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5" noValidate>
-            {error ? (
-              <p className={authErrorBox} role="alert">
-                {error}
-              </p>
-            ) : null}
+          {error ? (
+            <p className={`${authErrorBox} mt-8`} role="alert">
+              {error}
+            </p>
+          ) : null}
 
+          <div className="mt-8">
+            <OAuthButtons nextPath={nextPath} onError={setError} />
+          </div>
+
+          <div className="mt-6">
+            <AuthDivider />
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5" noValidate>
             <AuthField
               id="email"
               label="Email"

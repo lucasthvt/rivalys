@@ -41,7 +41,7 @@ export function ScoreChart({ points }: { points: ScorePoint[] }) {
   return (
     <div className="h-56 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="#232a38" vertical={false} />
           <XAxis
             dataKey="date"
@@ -58,7 +58,8 @@ export function ScoreChart({ points }: { points: ScorePoint[] }) {
             fontFamily={MONO_STACK}
             tickLine={false}
             axisLine={false}
-            width={36}
+            width={44}
+            ticks={[0, 25, 50, 75, 100]}
           />
           <Tooltip
             contentStyle={{
@@ -75,9 +76,9 @@ export function ScoreChart({ points }: { points: ScorePoint[] }) {
             type="monotone"
             dataKey="score"
             name="Score"
-            stroke="#49D6A8"
+            stroke="#a394ff"
             strokeWidth={2}
-            dot={{ r: 3, fill: "#49D6A8", strokeWidth: 0 }}
+            dot={{ r: 3, fill: "#a394ff", strokeWidth: 0 }}
             activeDot={{ r: 5 }}
           />
         </LineChart>

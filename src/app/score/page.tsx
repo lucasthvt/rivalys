@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
+import { LockedResults, SkeletonPanel } from "@/components/billing/locked-results";
+import { hasPaidAccess } from "@/lib/billing/access";
 import { EmptyState } from "@/components/tasks/empty-state";
 import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
@@ -34,7 +36,7 @@ export default async function ScorePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarding_completed, first_name")
+    .select("onboarding_completed, first_name, subscription_tier")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -63,7 +65,7 @@ export default async function ScorePage() {
 
   if (gapsRes.error) {
     return (
-      <AppShell userLabel={userLabel}>
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
           <Header />
           <EmptyState
@@ -80,10 +82,31 @@ export default async function ScorePage() {
   // n'a eu lieu. On le dit au lieu de l'afficher.
   if (!competitorRes.data && !competitorRes.error) {
     return (
-      <AppShell userLabel={userLabel}>
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
           <Header />
           <NoCompetitorState description="Le score mesure ce qu'il te reste à rattraper face à un concurrent. Tant qu'aucun n'est suivi, il n'y a rien à calculer." />
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Palier gratuit : le détail du score est ce que l'offre payante ouvre. Les
+  // écarts eux-mêmes ne sont pas rendus ici — voir components/billing.
+  if (!hasPaidAccess(profile?.subscription_tier)) {
+    return (
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
+        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
+          <Header />
+          <LockedResults
+            title="Détail du score réservé aux offres payantes"
+            description="Le calcul complet — chaque écart, son poids, et ce que le concurrent fait mieux — s'ouvre avec une offre payante."
+          >
+            <div className="flex flex-col gap-5">
+              <SkeletonPanel height="h-40" />
+              <SkeletonPanel height="h-56" />
+            </div>
+          </LockedResults>
         </div>
       </AppShell>
     );
@@ -150,7 +173,7 @@ export default async function ScorePage() {
       : [];
 
   return (
-    <AppShell userLabel={userLabel}>
+    <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
       <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
         <Header />
 

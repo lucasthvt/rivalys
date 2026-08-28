@@ -74,11 +74,14 @@ export function ChoiceCard({
   title,
   description,
   active,
+  compact = false,
   onClick,
 }: {
   title: string;
   description: string;
   active: boolean;
+  /** Denser padding and title, for the 4-option grids. */
+  compact?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -86,19 +89,37 @@ export function ChoiceCard({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex-1 rounded-2xl border px-6 py-8 text-left transition-colors ${
+      className={`flex-1 rounded-2xl border text-left transition-colors ${
+        compact ? "px-5 py-4" : "px-6 py-8"
+      } ${
         active
           ? "border-accent bg-accent/10"
           : "border-surface-border hover:border-foreground/40"
       }`}
     >
       <span
-        className={`font-display text-2xl ${active ? "text-signal-bright" : "text-foreground"}`}
+        className={`font-display ${compact ? "text-lg" : "text-2xl"} ${
+          active ? "text-signal-bright" : "text-foreground"
+        }`}
       >
         {title}
       </span>
-      <p className="mt-2 text-sm text-foreground-muted">{description}</p>
+      <p className={`text-sm text-foreground-muted ${compact ? "mt-1" : "mt-2"}`}>{description}</p>
     </button>
+  );
+}
+
+/** Two-column layout for the 4-option steps. */
+export function ChoiceGrid({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>;
+}
+
+/** Small caps heading used when a step holds two questions. */
+export function StepLegend({ children }: { children: ReactNode }) {
+  return (
+    <span className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-foreground-muted">
+      {children}
+    </span>
   );
 }
 

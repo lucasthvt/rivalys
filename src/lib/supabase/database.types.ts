@@ -14,6 +14,9 @@ export type Json =
 
 export type SaasType = "b2b" | "b2c";
 export type SubscriptionTier = "starter" | "pro" | "growth";
+export type ProductStage = "idea" | "launched" | "growing" | "mature";
+export type PricingModel = "freemium" | "free_trial" | "subscription" | "one_time";
+export type MainGoal = "acquisition" | "conversion" | "retention" | "pricing";
 export type TargetType = "own_saas" | "competitor";
 export type GapCategory = "pricing" | "positioning" | "reviews" | "social_presence";
 export type GapPriority = "high" | "medium" | "low";
@@ -44,6 +47,10 @@ export interface Database {
           industry: string;
           product_description: string | null;
           saas_url: string;
+          product_stage: ProductStage | null;
+          pricing_model: PricingModel | null;
+          main_goal: MainGoal | null;
+          target_customer: string | null;
           subscription_tier: SubscriptionTier;
           onboarding_completed: boolean;
           created_at: string;
@@ -55,6 +62,10 @@ export interface Database {
           industry: string;
           product_description?: string | null;
           saas_url: string;
+          product_stage?: ProductStage | null;
+          pricing_model?: PricingModel | null;
+          main_goal?: MainGoal | null;
+          target_customer?: string | null;
           subscription_tier?: SubscriptionTier;
           onboarding_completed?: boolean;
           created_at?: string;
@@ -66,6 +77,10 @@ export interface Database {
           industry?: string;
           product_description?: string | null;
           saas_url?: string;
+          product_stage?: ProductStage | null;
+          pricing_model?: PricingModel | null;
+          main_goal?: MainGoal | null;
+          target_customer?: string | null;
           subscription_tier?: SubscriptionTier;
           onboarding_completed?: boolean;
           created_at?: string;
@@ -79,6 +94,7 @@ export interface Database {
           name: string | null;
           url: string;
           is_primary: boolean;
+          url_changed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -87,6 +103,7 @@ export interface Database {
           name?: string | null;
           url: string;
           is_primary?: boolean;
+          url_changed_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -95,6 +112,7 @@ export interface Database {
           name?: string | null;
           url?: string;
           is_primary?: boolean;
+          url_changed_at?: string | null;
           created_at?: string;
         };
         Relationships: [

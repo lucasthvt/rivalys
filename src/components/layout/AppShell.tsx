@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { Sidebar } from "./Sidebar";
+import type { SubscriptionTier } from "@/lib/supabase/database.types";
 
 /**
  * App-shell layout for the authenticated screens (/dashboard, /tasks).
@@ -15,7 +16,17 @@ import { Sidebar } from "./Sidebar";
  * server-rendered — they arrive as a prop, already resolved, and are never
  * re-rendered on the client.
  */
-export function AppShell({ userLabel, children }: { userLabel: string; children: ReactNode }) {
+export function AppShell({
+  userLabel,
+  tier,
+  children,
+}: {
+  userLabel: string;
+  /** Palier d'abonnement, affiché en pastille sous le nom. Optionnel : une route
+   *  qui ne le lit pas n'affiche simplement pas la pastille. */
+  tier?: SubscriptionTier | null;
+  children: ReactNode;
+}) {
   // Navigating from inside the drawer closes it from the link's own click handler
   // (Sidebar calls onClose), rather than from an effect watching the pathname: it's a
   // user event, not state that needs syncing to an external system.
@@ -65,7 +76,12 @@ export function AppShell({ userLabel, children }: { userLabel: string; children:
         />
       )}
 
-      <Sidebar userLabel={userLabel} drawerOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <Sidebar
+        userLabel={userLabel}
+        tier={tier}
+        drawerOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
 
       <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
     </div>

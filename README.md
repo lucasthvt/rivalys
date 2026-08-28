@@ -65,6 +65,23 @@ npx supabase db push
 npx supabase gen types typescript --linked > src/lib/supabase/database.types.ts
 ```
 
+## Accès payant (verrou des résultats)
+
+L'analyse tourne pour tout le monde, dès la fin de l'onboarding. Ce qu'elle a trouvé — score,
+écarts, comparatif, statistiques — n'est affiché qu'aux paliers payants ; un compte au palier
+gratuit voit que l'analyse a eu lieu, sa date et le nombre d'écarts détectés, mais pas leur
+contenu (les données ne sont pas envoyées au navigateur, voir
+`src/components/billing/locked-results.tsx`).
+
+La règle est dans `src/lib/billing/access.ts` : `starter` = gratuit, `pro` et `growth` = ouvert.
+
+La facturation n'est pas branchée. Pour ouvrir un compte pendant le développement, passe son
+palier à la main depuis le SQL editor Supabase :
+
+```sql
+update profiles set subscription_tier = 'pro' where id = '<user-uuid>';
+```
+
 ## Clé API Anthropic
 
 Utilisée côté serveur uniquement (`src/lib/compare/extract.ts`) pour extraire les données de pricing des pages web au format JSON structuré.

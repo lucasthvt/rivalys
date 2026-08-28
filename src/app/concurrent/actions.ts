@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { canonicalHostname, canonicalUrl, isLikelyUrl, normalizeUrl } from "@/lib/url";
+import {
+  checkCompetitorChange,
+  COMPETITOR_CHANGE_COOLDOWN_DAYS,
+  formatNextChangeDate,
+} from "@/lib/billing/competitor-slots";
 
 export type SetCompetitorResult = { ok: true } | { ok: false; error: string };
 
@@ -66,7 +71,7 @@ export async function setCompetitor(url: string): Promise<SetCompetitorResult> {
 
   const { data: existing, error: existingError } = await supabase
     .from("competitors")
-    .select("id, url")
+    .select("id, url, url_changed_at")
     .eq("user_id", user.id)
     .eq("is_primary", true)
     .order("created_at", { ascending: false })
@@ -95,6 +100,27 @@ export async function setCompetitor(url: string): Promise<SetCompetitorResult> {
   const urlChanged = canonicalUrl(existing.url) !== canonicalUrl(nextUrl);
 
   if (urlChanged) {
+    // Une place de concurrent se remplace, mais pas en boucle : sans ce délai,
+    // une place unique servirait de scanner illimité, et chaque remplacement
+    // relance un cycle d'analyse payant.
+    //
+    // Comme la limite de 24 h sur /api/compare, le délai ne s'applique qu'en
+    // production : en développement il rendrait le produit intestable.
+    const cooldownEnforced = process.env.NODE_ENV === "production";
+    const allowance = checkCompetitorChange(
+      existing.url_changed_at ? new Date(existing.url_changed_at) : null,
+      new Date(),
+    );
+
+    if (cooldownEnforced && !allowance.allowed) {
+      return {
+        ok: false,
+        error:
+          `Ton concurrent a déjà été remplacé il y a moins de ${COMPETITOR_CHANGE_COOLDOWN_DAYS} jours. ` +
+          `Prochain changement possible le ${formatNextChangeDate(allowance.nextChangeAt)}.`,
+      };
+    }
+
     // The rows below describe the OLD competitor. Once the URL points
     // somewhere else they stop being true, and they are attributed to the
     // competitor the user now tracks — so they cannot silently survive the
@@ -154,7 +180,11 @@ export async function setCompetitor(url: string): Promise<SetCompetitorResult> {
   // the caller's rows; the explicit user_id filter is defense in depth.
   const { error: updateError } = await supabase
     .from("competitors")
-    .update(urlChanged ? { url: nextUrl, name: null } : { url: nextUrl })
+    .update(
+      urlChanged
+        ? { url: nextUrl, name: null, url_changed_at: new Date().toISOString() }
+        : { url: nextUrl },
+    )
     .eq("id", existing.id)
     .eq("user_id", user.id);
 

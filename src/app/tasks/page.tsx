@@ -5,6 +5,8 @@ import { GapListItem } from "@/components/tasks/gap-list-item";
 import { EmptyState } from "@/components/tasks/empty-state";
 import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { AppShell } from "@/components/layout/AppShell";
+import { LockedResults, SkeletonList } from "@/components/billing/locked-results";
+import { hasPaidAccess } from "@/lib/billing/access";
 
 export default async function TasksPage() {
   const supabase = await createClient();
@@ -19,7 +21,7 @@ export default async function TasksPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarding_completed, first_name")
+    .select("onboarding_completed, first_name, subscription_tier")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -28,6 +30,7 @@ export default async function TasksPage() {
   }
 
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
+  const unlocked = hasPaidAccess(profile?.subscription_tier);
 
   const [gapsRes, competitorRes] = await Promise.all([
     supabase
@@ -54,7 +57,7 @@ export default async function TasksPage() {
   const noCompetitor = !competitorRes.data && !competitorRes.error;
 
   return (
-    <AppShell userLabel={userLabel}>
+    <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
       <div className="app-ambient relative mx-auto max-w-3xl px-6 py-16 sm:px-8">
         <header className="mb-10 border-b border-surface-border pb-6">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
@@ -80,7 +83,18 @@ export default async function TasksPage() {
             description={error.message}
           />
         ) : noCompetitor ? (
+          // Passe avant le verrou : sans concurrent il n'y a rien à déverrouiller,
+          // et l'action qui débloque le produit est d'en ajouter un.
           <NoCompetitorState description="Les tâches sont générées à partir des écarts détectés face à un concurrent. Sans concurrent suivi, il n'y a rien à comparer — et on n'invente pas de conseils génériques." />
+        ) : !unlocked ? (
+          // Le nombre d'écarts reste annoncé dans l'en-tête ci-dessus : ce qui
+          // est réservé, c'est leur contenu, pas le fait qu'ils existent.
+          <LockedResults
+            title="Tâches réservées aux offres payantes"
+            description="Chaque écart détecté devient une action concrète à mener. Le détail des actions s'ouvre avec une offre payante."
+          >
+            <SkeletonList rows={4} />
+          </LockedResults>
         ) : gaps.length === 0 ? (
           <EmptyState
             title="Aucun écart détecté pour l'instant"

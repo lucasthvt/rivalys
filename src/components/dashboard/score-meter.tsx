@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PRIORITY_LABEL } from "@/components/tasks/priority";
 import { explainScore, MAX_SCORE, type GapPriorityCounts } from "@/lib/compare/score";
+import { ScoreRing } from "./score-ring";
 
 /**
  * L'élément principal du tableau de bord : le score lu comme un relevé, pas comme une note.
@@ -18,6 +19,7 @@ export function ScoreMeter({
   counts,
   analysed,
   scoreFromHistory,
+  previousScoreFromHistory,
 }: {
   counts: GapPriorityCounts;
   /**
@@ -38,9 +40,23 @@ export function ScoreMeter({
    * direct — voir plus bas. Null tant qu'aucune analyse n'a tourné.
    */
   scoreFromHistory: number | null;
+  /**
+   * Avant-dernier score enregistré. Sert au delta affiché dans l'anneau, qui
+   * compare donc deux analyses réelles — jamais le score recalculé en direct
+   * (qui bouge dès qu'une tâche est fermée) contre un point d'historique.
+   */
+  previousScoreFromHistory: number | null;
 }) {
   const breakdown = explainScore(counts);
   const hasRun = analysed;
+
+  // Deux analyses réelles requises. Un delta calculé contre un seul point
+  // d'historique n'aurait rien à comparer, et le déduire du score en direct
+  // mélangerait deux mesures différentes (voir la note en bas de ce composant).
+  const delta =
+    hasRun && scoreFromHistory !== null && previousScoreFromHistory !== null
+      ? scoreFromHistory - previousScoreFromHistory
+      : null;
 
   // Part réellement occupée par les pénalités, une fois ramenée à l'échelle. Sans cet
   // écrêtage, un total de pénalités supérieur à 100 produirait des segments dont la somme
@@ -69,28 +85,37 @@ export function ScoreMeter({
       aria-labelledby="score-meter-title"
       className="panel-focal px-5 py-7 sm:px-8 sm:py-9"
     >
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2
-            id="score-meter-title"
-            className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-muted/70"
-          >
-            Terrain tenu
-          </h2>
-          <p className="mt-2 flex items-baseline gap-2">
-            <span className="font-mono text-[68px] leading-none tracking-tight text-foreground sm:text-[80px]">
-              {hasRun ? breakdown.score : "—"}
-            </span>
-            <span className="font-mono text-sm text-foreground-muted">/ {MAX_SCORE}</span>
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-8">
+        <ScoreRing score={hasRun ? breakdown.score : null} delta={delta} />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2
+              id="score-meter-title"
+              className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-muted/70"
+            >
+              Terrain tenu
+            </h2>
+            <Link
+              href="/score"
+              className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            >
+              Le calcul détaillé →
+            </Link>
+          </div>
+
+          <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
+            {!hasRun
+              ? "Ce concurrent n'a pas encore été analysé. Lance une analyse pour obtenir un score."
+              : delta === null
+                ? "Une seule analyse enregistrée pour l'instant : le delta apparaîtra à la prochaine."
+                : delta === 0
+                  ? "Score identique à l'analyse précédente."
+                  : delta > 0
+                    ? `${delta} point${delta > 1 ? "s" : ""} repris depuis l'analyse précédente.`
+                    : `${Math.abs(delta)} point${Math.abs(delta) > 1 ? "s" : ""} perdu${Math.abs(delta) > 1 ? "s" : ""} depuis l'analyse précédente.`}
           </p>
         </div>
-
-        <Link
-          href="/score"
-          className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-        >
-          Le calcul détaillé →
-        </Link>
       </div>
 
       <div
@@ -123,12 +148,8 @@ export function ScoreMeter({
         )}
       </div>
 
-      {!hasRun ? (
-        <p className="mt-4 text-sm text-foreground-muted">
-          Ce concurrent n&rsquo;a pas encore été analysé. Lance une analyse pour obtenir un
-          score.
-        </p>
-      ) : lostSegments.length === 0 ? (
+      {/* Le cas « jamais analysé » est déjà dit à côté de l'anneau. */}
+      {!hasRun ? null : lostSegments.length === 0 ? (
         <p className="mt-4 text-sm text-foreground-muted">
           Aucun écart ouvert. Le score baissera si une prochaine analyse en détecte un.
         </p>

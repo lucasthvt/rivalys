@@ -11,11 +11,18 @@ import { FaceOff } from "@/components/dashboard/face-off";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { RefreshButton } from "@/components/dashboard/refresh-button";
 import { GapStats } from "@/components/dashboard/gap-stats";
+import { CategoryBars } from "@/components/dashboard/category-bars";
 import { parseExtractedData, parseObservationFlags } from "@/components/dashboard/extracted-data";
 import { CoverageNoticePanel } from "@/components/dashboard/coverage-notice";
 import { AppShell } from "@/components/layout/AppShell";
+import {
+  LockedResults,
+  SkeletonList,
+  SkeletonPanel,
+} from "@/components/billing/locked-results";
 import { assessPricingCoverage } from "@/lib/compare/comparability";
 import { countByPriority } from "@/lib/compare/score";
+import { hasPaidAccess } from "@/lib/billing/access";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -30,7 +37,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarding_completed, first_name")
+    .select("onboarding_completed, first_name, subscription_tier")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -39,6 +46,7 @@ export default async function DashboardPage() {
   }
 
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
+  const unlocked = hasPaidAccess(profile?.subscription_tier);
 
   const [gapsRes, allGapsRes, scoreRes, competitorRes] = await Promise.all([
     supabase
@@ -65,7 +73,7 @@ export default async function DashboardPage() {
   // so surface a clear error state instead of a fabricated-looking dashboard.
   if (gapsRes.error || scoreRes.error) {
     return (
-      <AppShell userLabel={userLabel}>
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
           <DashboardHeader />
           <EmptyState
@@ -80,6 +88,9 @@ export default async function DashboardPage() {
   const gaps = sortGapsByPriority(gapsRes.data ?? []);
   const scorePoints = scoreRes.data ?? [];
   const latestScore = scorePoints.at(-1)?.score ?? null;
+  // Avant-dernier point : le delta montré dans l'anneau compare deux analyses
+  // réelles, jamais le score recalculé en direct contre l'historique.
+  const previousScore = scorePoints.length >= 2 ? scorePoints.at(-2)!.score : null;
   const competitor = competitorRes.data;
   const competitorLoadError = Boolean(competitorRes.error);
 
@@ -89,7 +100,7 @@ export default async function DashboardPage() {
   // is the one action that unblocks the whole product.
   if (!competitor && !competitorLoadError) {
     return (
-      <AppShell userLabel={userLabel}>
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
           <DashboardHeader />
           <NoCompetitorState description="Le comparateur a besoin d'un second site pour trouver le moindre écart. Ajoute le concurrent que tu veux suivre, puis lance une première analyse." />
@@ -135,6 +146,59 @@ export default async function DashboardPage() {
   const priorityActions = gaps.slice(0, 3);
   const highCount = gaps.filter((g) => g.priority === "high").length;
 
+  // Palier gratuit : l'analyse a tourné, ses résultats restent fermés. Seuls
+  // les agrégats sans contenu sortent d'ici (analyse effectuée, date, nombre
+  // d'écarts) ; ni les écarts eux-mêmes, ni le comparatif, ni le score ne sont
+  // envoyés au navigateur — voir components/billing/locked-results.tsx.
+  if (!unlocked) {
+    const analysedAt = competitorSnapshotRes.data?.fetched_at ?? null;
+
+    return (
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
+        <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
+          <DashboardHeader />
+
+          <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <MetricCard
+              label="Analyse"
+              value={analysedAt ? "Terminée" : "Pas encore lancée"}
+              sublabel={analysedAt ? formatAnalysisDate(analysedAt) : "Lance-la pour comparer"}
+            />
+            <MetricCard
+              label="Écarts détectés"
+              value={analysedAt ? String(gaps.length) : "—"}
+              sublabel={analysedAt ? "Détail réservé aux offres payantes" : undefined}
+            />
+            <MetricCard
+              label="Concurrent suivi"
+              value={competitorLabel}
+              href="/concurrent"
+              linkLabel="Changer"
+            />
+          </div>
+
+          <LockedResults
+            description={
+              analysedAt
+                ? `L'analyse face à ${competitorLabel} est terminée et ${gaps.length} écart${
+                    gaps.length > 1 ? "s ont" : " a"
+                  } été détecté${gaps.length > 1 ? "s" : ""}. Le détail — score, comparatif des tarifs et actions à mener — s'ouvre avec une offre payante.`
+                : "Le détail des résultats — score, comparatif des tarifs et actions à mener — s'ouvre avec une offre payante."
+            }
+          >
+            <div className="flex flex-col gap-5">
+              <SkeletonPanel height="h-40" />
+              <div className="panel px-5 py-5">
+                <SkeletonList rows={3} />
+              </div>
+              <SkeletonPanel height="h-52" />
+            </div>
+          </LockedResults>
+        </div>
+      </AppShell>
+    );
+  }
+
   // Un score n'existe que si le concurrent actuellement suivi a été analysé. Changer de
   // concurrent supprime ses relevés (voir app/concurrent/actions.ts), donc cette valeur
   // repasse à false et le score redevient « — » plutôt que d'afficher 100 : zéro écart
@@ -163,7 +227,7 @@ export default async function DashboardPage() {
       : null;
 
   return (
-    <AppShell userLabel={userLabel}>
+    <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
       <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
         <header className="mb-10 flex flex-col gap-6 border-b border-surface-border pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -190,6 +254,7 @@ export default async function DashboardPage() {
               counts={countByPriority(gaps)}
               analysed={analysedForCurrentCompetitor}
               scoreFromHistory={latestScore}
+              previousScoreFromHistory={previousScore}
             />
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-1">
@@ -208,6 +273,17 @@ export default async function DashboardPage() {
             />
           </div>
         </div>
+
+        <section className="panel mb-5 overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
+              Où le terrain se perd
+            </h2>
+          </div>
+          <div className="px-5 py-5">
+            <CategoryBars gaps={gaps} analysed={analysedForCurrentCompetitor} />
+          </div>
+        </section>
 
         <section className="panel mb-5 overflow-hidden">
           <div className="border-b border-white/[0.06] px-5 py-4">
@@ -297,6 +373,17 @@ function DashboardHeader() {
       <h1 className="font-display mt-2 text-2xl sm:text-[28px]">Où tu perds du terrain</h1>
     </header>
   );
+}
+
+/** "Analysé le 28 août 2026" — la seule information de date montrée au palier gratuit. */
+function formatAnalysisDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Date inconnue";
+  return `Analysé le ${date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })}`;
 }
 
 // Mirrors the fallback used by /api/compare (route.ts) so the competitor's

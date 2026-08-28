@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { createClient } from "@/lib/supabase/client";
+import type { SubscriptionTier } from "@/lib/supabase/database.types";
 
 // Toute entrée ajoutée ici doit l'être aussi dans HIDE_NAV_PREFIXES (NavBar.tsx),
 // sinon la nav marketing se superpose à cette sidebar sur la route concernée.
@@ -34,12 +35,20 @@ const NAV_ITEMS = [
  * sidebar. `invisible md:visible` is the same guarantee, scoped to the breakpoint
  * where it applies.
  */
+const TIER_LABEL: Record<SubscriptionTier, string> = {
+  starter: "Gratuit",
+  pro: "Pro",
+  growth: "Growth",
+};
+
 export function Sidebar({
   userLabel,
+  tier,
   drawerOpen,
   onClose,
 }: {
   userLabel: string;
+  tier?: SubscriptionTier | null;
   drawerOpen: boolean;
   onClose: () => void;
 }) {
@@ -100,9 +109,27 @@ export function Sidebar({
       </nav>
 
       <div className="border-t border-surface-border px-3 py-4">
-        <p className="truncate px-3 text-sm text-paper" title={userLabel}>
-          {userLabel}
-        </p>
+        <div className="flex items-center justify-between gap-2 px-3">
+          <p className="truncate text-sm text-paper" title={userLabel}>
+            {userLabel}
+          </p>
+          {/*
+            Le palier est une information factuelle sur le compte, pas une
+            récompense : même pastille discrète pour « Gratuit » que pour
+            « Pro », seule la teinte change.
+          */}
+          {tier ? (
+            <span
+              className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] ${
+                tier === "starter"
+                  ? "border-surface-border text-mist"
+                  : "border-signal-bright/40 text-signal-bright"
+              }`}
+            >
+              {TIER_LABEL[tier]}
+            </span>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={handleSignOut}

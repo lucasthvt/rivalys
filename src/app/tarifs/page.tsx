@@ -4,19 +4,29 @@ import Link from "next/link";
 const PRICING_TIERS: { name: string; tagline: string; features: string[]; highlighted?: boolean }[] = [
   {
     name: "Starter",
-    tagline: "Pour tester le comparateur sur ton premier concurrent.",
-    features: ["1 concurrent suivi", "Actualisation manuelle", "Tableau de bord + tâches"],
+    tagline: "Gratuit. L'analyse tourne, ses résultats restent fermés.",
+    features: [
+      "1 concurrent suivi",
+      "Première analyse lancée",
+      "Nombre d'écarts détectés",
+      "Détail des résultats verrouillé",
+    ],
   },
   {
     name: "Pro",
     tagline: "Pour les fondateurs qui veulent un suivi plus soutenu.",
-    features: ["1 concurrent suivi", "Actualisation manuelle", "Historique de score détaillé"],
+    features: [
+      "1 concurrent suivi, remplaçable tous les 30 jours",
+      "Tout le détail des écarts",
+      "Score et comparatif des tarifs",
+      "Historique de score détaillé",
+    ],
     highlighted: true,
   },
   {
     name: "Growth",
     tagline: "Pour aller plus loin — plusieurs concurrents, bientôt.",
-    features: ["Plusieurs concurrents (à venir)", "Actualisation manuelle", "Support prioritaire"],
+    features: ["Tout le contenu de Pro", "3 concurrents suivis (à venir)", "Support prioritaire"],
   },
 ];
 

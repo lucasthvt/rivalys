@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
+import { LockedResults, SkeletonPanel } from "@/components/billing/locked-results";
+import { hasPaidAccess } from "@/lib/billing/access";
 import { EmptyState } from "@/components/tasks/empty-state";
 import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { GapStats } from "@/components/dashboard/gap-stats";
 import { ScoreChart } from "@/components/dashboard/score-chart";
+import { AnalysisStats } from "@/components/dashboard/analysis-stats";
 
 /**
  * Vue agrégée sur tout l'historique d'écarts de l'utilisateur.
@@ -26,7 +29,7 @@ export default async function StatistiquesPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarding_completed, first_name")
+    .select("onboarding_completed, first_name, subscription_tier")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -37,7 +40,7 @@ export default async function StatistiquesPage() {
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
 
   const [allGapsRes, scoreRes, competitorRes] = await Promise.all([
-    supabase.from("detected_gaps").select("category, status, resolved_at"),
+    supabase.from("detected_gaps").select("category, status, priority, created_at, resolved_at"),
     supabase.from("score_history").select("*").order("recorded_at", { ascending: true }),
     supabase
       .from("competitors")
@@ -70,7 +73,7 @@ export default async function StatistiquesPage() {
   // jamais tourné.
   if (!competitorRes.data && !competitorRes.error) {
     return (
-      <AppShell userLabel={userLabel}>
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
           <Header />
           <NoCompetitorState description="L'historique se remplit à chaque analyse. Ajoute un concurrent pour lancer la première." />
@@ -79,8 +82,29 @@ export default async function StatistiquesPage() {
     );
   }
 
+  // Palier gratuit : les agrégats restent fermés au même titre que le reste des
+  // résultats d'analyse. Aucun compteur réel n'est rendu ci-dessous.
+  if (!hasPaidAccess(profile?.subscription_tier)) {
+    return (
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
+        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
+          <Header />
+          <LockedResults
+            title="Statistiques réservées aux offres payantes"
+            description="Le bilan de tes écarts et l'évolution de ton score dans le temps s'ouvrent avec une offre payante."
+          >
+            <div className="flex flex-col gap-5">
+              <SkeletonPanel height="h-44" />
+              <SkeletonPanel height="h-56" />
+            </div>
+          </LockedResults>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell userLabel={userLabel}>
+    <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
       <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
         <Header />
 
@@ -98,6 +122,27 @@ export default async function StatistiquesPage() {
               />
             ) : (
               <GapStats allGaps={allGapsRes.data ?? []} />
+            )}
+          </div>
+        </section>
+
+        <section className="panel mb-5 overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
+              Ton rythme
+            </h2>
+          </div>
+          <div className="px-5 py-5">
+            {allGapsRes.error || scoreRes.error ? (
+              <EmptyState
+                title="Impossible de charger ces chiffres"
+                description={(allGapsRes.error ?? scoreRes.error)?.message}
+              />
+            ) : (
+              <AnalysisStats
+                gaps={allGapsRes.data ?? []}
+                scorePoints={scoreRes.data ?? []}
+              />
             )}
           </div>
         </section>

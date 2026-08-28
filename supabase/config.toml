@@ -319,6 +319,22 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+
+# Sign in with Google. Create an OAuth client (type "Web application") in
+# Google Cloud Console, set the authorized redirect URI to
+# <supabase-api-url>/auth/v1/callback (http://127.0.0.1:54321/auth/v1/callback
+# locally), put the client ID below and the secret in supabase/.env, then flip
+# `enabled` to true. In production this is configured in the Supabase
+# dashboard instead (Authentication > Providers).
+[auth.external.google]
+enabled = false
+client_id = ""
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+# Required for Google sign in against the local stack.
+skip_nonce_check = true
 [auth.external.apple]
 enabled = false
 client_id = ""

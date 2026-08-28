@@ -23,13 +23,13 @@ export function GapActions({ gapId }: { gapId: string }) {
   }
 
   return (
-    <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
+    <div className="flex flex-col items-start gap-1.5">
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => run("done")}
           disabled={isPending}
-          className="border border-surface-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground-muted transition-colors hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full border border-surface-border px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground transition-colors hover:border-accent-strong hover:bg-accent/10 hover:text-signal-bright disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending === "done" ? "…" : "Fait"}
         </button>
@@ -37,12 +37,12 @@ export function GapActions({ gapId }: { gapId: string }) {
           type="button"
           onClick={() => run("dismiss")}
           disabled={isPending}
-          className="border border-surface-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground-muted transition-colors hover:border-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground-muted/70 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending === "dismiss" ? "…" : "Ignorer"}
         </button>
       </div>
-      {error && <p className="max-w-[200px] text-right text-xs text-flare">{error}</p>}
+      {error && <p className="max-w-sm text-xs text-flare">{error}</p>}
     </div>
   );
 }

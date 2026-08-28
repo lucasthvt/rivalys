@@ -47,7 +47,7 @@ export function MetricCard({
   /** Visible affordance for the link, so the card doesn't rely on hover alone. */
   linkLabel?: string;
 }) {
-  const base = "panel block px-5 py-4";
+  const base = "panel flex h-full flex-col justify-center px-5 py-4";
 
   if (!href) {
     return (

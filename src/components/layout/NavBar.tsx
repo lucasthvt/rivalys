@@ -62,18 +62,21 @@ export function NavBar({ isAuthenticated }: { isAuthenticated: boolean }) {
               Tableau de bord
             </Link>
           ) : (
+            // Libellés explicites plutôt qu'un « Commencer » ambigu : le pill
+            // occupe la même place que « Tableau de bord » une fois connecté,
+            // donc il doit dire où il mène.
             <>
               <Link
                 href="/login"
-                className="hidden px-3 text-sm font-medium text-mist transition-colors hover:text-paper sm:inline-block"
+                className="whitespace-nowrap px-2 text-[0.8125rem] font-medium text-mist transition-colors hover:text-paper sm:px-3 sm:text-sm"
               >
-                Connexion
+                Se connecter
               </Link>
               <Link
                 href="/signup"
                 className="inline-flex h-9 items-center justify-center rounded-full bg-signal px-4 text-sm font-semibold text-paper shadow-signal-sm transition-colors duration-150 hover:bg-signal-bright hover:text-void"
               >
-                Commencer
+                S&apos;inscrire
               </Link>
             </>
           )}

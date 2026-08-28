@@ -11,6 +11,7 @@ import {
   authInfoBox,
   authPrimaryButton,
 } from "../login/_components/AuthField";
+import { AuthDivider, OAuthButtons } from "../login/_components/OAuthButtons";
 
 function mapSignupError(message: string): string {
   if (message.includes("Password should be at least")) {
@@ -90,40 +91,50 @@ export default function SignupPage() {
               {info}
             </p>
           ) : (
-            <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5" noValidate>
+            <>
               {error ? (
-                <p className={authErrorBox} role="alert">
+                <p className={`${authErrorBox} mt-8`} role="alert">
                   {error}
                 </p>
               ) : null}
 
-              <AuthField
-                id="email"
-                label="Email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="toi@exemple.com"
-              />
+              <div className="mt-8">
+                <OAuthButtons onError={setError} />
+              </div>
 
-              <AuthField
-                id="password"
-                label="Mot de passe"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="6 caractères minimum"
-              />
+              <div className="mt-6">
+                <AuthDivider />
+              </div>
 
-              <button type="submit" className={`${authPrimaryButton} mt-2`} disabled={loading}>
-                {loading ? "Création..." : "Créer mon compte"}
-              </button>
-            </form>
+              <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5" noValidate>
+                <AuthField
+                  id="email"
+                  label="Email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="toi@exemple.com"
+                />
+
+                <AuthField
+                  id="password"
+                  label="Mot de passe"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="6 caractères minimum"
+                />
+
+                <button type="submit" className={`${authPrimaryButton} mt-2`} disabled={loading}>
+                  {loading ? "Création..." : "Créer mon compte"}
+                </button>
+              </form>
+            </>
           )}
 
           <p className="mt-8 text-sm text-foreground-muted">

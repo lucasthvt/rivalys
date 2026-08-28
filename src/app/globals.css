@@ -255,6 +255,68 @@ body {
    Les hachures disent « ce terrain existe, tu ne l'occupes pas », là où un
    vide dirait seulement « il manque quelque chose ».
    ========================================================================== */
+/* ==========================================================================
+   Surfaces de l'application
+   --------------------------------------------------------------------------
+   Les écrans authentifiés empilaient des rectangles à angles vifs, tous à la
+   même élévation et à la même densité : lisible, mais plat et administratif,
+   alors que la landing du même produit a de la profondeur et de la lumière.
+   Ces utilitaires ramènent ce vocabulaire dans l'app.
+
+   Un panneau n'est pas un simple cadre : bord adouci, dégradé de haut en bas
+   qui simule une lumière rasante, filet clair sur l'arête supérieure, et
+   ombre portée large et très diffuse. C'est cette combinaison — pas le rayon
+   des coins seul — qui fait la différence entre « cadre » et « objet ».
+   ========================================================================== */
+.panel {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-paper) 8%, transparent);
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-paper) 4%, transparent),
+      transparent 45%
+    ),
+    var(--color-void-raised);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in srgb, var(--color-paper) 7%, transparent),
+    0 24px 48px -32px rgb(0 0 0 / 0.8);
+}
+
+/* Le panneau qui porte l'écran : même construction, plus la lueur bleue de la
+   landing. Réservé à un seul élément par page — c'est ce qui en fait un point
+   focal plutôt qu'une décoration. */
+.panel-focal {
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--color-signal-bright) 22%, transparent);
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-signal) 12%, transparent),
+      transparent 55%
+    ),
+    var(--color-void-raised);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in srgb, var(--color-paper) 9%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-signal) 18%, transparent),
+    0 28px 64px -36px color-mix(in srgb, var(--color-signal) 70%, transparent);
+}
+
+/* Halo ambiant en haut de page, repris du hero de la landing. Purement
+   atmosphérique, sous le contenu, sans interception de pointeur. */
+.app-ambient::before {
+  content: "";
+  position: absolute;
+  inset: -8rem 0 auto 0;
+  height: 32rem;
+  pointer-events: none;
+  background: radial-gradient(
+    46rem 20rem at 30% 0,
+    color-mix(in srgb, var(--color-signal) 38%, transparent),
+    transparent 72%
+  );
+}
+
 .meter-hatch {
   background-image: repeating-linear-gradient(
     -45deg,

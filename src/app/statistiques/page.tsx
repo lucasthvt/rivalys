@@ -71,7 +71,7 @@ export default async function StatistiquesPage() {
   if (!competitorRes.data && !competitorRes.error) {
     return (
       <AppShell userLabel={userLabel}>
-        <div className="mx-auto max-w-4xl px-6 py-16 sm:px-8">
+        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
           <Header />
           <NoCompetitorState description="L'historique se remplit à chaque analyse. Ajoute un concurrent pour lancer la première." />
         </div>
@@ -81,11 +81,11 @@ export default async function StatistiquesPage() {
 
   return (
     <AppShell userLabel={userLabel}>
-      <div className="mx-auto max-w-4xl px-6 py-16 sm:px-8">
+      <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
         <Header />
 
-        <section className="mb-8 border border-surface-border bg-surface">
-          <div className="border-b border-surface-border px-5 py-4">
+        <section className="panel mb-5 overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Vue d&rsquo;ensemble
             </h2>
@@ -102,7 +102,7 @@ export default async function StatistiquesPage() {
           </div>
         </section>
 
-        <section className="border border-surface-border bg-surface px-5 py-4">
+        <section className="panel px-5 py-4">
           <h2 className="font-mono mb-4 text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
             Évolution du score
           </h2>
@@ -115,7 +115,7 @@ export default async function StatistiquesPage() {
             <ScoreChart points={scoreRes.data ?? []} />
           )}
           {!analysedForCurrentCompetitor && (scoreRes.data ?? []).length > 0 && (
-            <p className="mt-3 border-t border-surface-border pt-3 text-xs leading-relaxed text-foreground-muted/70">
+            <p className="mt-3 border-t border-white/[0.06] pt-3 text-xs leading-relaxed text-foreground-muted/70">
               Ces relevés portent sur le concurrent suivi précédemment. La courbe repartira à
               la première analyse du concurrent actuel.
             </p>

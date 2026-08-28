@@ -64,7 +64,7 @@ export default async function DashboardPage() {
   if (gapsRes.error || scoreRes.error) {
     return (
       <AppShell userLabel={userLabel}>
-        <div className="mx-auto max-w-5xl px-6 py-16 sm:px-8">
+        <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
           <DashboardHeader />
           <EmptyState
             title="Impossible de charger le tableau de bord"
@@ -88,7 +88,7 @@ export default async function DashboardPage() {
   if (!competitor && !competitorLoadError) {
     return (
       <AppShell userLabel={userLabel}>
-        <div className="mx-auto max-w-5xl px-6 py-16 sm:px-8">
+        <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
           <DashboardHeader />
           <NoCompetitorState description="Le comparateur a besoin d'un second site pour trouver le moindre écart. Ajoute le concurrent que tu veux suivre, puis lance une première analyse." />
         </div>
@@ -141,7 +141,7 @@ export default async function DashboardPage() {
 
   return (
     <AppShell userLabel={userLabel}>
-      <div className="mx-auto max-w-5xl px-6 py-16 sm:px-8">
+      <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
         <header className="mb-10 flex flex-col gap-6 border-b border-surface-border pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
@@ -155,31 +155,37 @@ export default async function DashboardPage() {
         </header>
 
         {/*
-          Le score porte seul l'emphase de l'écran : c'est le seul des trois chiffres qui
-          répond à « où j'en suis ». Les deux autres (écarts ouverts, concurrent suivi) sont
-          des faits de contexte, relégués sous la barre.
+          Grille asymétrique plutôt qu'une pile de blocs pleine largeur : le score occupe
+          deux colonnes et porte seul la lueur, les deux faits de contexte s'empilent à côté.
+          C'est la composition, pas la matière, qui établit la hiérarchie.
         */}
-        <div className="mb-8">
-          <ScoreMeter
-            counts={countByPriority(gaps)}
-            analysed={analysedForCurrentCompetitor}
-            scoreFromHistory={latestScore}
-          />
+        <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ScoreMeter
+              counts={countByPriority(gaps)}
+              analysed={analysedForCurrentCompetitor}
+              scoreFromHistory={latestScore}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-1">
+            <MetricCard
+              label="Écarts ouverts"
+              value={String(gaps.length)}
+              sublabel={gaps.length > 0 ? `${highCount} en priorité haute` : "Rien à rattraper"}
+              href="/tasks"
+              linkLabel="Voir les tâches"
+            />
+            <MetricCard
+              label="Concurrent suivi"
+              value={competitorLabel}
+              href="/concurrent"
+              linkLabel="Changer"
+            />
+          </div>
         </div>
 
-        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <MetricCard
-            label="Écarts ouverts"
-            value={String(gaps.length)}
-            sublabel={gaps.length > 0 ? `${highCount} en priorité haute` : "Rien à rattraper"}
-            href="/tasks"
-            linkLabel="Voir les tâches"
-          />
-          <MetricCard label="Concurrent suivi" value={competitorLabel} href="/concurrent" linkLabel="Changer" />
-        </section>
-
-        <section className="mb-8 border border-surface-border bg-surface">
-          <div className="border-b border-surface-border px-5 py-4">
+        <section className="panel mb-5 overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               À faire maintenant
             </h2>
@@ -209,8 +215,8 @@ export default async function DashboardPage() {
           />
         </section>
 
-        <section className="mb-8 border border-surface-border bg-surface">
-          <div className="flex items-center justify-between gap-3 border-b border-surface-border px-5 py-4">
+        <section className="panel mb-5 overflow-hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Statistiques
             </h2>
@@ -233,7 +239,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="border border-surface-border bg-surface px-5 py-4">
+        <section className="panel px-5 py-4">
           <h2 className="font-mono mb-4 text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
             Évolution du score
           </h2>
@@ -246,7 +252,7 @@ export default async function DashboardPage() {
             continuité qui n'existe pas.
           */}
           {!analysedForCurrentCompetitor && scorePoints.length > 0 && (
-            <p className="mt-3 border-t border-surface-border pt-3 text-xs leading-relaxed text-foreground-muted/70">
+            <p className="mt-3 border-t border-white/[0.06] pt-3 text-xs leading-relaxed text-foreground-muted/70">
               Ces relevés portent sur le concurrent suivi précédemment. La courbe repartira à
               la première analyse de {competitorLabel}.
             </p>

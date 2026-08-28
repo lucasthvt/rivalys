@@ -13,7 +13,7 @@ const CATEGORY_ORDER: GapCategory[] = ["pricing", "positioning", "reviews", "soc
 
 function StatTile({ value, label }: { value: string; label: string }) {
   return (
-    <div className="border border-surface-border bg-surface px-4 py-3">
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
       <p className="font-mono text-[22px] leading-tight text-foreground">{value}</p>
       <p className="mt-1 text-xs text-foreground-muted">{label}</p>
     </div>
@@ -55,7 +55,7 @@ export function GapStats({ allGaps }: GapStatsInput) {
 
   if (totalDetected === 0) {
     return (
-      <div className="border border-dashed border-surface-border px-5 py-10 text-center">
+      <div className="rounded-xl border border-dashed border-white/10 px-5 py-10 text-center">
         <p className="text-sm font-medium text-foreground">Pas encore de statistiques</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-foreground-muted">
           Elles apparaîtront dès qu&rsquo;une analyse aura détecté des écarts. Lance

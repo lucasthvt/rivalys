@@ -67,7 +67,7 @@ export function ScoreMeter({
   return (
     <section
       aria-labelledby="score-meter-title"
-      className="border border-surface-border bg-surface px-5 py-7 sm:px-8 sm:py-9"
+      className="panel-focal px-5 py-7 sm:px-8 sm:py-9"
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

@@ -65,7 +65,7 @@ export function RefreshButton() {
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="font-mono border border-surface-border bg-surface px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-foreground transition-colors hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-50"
+        className="font-mono rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-foreground transition-colors hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? "Analyse en cours…" : "Actualiser"}
       </button>

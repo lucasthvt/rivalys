@@ -41,7 +41,7 @@ function BoolValue({
 
   const tone = isBehind ? "text-flare" : isAhead ? "text-mint" : "text-foreground";
   return (
-    <span className={`${align} font-mono text-[15px] ${tone}`}>{value ? "Oui" : "Non"}</span>
+    <span className={`${align} font-mono text-xl ${tone}`}>{value ? "Oui" : "Non"}</span>
   );
 }
 
@@ -55,7 +55,7 @@ function Row({
   competitor: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 border-b border-surface-border px-5 py-5 last:border-b-0 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-6">
+    <div className="grid grid-cols-1 gap-2 border-b border-white/[0.06] px-5 py-5 last:border-b-0 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-6">
       <div className="min-w-0 sm:text-left">{own}</div>
       <div className="order-first font-mono text-[10px] uppercase tracking-[0.16em] text-foreground-muted/60 sm:order-none sm:px-2 sm:text-center">
         {label}
@@ -84,11 +84,8 @@ export function FaceOff({
   const tierAhead = Boolean(own && competitor && own.has_free_tier && !competitor.has_free_tier);
 
   return (
-    <section
-      aria-labelledby="face-off-title"
-      className="border border-surface-border bg-surface"
-    >
-      <div className="grid grid-cols-1 items-baseline gap-1 border-b border-surface-border px-5 py-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-6">
+    <section aria-labelledby="face-off-title" className="panel overflow-hidden">
+      <div className="grid grid-cols-1 items-baseline gap-1 border-b border-white/[0.06] px-5 py-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-6">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground">Toi</p>
         <h2
           id="face-off-title"
@@ -165,7 +162,7 @@ export function FaceOff({
       )}
 
       {loadError && !noData && (
-        <p className="border-t border-surface-border px-5 py-3 font-mono text-[11px] uppercase tracking-[0.12em] text-flare">
+        <p className="border-t border-white/[0.06] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.12em] text-flare">
           Erreur de chargement — données possiblement incomplètes
         </p>
       )}

@@ -46,7 +46,7 @@ export default async function ConcurrentPage() {
 
   return (
     <AppShell userLabel={userLabel}>
-      <div className="mx-auto max-w-3xl px-6 py-16 sm:px-8">
+      <div className="app-ambient relative mx-auto max-w-3xl px-6 py-16 sm:px-8">
         <header className="mb-10 border-b border-surface-border pb-6">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
             Concurrent
@@ -57,8 +57,8 @@ export default async function ConcurrentPage() {
           </p>
         </header>
 
-        <section className="mb-8 border border-surface-border bg-surface">
-          <div className="border-b border-surface-border px-5 py-4">
+        <section className="panel mb-5 overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Concurrent suivi
             </h2>
@@ -111,8 +111,8 @@ export default async function ConcurrentPage() {
           )}
         </section>
 
-        <section className="border border-surface-border bg-surface">
-          <div className="border-b border-surface-border px-5 py-4">
+        <section className="panel overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               {competitor ? "Changer de concurrent" : "Ajouter un concurrent"}
             </h2>

@@ -64,7 +64,7 @@ export default async function ScorePage() {
   if (gapsRes.error) {
     return (
       <AppShell userLabel={userLabel}>
-        <div className="mx-auto max-w-4xl px-6 py-16 sm:px-8">
+        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
           <Header />
           <EmptyState
             title="Impossible de calculer le détail du score"
@@ -81,7 +81,7 @@ export default async function ScorePage() {
   if (!competitorRes.data && !competitorRes.error) {
     return (
       <AppShell userLabel={userLabel}>
-        <div className="mx-auto max-w-4xl px-6 py-16 sm:px-8">
+        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
           <Header />
           <NoCompetitorState description="Le score mesure ce qu'il te reste à rattraper face à un concurrent. Tant qu'aucun n'est suivi, il n'y a rien à calculer." />
         </div>
@@ -151,10 +151,10 @@ export default async function ScorePage() {
 
   return (
     <AppShell userLabel={userLabel}>
-      <div className="mx-auto max-w-4xl px-6 py-16 sm:px-8">
+      <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
         <Header />
 
-        <section className="mb-8 border border-surface-border bg-surface px-5 py-6">
+        <section className="panel mb-5 px-5 py-6">
           <div className="flex flex-wrap items-baseline gap-3">
             <span className="font-mono text-[44px] leading-none text-foreground">
               {analysedForCurrentCompetitor ? breakdown.score : "—"}
@@ -184,8 +184,8 @@ export default async function ScorePage() {
         */}
         {analysedForCurrentCompetitor && (
           <>
-        <section className="mb-8 border border-surface-border bg-surface">
-          <div className="border-b border-surface-border px-5 py-4">
+        <section className="panel mb-5 overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Le calcul
             </h2>
@@ -231,7 +231,7 @@ export default async function ScorePage() {
           </table>
 
           {breakdown.clamped && (
-            <p className="border-t border-surface-border px-5 py-4 text-sm leading-relaxed text-foreground-muted">
+            <p className="border-t border-white/[0.06] px-5 py-4 text-sm leading-relaxed text-foreground-muted">
               Les pénalités totalisent {breakdown.totalLost} points, au-delà des {MAX_SCORE}{" "}
               disponibles. Le score reste donc bloqué à 0 : il ne remontera qu&rsquo;une fois les
               pénalités repassées sous {MAX_SCORE}. Ferme les écarts en priorité haute d&rsquo;abord,
@@ -240,8 +240,8 @@ export default async function ScorePage() {
           )}
         </section>
 
-        <section className="mb-8 border border-surface-border bg-surface">
-          <div className="border-b border-surface-border px-5 py-4">
+        <section className="panel mb-5 overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Les écarts qui te coûtent des points
             </h2>
@@ -258,7 +258,7 @@ export default async function ScorePage() {
               {gaps.map((gap) => (
                 <li
                   key={gap.id}
-                  className="flex flex-col gap-2 border-b border-surface-border px-5 py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+                  className="flex flex-col gap-2 border-b border-white/[0.06] px-5 py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
                 >
                   <div className="min-w-0">
                     <div className="mb-1.5 flex flex-wrap items-center gap-2">
@@ -280,14 +280,14 @@ export default async function ScorePage() {
           </>
         )}
 
-        <section className="border border-surface-border bg-surface">
-          <div className="border-b border-surface-border px-5 py-4">
+        <section className="panel overflow-hidden">
+          <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Ce que tu as et qu&rsquo;il n&rsquo;a pas
             </h2>
           </div>
 
-          <p className="border-b border-surface-border px-5 py-4 text-sm leading-relaxed text-foreground-muted">
+          <p className="border-b border-white/[0.06] px-5 py-4 text-sm leading-relaxed text-foreground-muted">
             {competitorLabel} n&rsquo;a pas de score. On observe uniquement ses pages publiques, ce
             qui ne permet pas de noter son produit sans inventer. En revanche, les mêmes règles
             appliquées dans l&rsquo;autre sens montrent où tu es devant — sans que cela n&rsquo;entre
@@ -306,7 +306,7 @@ export default async function ScorePage() {
               {advantages.map((advantage) => (
                 <li
                   key={advantage.title}
-                  className="border-b border-surface-border px-5 py-4 last:border-b-0"
+                  className="border-b border-white/[0.06] px-5 py-4 last:border-b-0"
                 >
                   <div className="mb-1.5 flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 border border-surface-border bg-mint/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-mint">

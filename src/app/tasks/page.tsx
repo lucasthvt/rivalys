@@ -55,7 +55,7 @@ export default async function TasksPage() {
 
   return (
     <AppShell userLabel={userLabel}>
-      <div className="mx-auto max-w-3xl px-6 py-16 sm:px-8">
+      <div className="app-ambient relative mx-auto max-w-3xl px-6 py-16 sm:px-8">
         <header className="mb-10 border-b border-surface-border pb-6">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
             Tâches

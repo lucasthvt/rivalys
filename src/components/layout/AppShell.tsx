@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
+import { Logo } from "@/components/brand/Logo";
 import { Sidebar } from "./Sidebar";
 
 /**
@@ -53,15 +53,7 @@ export function AppShell({ userLabel, children }: { userLabel: string; children:
             <path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
         </button>
-        <Link href="/" className="flex items-center gap-2 text-paper">
-          <span
-            aria-hidden="true"
-            className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-signal-bright to-signal font-brand text-[0.65rem] font-bold text-void"
-          >
-            R
-          </span>
-          <span className="font-brand text-[0.95rem] font-semibold tracking-tight">Rivalys</span>
-        </Link>
+        <Logo markClassName="h-5 w-5" />
       </div>
 
       {drawerOpen && (

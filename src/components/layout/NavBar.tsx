@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "@/components/brand/Logo";
 
 // Routes qui portent leur propre chrome (AppShell + Sidebar, ou panneau plein écran) :
 // y superposer la nav marketing dupliquerait le wordmark et la navigation.
@@ -31,15 +32,7 @@ export function NavBar({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-void/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2.5 text-paper">
-          <span
-            aria-hidden="true"
-            className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-signal-bright to-signal font-brand text-xs font-bold text-void shadow-signal-sm"
-          >
-            R
-          </span>
-          <span className="font-brand text-[1.05rem] font-semibold tracking-tight">Rivalys</span>
-        </Link>
+        <Logo />
 
         <nav
           aria-label="Navigation principale"

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { Logo } from "@/components/brand/Logo";
 import { createClient } from "@/lib/supabase/client";
 
 // Toute entrée ajoutée ici doit l'être aussi dans HIDE_NAV_PREFIXES (NavBar.tsx),
@@ -62,15 +63,7 @@ export function Sidebar({
       }`}
     >
       <div className="flex items-center justify-between px-5 py-5">
-        <Link href="/" onClick={onClose} className="flex items-center gap-2.5 text-paper">
-          <span
-            aria-hidden="true"
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-signal-bright to-signal font-brand text-xs font-bold text-void shadow-signal-sm"
-          >
-            R
-          </span>
-          <span className="font-brand text-[1.05rem] font-semibold tracking-tight">Rivalys</span>
-        </Link>
+        <Logo onClick={onClose} />
         <button
           type="button"
           onClick={onClose}

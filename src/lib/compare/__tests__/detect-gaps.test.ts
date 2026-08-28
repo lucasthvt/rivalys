@@ -10,6 +10,7 @@ import {
   buildPositioningGap,
   detectReviewPresenceGap,
   detectSocialPresenceGap,
+  detectThirdPartyPresenceGap,
 } from "../detect-gaps";
 import type { ExtractedSiteData } from "@/lib/supabase/database.types";
 
@@ -231,6 +232,172 @@ describe("detectSocialPresenceGap", () => {
 
   test("falls back to a generic label when competitorLabel is empty", () => {
     const gap = detectSocialPresenceGap([], ["youtube"], "   ", true);
+
+    assert.match(gap!.description, /ton concurrent/i);
+  });
+});
+
+describe("detectThirdPartyPresenceGap", () => {
+  const TIKTOK_VIDEO = "https://www.tiktok.com/@creator/video/7291234567890123456";
+  const TIKTOK_VIDEO_2 = "https://www.tiktok.com/@other/video/7299999999999999999";
+  const YOUTUBE_WATCH = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+
+  test("fires a low-priority gap when verified content exists on a platform we're not on", () => {
+    const gap = detectThirdPartyPresenceGap(
+      [{ platform: "tiktok", url: TIKTOK_VIDEO }],
+      ["linkedin"],
+      "Concurrent X",
+      true,
+    );
+
+    assert.ok(gap);
+    assert.equal(gap?.category, "social_presence");
+    // Weaker evidence than a link the competitor publishes itself — the priority says so.
+    assert.equal(gap?.priority, "low");
+    assert.match(gap!.description, /TikTok/);
+    assert.match(gap!.description, /Concurrent X/);
+  });
+
+  test("does NOT fire for a platform we already link to ourselves", () => {
+    const gap = detectThirdPartyPresenceGap(
+      [{ platform: "tiktok", url: TIKTOK_VIDEO }],
+      ["tiktok"],
+      "Concurrent X",
+      true,
+    );
+
+    assert.equal(gap, null);
+  });
+
+  test("keeps only the platforms we're missing when several are found", () => {
+    const gap = detectThirdPartyPresenceGap(
+      [
+        { platform: "tiktok", url: TIKTOK_VIDEO },
+        { platform: "youtube", url: YOUTUBE_WATCH },
+      ],
+      ["youtube"],
+      "Concurrent X",
+      true,
+    );
+
+    assert.ok(gap);
+    assert.match(gap!.description, /TikTok/);
+    assert.ok(!gap!.description.includes("YouTube"));
+    assert.ok(!gap!.description.includes(YOUTUBE_WATCH));
+  });
+
+  test("returns null when no content was found at all", () => {
+    assert.equal(detectThirdPartyPresenceGap([], [], "Concurrent X", true), null);
+  });
+
+  test("returns null when a site wasn't observed, even if the lists would produce a gap", () => {
+    // A lookup that never ran is not a lookup that found nothing, and an unread homepage is
+    // not a homepage that links to nothing.
+    assert.equal(
+      detectThirdPartyPresenceGap([{ platform: "tiktok", url: TIKTOK_VIDEO }], [], "Concurrent X", false),
+      null,
+    );
+  });
+
+  test("drops content whose URL can't be verified, even straight from storage", () => {
+    const gap = detectThirdPartyPresenceGap(
+      [
+        { platform: "tiktok", url: "https://www.tiktok.com/search?q=acme" },
+        { platform: "tiktok", url: "https://evil.example/anything" },
+      ],
+      [],
+      "Concurrent X",
+      true,
+    );
+
+    assert.equal(gap, null);
+  });
+
+  test("keeps a stable title regardless of how many platforms or links are involved", () => {
+    const one = detectThirdPartyPresenceGap(
+      [{ platform: "tiktok", url: TIKTOK_VIDEO }],
+      [],
+      "Concurrent X",
+      true,
+    );
+    const many = detectThirdPartyPresenceGap(
+      [
+        { platform: "tiktok", url: TIKTOK_VIDEO },
+        { platform: "tiktok", url: TIKTOK_VIDEO_2 },
+        { platform: "youtube", url: YOUTUBE_WATCH },
+      ],
+      [],
+      "Concurrent X",
+      true,
+    );
+
+    assert.equal(one?.title, many?.title);
+  });
+
+  test("has a title distinct from the other social_presence rule (dedup key is category+title)", () => {
+    const thirdParty = detectThirdPartyPresenceGap(
+      [{ platform: "tiktok", url: TIKTOK_VIDEO }],
+      [],
+      "Concurrent X",
+      true,
+    );
+    const social = detectSocialPresenceGap([], ["tiktok"], "Concurrent X", true);
+
+    assert.equal(thirdParty?.category, social?.category);
+    assert.notEqual(thirdParty?.title, social?.title);
+  });
+
+  test("puts every verified URL in the description so the user can check for themselves", () => {
+    const gap = detectThirdPartyPresenceGap(
+      [
+        { platform: "tiktok", url: TIKTOK_VIDEO },
+        { platform: "tiktok", url: TIKTOK_VIDEO_2 },
+        { platform: "youtube", url: YOUTUBE_WATCH },
+      ],
+      [],
+      "Concurrent X",
+      true,
+    );
+
+    assert.ok(gap!.description.includes(TIKTOK_VIDEO));
+    assert.ok(gap!.description.includes(TIKTOK_VIDEO_2));
+    assert.ok(gap!.description.includes(YOUTUBE_WATCH));
+  });
+
+  test("says plainly that the authorship is unknown", () => {
+    const gap = detectThirdPartyPresenceGap(
+      [{ platform: "tiktok", url: TIKTOK_VIDEO }],
+      [],
+      "Concurrent X",
+      true,
+    );
+
+    assert.match(gap!.description, /on ne peut pas savoir qui les a publiés/i);
+  });
+
+  test("never claims anything about the competitor's marketing strategy, nor any figure", () => {
+    const gap = detectThirdPartyPresenceGap(
+      [
+        { platform: "tiktok", url: TIKTOK_VIDEO },
+        { platform: "youtube", url: YOUTUBE_WATCH },
+      ],
+      [],
+      "Concurrent X",
+      true,
+    );
+
+    const forbidden = /clippeur|affiliation|campagne|influenceur|abonnés|vues/i;
+    assert.doesNotMatch(gap!.description, forbidden);
+    assert.doesNotMatch(gap!.title, forbidden);
+  });
+
+  test("falls back to a generic label when competitorLabel is empty", () => {
+    const gap = detectThirdPartyPresenceGap(
+      [{ platform: "tiktok", url: TIKTOK_VIDEO }],
+      [],
+      "   ",
+      true,
+    );
 
     assert.match(gap!.description, /ton concurrent/i);
   });

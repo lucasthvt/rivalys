@@ -8,6 +8,7 @@
 import type { ExtractedSiteData, GapCategory, GapPriority } from "@/lib/supabase/database.types";
 import { labelPlatforms, missingPlatforms } from "./social";
 import { labelReviewPlatforms, missingReviewPlatforms } from "./reviews";
+import { groupMentionsByPlatform } from "./social-mentions";
 
 export interface GapCandidate {
   category: GapCategory;
@@ -131,6 +132,78 @@ export function detectSocialPresenceGap(
     title: "Ton concurrent affiche des réseaux sociaux que tu n'affiches pas",
     description,
     priority: "medium",
+  };
+}
+
+/**
+ * Third-party-content rule: publicly visible content mentioning the competitor exists on a
+ * platform our own site links to no account on.
+ *
+ * WHAT THIS CLAIM IS, EXACTLY. The input is a list of verified URLs of individual posts that
+ * mention the competitor (see social-mentions.ts) — nothing more. So the description says
+ * only that: such content exists, here are the links, and the authorship is unknown. It must
+ * never say who published it, why, or on whose behalf: an official account, a paid partner,
+ * a happy customer and a detractor all produce a page that looks the same from outside. Any
+ * wording about the competitor's marketing strategy, budget or intent would be an invented
+ * claim about a competitor, which CLAUDE.md rules out flatly. Likewise no follower count, no
+ * view count, no engagement figure, no volume estimate — none of it is verifiable.
+ *
+ * Fires only for platforms where BOTH the content was verified AND `ownPlatforms` shows no
+ * link of ours: if we already publish an account there, this is not a gap for us. The claim
+ * "ton site ne renvoie vers aucun compte" is guaranteed by that same filter, so it holds on
+ * the function's own arguments. (The caller additionally restricts the lookup to platforms
+ * the competitor doesn't link to either — that's cost control and non-redundancy with
+ * detectSocialPresenceGap, and nothing in the wording below depends on it.)
+ *
+ * `bothSitesObserved` guards the usual failure mode: an empty `ownPlatforms` only means "we
+ * link to nothing" if we actually read our own homepage, and the mention list is only
+ * comparable if the lookup actually ran (see readThirdPartyMentions' null-vs-[] contract).
+ *
+ * Priority is `low` on purpose: a link a competitor puts on its own site is a deliberate,
+ * self-declared fact, while content someone else published is weaker evidence about anything
+ * the user can act on. The priority must not overstate it.
+ */
+export function detectThirdPartyPresenceGap(
+  competitorMentions: readonly { platform: string; url: string }[],
+  ownSocialPlatforms: readonly string[],
+  competitorLabel: string,
+  bothSitesObserved: boolean,
+): GapCandidate | null {
+  if (!bothSitesObserved) return null;
+
+  const owned = new Set(ownSocialPlatforms);
+  // groupMentionsByPlatform re-verifies every URL before it can reach the text below.
+  const groups = groupMentionsByPlatform(competitorMentions).filter((g) => !owned.has(g.platform));
+  if (groups.length === 0) return null;
+
+  const label = competitorLabelOrFallback(competitorLabel);
+  const list = joinNames(labelPlatforms(groups.map((g) => g.platform)));
+  const links = groups
+    .flatMap((g) => {
+      const [platformLabel] = labelPlatforms([g.platform]);
+      return g.urls.map((url) => `- ${platformLabel} : ${url}`);
+    })
+    .join("\n");
+
+  return {
+    // Static title, and deliberately worded so it can't be confused with
+    // detectSocialPresenceGap's ("Ton concurrent affiche des réseaux sociaux que tu
+    // n'affiches pas") — both gaps live in the social_presence category and the call site
+    // dedupes on category+title, so two rules sharing a title would silently suppress one
+    // another. The platform names and links live in the description for the same reason as
+    // the other rules: a title that listed them would reopen a near-duplicate gap on every
+    // new piece of content found.
+    category: "social_presence",
+    title: "Des contenus publics parlent de ton concurrent là où tu n'es pas",
+    description:
+      `Des contenus publics mentionnant ${label} ont été trouvés sur ${list}, où ton site ne ` +
+      `renvoie vers aucun compte. Ils ont été trouvés par recherche publique, pas sur le site ` +
+      `de ${label} : ils existent indépendamment des liens qu'il affiche lui-même.\n\n` +
+      `On ne peut pas savoir qui les a publiés — un compte officiel, un client, un créateur ` +
+      `indépendant ou un détracteur ne se distinguent pas de l'extérieur. Rivalys ne tranche ` +
+      `donc pas à ta place : ouvre les liens et juge par toi-même.\n\n` +
+      `Contenus relevés :\n${links}`,
+    priority: "low",
   };
 }
 

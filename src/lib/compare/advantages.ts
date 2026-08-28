@@ -99,6 +99,16 @@ export function detectSocialAdvantage(
   };
 }
 
+// Pas de miroir de detectThirdPartyPresenceGap (contenus publics de tiers mentionnant un
+// produit, voir social-mentions.ts) — volontairement.
+//
+// Deux raisons. D'abord, « des contenus parlent de toi » n'est pas un avantage qu'on puisse
+// affirmer honnêtement : on ne sait pas qui les a publiés, ni s'ils te sont favorables. Un
+// contenu qui te descend compterait alors comme un point en ta faveur, ce qui est faux.
+// Ensuite, l'affirmer demanderait de lancer la même recherche sur TON site, ce que le
+// pipeline ne fait pas (la recherche ne tourne que côté concurrent) : on ne dispose donc de
+// rien à comparer. Tant que ces deux points tiennent, ce miroir n'a pas lieu d'exister.
+
 /**
  * Miroir de detectReviewPresenceGap. Présence uniquement : aucune note, aucune étoile,
  * aucun nombre d'avis — ni ici ni ailleurs. La formulation reste limitée à l'observation

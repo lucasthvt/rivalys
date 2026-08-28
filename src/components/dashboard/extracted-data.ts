@@ -33,6 +33,13 @@ export interface ObservationFlags {
    * Same null-vs-[] contract as socialPlatforms above.
    */
   reviewPlatforms: string[] | null;
+  /**
+   * Individual pieces of public content mentioning this product, found by web lookup rather
+   * than by reading the site's own links, or null when no lookup ran or it failed. Presence
+   * of content only — never who published it, never a count. Same null-vs-[] contract as the
+   * two fields above (see readThirdPartyMentions in lib/compare/site-data.ts).
+   */
+  thirdPartyMentions: { platform: string; url: string }[] | null;
 }
 
 /**
@@ -42,7 +49,12 @@ export interface ObservationFlags {
  */
 export function parseObservationFlags(json: unknown): ObservationFlags {
   if (!json || typeof json !== "object" || Array.isArray(json)) {
-    return { pricingPageFound: false, socialPlatforms: null, reviewPlatforms: null };
+    return {
+      pricingPageFound: false,
+      socialPlatforms: null,
+      reviewPlatforms: null,
+      thirdPartyMentions: null,
+    };
   }
 
   const data = json as Record<string, unknown>;
@@ -54,6 +66,13 @@ export function parseObservationFlags(json: unknown): ObservationFlags {
       : null,
     reviewPlatforms: Array.isArray(data.review_platforms)
       ? data.review_platforms.filter((p): p is string => typeof p === "string")
+      : null,
+    thirdPartyMentions: Array.isArray(data.third_party_mentions)
+      ? data.third_party_mentions.filter((m): m is { platform: string; url: string } => {
+          if (!m || typeof m !== "object" || Array.isArray(m)) return false;
+          const entry = m as Record<string, unknown>;
+          return typeof entry.platform === "string" && typeof entry.url === "string";
+        })
       : null,
   };
 }

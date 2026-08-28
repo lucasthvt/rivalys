@@ -6,6 +6,7 @@ import {
   isStoredExtractedData,
   readReviewPlatforms,
   readSocialPlatforms,
+  readThirdPartyMentions,
   type StoredExtractedData,
 } from "@/lib/compare/site-data";
 import {
@@ -13,9 +14,15 @@ import {
   buildPositioningGap,
   detectReviewPresenceGap,
   detectSocialPresenceGap,
+  detectThirdPartyPresenceGap,
   type GapCandidate,
 } from "@/lib/compare/detect-gaps";
 import { detectSocialPlatforms, labelPlatforms, missingPlatforms } from "@/lib/compare/social";
+import {
+  lookupThirdPartyMentions,
+  MENTION_PLATFORM_IDS,
+  type ThirdPartyMention,
+} from "@/lib/compare/social-mentions";
 import {
   detectReviewPlatformsFromLinks,
   lookupReviewPresence,
@@ -156,8 +163,10 @@ export async function POST() {
   // Fetch + extract both sides independently — one failing (e.g. the competitor's site
   // blocking us) must never take down the other side's result.
   const [ownResult, competitorResult] = await Promise.allSettled([
-    fetchAndExtract(profile.saas_url, safeHostname(profile.saas_url) ?? profile.saas_url),
-    fetchAndExtract(competitor.url, competitorLabel),
+    fetchAndExtract(profile.saas_url, safeHostname(profile.saas_url) ?? profile.saas_url, false),
+    // Third-party content is looked up on the competitor side only — see
+    // observeThirdPartyMentions for why there is no symmetric lookup on ours.
+    fetchAndExtract(competitor.url, competitorLabel, true),
   ]);
 
   const failureNotes: string[] = [];
@@ -276,6 +285,19 @@ export async function POST() {
     if (socialGap) candidates.push(socialGap);
   }
 
+  // Third-party content ABOUT the competitor, on platforms our own site links to no account
+  // on. Weaker evidence than a link the competitor puts on its own site — the rule says only
+  // that such content exists and hands over the URLs, never who made it or why. Same
+  // null-vs-[] guard: a lookup that never ran is not a lookup that found nothing.
+  const competitorMentions = readThirdPartyMentions(competitorData);
+  const mentionGap = detectThirdPartyPresenceGap(
+    competitorMentions ?? [],
+    ownSocial ?? [],
+    competitorLabel,
+    ownSocial !== null && competitorMentions !== null,
+  );
+  if (mentionGap) candidates.push(mentionGap);
+
   // Review platforms: presence only (never a rating or a review count — see reviews.ts).
   // Same null-vs-[] guard as social: a side we couldn't check is not a side with no listing.
   const ownReviews = readReviewPlatforms(ownData);
@@ -363,6 +385,7 @@ export async function POST() {
 async function fetchAndExtract(
   url: string,
   siteLabel: string,
+  observeMentions: boolean,
 ): Promise<{ raw: FetchedSite; data: StoredExtractedData }> {
   const raw = await fetchSite(url);
   const extracted = await extractSiteData({
@@ -372,9 +395,10 @@ async function fetchAndExtract(
   });
   // Social platforms come from the site's own published links, not from the LLM — see
   // social.ts. Stored alongside the extraction so the gap rule can compare both sides.
+  const socialPlatforms = detectSocialPlatforms(raw.homepageLinks);
   const data: StoredExtractedData = {
     ...extracted,
-    social_platforms: detectSocialPlatforms(raw.homepageLinks),
+    social_platforms: socialPlatforms,
   };
 
   // Review platforms: presence on G2/Capterra/Trustpilot/Product Hunt, never a rating.
@@ -383,7 +407,39 @@ async function fetchAndExtract(
   const reviewPlatforms = await observeReviewPlatforms(siteLabel, url, raw.homepageLinks);
   if (reviewPlatforms !== null) data.review_platforms = reviewPlatforms;
 
+  if (observeMentions) {
+    const mentions = await observeThirdPartyMentions(siteLabel, url, socialPlatforms);
+    if (mentions !== null) data.third_party_mentions = mentions;
+  }
+
   return { raw, data };
+}
+
+/**
+ * Public content mentioning this site's product on platforms it links to no account on.
+ *
+ * Run for the COMPETITOR only, and only when Perplexity is configured. Two filters keep the
+ * spend honest:
+ *   - platforms the site already links to from its own homepage are skipped: that presence
+ *     is already a deterministic, free observation handled by detectSocialPresenceGap, so a
+ *     lookup there could only re-confirm what we can already see;
+ *   - if nothing is left to check, no call is made at all.
+ *
+ * Returns null when no lookup ran or one ran and failed: "we didn't check" must not be
+ * stored as "no content mentions this product", which is what an empty array would assert.
+ */
+async function observeThirdPartyMentions(
+  siteLabel: string,
+  siteUrl: string,
+  linkedPlatforms: readonly string[],
+): Promise<ThirdPartyMention[] | null> {
+  if (!isPerplexityConfigured()) return null;
+
+  const linked = new Set(linkedPlatforms);
+  const toCheck = MENTION_PLATFORM_IDS.filter((id) => !linked.has(id));
+  if (toCheck.length === 0) return null;
+
+  return lookupThirdPartyMentions(siteLabel, siteUrl, toCheck);
 }
 
 /**

@@ -25,6 +25,14 @@ export interface StoredExtractedData extends ExtractedSiteData {
    * built on an observation that never completed.
    */
   review_platforms?: string[];
+  /**
+   * Individual pieces of public content mentioning this product, found by web lookup rather
+   * than by reading the site's own links (see social-mentions.ts). Presence of content only:
+   * never an author, never a count, never a volume estimate. Optional for the same reason as
+   * review_platforms — the field is omitted when no lookup ran or the lookup failed, so
+   * readThirdPartyMentions() below returns null and no comparison is built on it.
+   */
+  third_party_mentions?: { platform: string; url: string }[];
 }
 
 function isPricingTier(value: unknown): value is PricingTier {
@@ -82,4 +90,27 @@ export function readReviewPlatforms(data: StoredExtractedData): string[] | null 
   const raw = (data as unknown as Record<string, unknown>).review_platforms;
   if (!Array.isArray(raw)) return null;
   return raw.filter((p): p is string => typeof p === "string");
+}
+
+/**
+ * Reads third_party_mentions off a stored snapshot, with exactly the same null-vs-[] contract
+ * as the two readers above: [] means "we ran the lookup and found no content mentioning this
+ * product", null means "we never ran it" (old snapshot, no Perplexity key, failed call, or
+ * nothing left to check). Only [] may be compared — treating null as [] would turn a lookup
+ * that never happened into a confirmed absence.
+ *
+ * Entries whose shape doesn't hold up are dropped rather than repaired; each URL is verified
+ * again downstream before it can reach any user-facing text (see groupMentionsByPlatform).
+ */
+export function readThirdPartyMentions(
+  data: StoredExtractedData,
+): { platform: string; url: string }[] | null {
+  const raw = (data as unknown as Record<string, unknown>).third_party_mentions;
+  if (!Array.isArray(raw)) return null;
+
+  return raw.filter((m): m is { platform: string; url: string } => {
+    if (!m || typeof m !== "object" || Array.isArray(m)) return false;
+    const entry = m as Record<string, unknown>;
+    return typeof entry.platform === "string" && typeof entry.url === "string";
+  });
 }

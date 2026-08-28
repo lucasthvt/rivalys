@@ -15,7 +15,10 @@ const PRIORITY_ORDER: GapPriority[] = ["high", "medium", "low"];
 function Tile({ value, label, hint }: { value: string; label: string; hint?: string }) {
   return (
     <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
-      <p className="font-mono text-[22px] leading-tight text-foreground">{value}</p>
+      {/* truncate : une valeur inattendue doit être coupée, jamais déborder de la carte. */}
+      <p className="font-mono truncate text-[22px] leading-tight text-foreground" title={value}>
+        {value}
+      </p>
       <p className="mt-1 text-xs text-foreground-muted">{label}</p>
       {hint && <p className="mt-1 text-[11px] text-foreground-muted/60">{hint}</p>}
     </div>
@@ -28,8 +31,25 @@ function medianDays(values: number[]): number | null {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? Math.round((sorted[middle - 1] + sorted[middle]) / 2)
+    ? (sorted[middle - 1] + sorted[middle]) / 2
     : sorted[middle];
+}
+
+/**
+ * Un délai lisible, jamais un flottant brut.
+ *
+ * Un écart fermé dans l'heure vaut 0,049 jour : arrondi au jour il devient
+ * « 0 j », ce qui se lit comme une absence de mesure. En dessous d'une journée
+ * on bascule donc sur les heures, et sur les minutes en dessous d'une heure.
+ */
+function formatDelay(days: number): string {
+  if (days >= 1) return `${Math.round(days)} j`;
+
+  const hours = days * 24;
+  if (hours >= 1) return `${Math.round(hours)} h`;
+
+  const minutes = Math.round(hours * 60);
+  return `${Math.max(minutes, 1)} min`;
 }
 
 function formatDate(iso: string): string {
@@ -95,7 +115,7 @@ export function AnalysisStats({
         />
         <Tile value={bestScore === null ? "—" : String(bestScore)} label="Meilleur score atteint" />
         <Tile
-          value={median === null ? "—" : `${median} j`}
+          value={median === null ? "—" : formatDelay(median)}
           label="Délai médian de fermeture"
           hint={
             median === null

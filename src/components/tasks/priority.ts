@@ -43,6 +43,8 @@ export const CATEGORY_LABEL: Record<DetectedGap["category"], string> = {
   positioning: "Positionnement",
   reviews: "Avis",
   social_presence: "Réseaux",
+  auth: "Connexion",
+  payment: "Paiement",
 };
 
 // System monospace stack used for every "instrument readout" element

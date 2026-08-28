@@ -9,7 +9,14 @@ export interface GapStatsInput {
   allGaps: Pick<DetectedGap, "category" | "status" | "resolved_at">[];
 }
 
-const CATEGORY_ORDER: GapCategory[] = ["pricing", "positioning", "reviews", "social_presence"];
+const CATEGORY_ORDER: GapCategory[] = [
+  "pricing",
+  "auth",
+  "payment",
+  "positioning",
+  "reviews",
+  "social_presence",
+];
 
 function StatTile({ value, label }: { value: string; label: string }) {
   return (

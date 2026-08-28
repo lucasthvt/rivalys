@@ -1,5 +1,7 @@
 import { EmptyState } from "@/components/tasks/empty-state";
 import type { ExtractedSiteData } from "@/lib/supabase/database.types";
+import { labelAuthMethods } from "@/lib/compare/auth-methods";
+import { labelPaymentMethods } from "@/lib/compare/payment-methods";
 
 /**
  * Le comparatif public, présenté en face-à-face plutôt qu'en tableau.
@@ -62,6 +64,38 @@ function BoolValue({
   );
 }
 
+
+/**
+ * Une liste d'observations, ou l'aveu qu'il n'y en a pas eu.
+ *
+ * `null` et `[]` ne se rendent pas pareil : « pas de relevé » dit qu'on n'a rien lu,
+ * « rien d'affiché » dit qu'on a lu et que le site n'annonce rien. Les confondre
+ * présenterait une absence de mesure comme un fait établi.
+ */
+function ListValue({
+  values,
+  side,
+  emptyLabel,
+}: {
+  values: string[] | null;
+  side: Side;
+  emptyLabel: string;
+}) {
+  const align = side === "own" ? "text-left" : "text-right";
+
+  if (values === null) {
+    return <span className={`${align} text-sm text-foreground-muted/70`}>Pas de relevé</span>;
+  }
+  if (values.length === 0) {
+    return <span className={`${align} text-sm text-foreground-muted`}>{emptyLabel}</span>;
+  }
+  return (
+    <span className={`${align} block text-sm leading-relaxed text-foreground`}>
+      {values.join(" · ")}
+    </span>
+  );
+}
+
 function Row({
   label,
   own,
@@ -86,11 +120,16 @@ export function FaceOff({
   own,
   competitor,
   competitorLabel,
+  ownMethods,
+  competitorMethods,
   loadError = false,
 }: {
   own: ExtractedSiteData | null;
   competitor: ExtractedSiteData | null;
   competitorLabel: string;
+  /** Moyens de connexion et de paiement relevés de notre côté (null = non observé). */
+  ownMethods?: { auth: string[] | null; payment: string[] | null };
+  competitorMethods?: { auth: string[] | null; payment: string[] | null };
   loadError?: boolean;
 }) {
   const noData = !own && !competitor;
@@ -175,7 +214,61 @@ export function FaceOff({
               />
             }
           />
+          <Row
+            label="Connexion"
+            own={
+              <ListValue
+                values={ownMethods?.auth ? labelAuthMethods(ownMethods.auth) : ownMethods?.auth ?? null}
+                side="own"
+                emptyLabel="Email et mot de passe seulement"
+              />
+            }
+            competitor={
+              <ListValue
+                values={
+                  competitorMethods?.auth
+                    ? labelAuthMethods(competitorMethods.auth)
+                    : competitorMethods?.auth ?? null
+                }
+                side="competitor"
+                emptyLabel="Email et mot de passe seulement"
+              />
+            }
+          />
+          <Row
+            label="Paiement affiché"
+            own={
+              <ListValue
+                values={
+                  ownMethods?.payment
+                    ? labelPaymentMethods(ownMethods.payment)
+                    : ownMethods?.payment ?? null
+                }
+                side="own"
+                emptyLabel="Rien d'affiché publiquement"
+              />
+            }
+            competitor={
+              <ListValue
+                values={
+                  competitorMethods?.payment
+                    ? labelPaymentMethods(competitorMethods.payment)
+                    : competitorMethods?.payment ?? null
+                }
+                side="competitor"
+                emptyLabel="Rien d'affiché publiquement"
+              />
+            }
+          />
         </div>
+      )}
+
+      {!noData && (
+        <p className="border-t border-white/[0.06] px-5 py-3 text-xs leading-relaxed text-foreground-muted/70">
+          « Paiement affiché » ne liste que ce qui est annoncé sur les pages publiques. Le
+          tunnel de paiement est derrière un compte des deux côtés : il n&rsquo;est pas
+          observable, et rien ici ne prétend le décrire.
+        </p>
       )}
 
       {loadError && !noData && (

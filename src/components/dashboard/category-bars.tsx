@@ -2,7 +2,14 @@ import { CATEGORY_LABEL } from "@/components/tasks/priority";
 import { POINTS_PER_PRIORITY } from "@/lib/compare/score";
 import type { GapCategory, GapPriority } from "@/lib/supabase/database.types";
 
-const CATEGORY_ORDER: GapCategory[] = ["pricing", "positioning", "reviews", "social_presence"];
+const CATEGORY_ORDER: GapCategory[] = [
+  "pricing",
+  "auth",
+  "payment",
+  "positioning",
+  "reviews",
+  "social_presence",
+];
 
 /**
  * Où le score se perd, catégorie par catégorie.
@@ -46,7 +53,7 @@ export function CategoryBars({
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+    <ul className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((row) => (
         <li key={row.category}>
           <div className="flex items-baseline justify-between gap-3">

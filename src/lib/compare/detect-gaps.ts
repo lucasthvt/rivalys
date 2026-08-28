@@ -9,6 +9,8 @@ import type { ExtractedSiteData, GapCategory, GapPriority } from "@/lib/supabase
 import { labelPlatforms, missingPlatforms } from "./social";
 import { labelReviewPlatforms, missingReviewPlatforms } from "./reviews";
 import { groupMentionsByPlatform } from "./social-mentions";
+import { labelAuthMethods, missingAuthMethods } from "./auth-methods";
+import { labelPaymentMethods, missingPaymentMethods } from "./payment-methods";
 
 export interface GapCandidate {
   category: GapCategory;
@@ -276,6 +278,92 @@ export function buildPositioningGap(
     category: "positioning",
     title: "Ton positionnement diffère nettement de celui de ton concurrent",
     description: `Ta proposition de valeur ("${own.value_proposition}") et celle de ${label} ("${competitor.value_proposition}") semblent viser des angles différents — vérifie que ton message reste le bon face à ce contraste.`,
+    priority: "low",
+  };
+}
+
+/**
+ * Règle « moyens de connexion » : le concurrent propose sur sa page de connexion publique
+ * des méthodes que la nôtre ne propose pas.
+ *
+ * CE QUE L'AFFIRMATION COUVRE, EXACTEMENT. L'entrée est ce qui a été lu sur une page de
+ * connexion publique : un bouton « continuer avec X », ou un lien vers le point d'entrée
+ * OAuth de X. Rien d'autre. La description dit donc « sa page de connexion propose », et
+ * jamais « son produit gère » : un SSO d'entreprise réservé aux comptes payants n'apparaît
+ * pas sur cette page, et l'absence d'un bouton n'est pas l'absence d'une capacité.
+ *
+ * `bothSitesObserved` reprend le garde-fou des autres règles : une liste vide n'a de sens
+ * que si la page de connexion a réellement été lue (voir le contrat null-vs-[] de
+ * readAuthMethods). Sans les deux côtés observés, aucun écart n'est émis.
+ *
+ * Priorité moyenne : une friction d'inscription est réelle et mesurable côté conversion,
+ * mais elle se corrige par une intégration technique, pas par une décision immédiate comme
+ * un essai gratuit absent.
+ */
+export function detectAuthMethodsGap(
+  ownMethods: readonly string[],
+  competitorMethods: readonly string[],
+  competitorLabel: string,
+  bothSitesObserved: boolean,
+): GapCandidate | null {
+  if (!bothSitesObserved) return null;
+
+  const missing = missingAuthMethods(ownMethods, competitorMethods);
+  if (missing.length === 0) return null;
+
+  const label = competitorLabelOrFallback(competitorLabel);
+  const list = joinNames(labelAuthMethods(missing));
+
+  return {
+    category: "auth",
+    // Titre statique : la liste vit dans la description, sinon l'ajout d'un fournisseur
+    // chez le concurrent créerait un quasi-doublon à chaque analyse (dédup par catégorie+titre).
+    title: "Ton concurrent propose des connexions que tu ne proposes pas",
+    description:
+      `La page de connexion de ${label} propose ${list}, alors que la tienne ne le propose pas. ` +
+      `C'est une étape de moins entre un visiteur et un compte créé. ` +
+      `Relevé sur sa page de connexion publique uniquement : une méthode réservée à ses ` +
+      `comptes entreprise n'y apparaîtrait pas.`,
+    priority: "medium",
+  };
+}
+
+/**
+ * Règle « moyens de paiement » : le concurrent affiche publiquement des moyens de paiement
+ * que nous n'affichons pas.
+ *
+ * CE QUE L'AFFIRMATION COUVRE, EXACTEMENT. Un tunnel de paiement vit derrière un compte :
+ * on ne le voit pas, et on ne prétend pas le voir. Ce qui est relevé, ce sont les moyens
+ * annoncés sur des pages publiques — badges, mentions « nous acceptons », widget de
+ * paiement chargé sur la page de tarifs. La description parle donc d'affichage, et invite
+ * explicitement à vérifier : un site peut très bien accepter PayPal sans l'écrire nulle part.
+ *
+ * Priorité basse pour cette raison : la preuve est plus faible que pour un essai gratuit
+ * affiché noir sur blanc sur une page de tarifs, et la priorité ne doit pas la surestimer.
+ */
+export function detectPaymentMethodsGap(
+  ownMethods: readonly string[],
+  competitorMethods: readonly string[],
+  competitorLabel: string,
+  bothSitesObserved: boolean,
+): GapCandidate | null {
+  if (!bothSitesObserved) return null;
+
+  const missing = missingPaymentMethods(ownMethods, competitorMethods);
+  if (missing.length === 0) return null;
+
+  const label = competitorLabelOrFallback(competitorLabel);
+  const list = joinNames(labelPaymentMethods(missing));
+
+  return {
+    category: "payment",
+    title: "Ton concurrent affiche des moyens de paiement que tu n'affiches pas",
+    description:
+      `${label} annonce publiquement ${list}, ce qu'on ne retrouve pas sur tes pages publiques. ` +
+      `Moins de friction au moment de payer, c'est moins d'abandons au dernier écran. ` +
+      `Attention à la portée de ce constat : il ne porte que sur ce qui est AFFICHÉ. ` +
+      `Le tunnel de paiement lui-même est derrière un compte, donc invisible des deux côtés — ` +
+      `si tu acceptes déjà ces moyens sans le dire, l'action est de l'écrire.`,
     priority: "low",
   };
 }

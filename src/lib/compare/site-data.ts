@@ -33,6 +33,21 @@ export interface StoredExtractedData extends ExtractedSiteData {
    * readThirdPartyMentions() below returns null and no comparison is built on it.
    */
   third_party_mentions?: { platform: string; url: string }[];
+  /**
+   * Moyens de connexion relevés sur la page de connexion publique du site (voir
+   * auth-methods.ts). Optionnel, et volontairement absent quand aucune page de connexion
+   * n'a pu être lue : readAuthMethods renvoie alors null, et aucune comparaison n'est
+   * construite dessus. Un site dont on n'a pas trouvé la page de connexion n'est pas un
+   * site sans connexion.
+   */
+  login_methods?: string[];
+  /**
+   * Moyens de paiement AFFICHÉS publiquement (voir payment-methods.ts). Même contrat
+   * null-vs-[] que ci-dessus, avec une limite supplémentaire à porter jusqu'à l'écran :
+   * un tunnel de paiement vit derrière un compte, donc ceci décrit un affichage, jamais
+   * la liste réelle des moyens acceptés.
+   */
+  payment_methods?: string[];
 }
 
 function isPricingTier(value: unknown): value is PricingTier {
@@ -113,4 +128,22 @@ export function readThirdPartyMentions(
     const entry = m as Record<string, unknown>;
     return typeof entry.platform === "string" && typeof entry.url === "string";
   });
+}
+
+/**
+ * Lit login_methods sur un relevé stocké. null (et non []) quand le champ est absent :
+ * « on n'a pas trouvé la page de connexion » ne doit jamais être présenté comme « ce site
+ * ne propose aucune connexion tierce ».
+ */
+export function readAuthMethods(data: StoredExtractedData): string[] | null {
+  const raw = (data as unknown as Record<string, unknown>).login_methods;
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((m): m is string => typeof m === "string");
+}
+
+/** Idem pour payment_methods : absence de champ = aucune observation, pas une absence de moyen. */
+export function readPaymentMethods(data: StoredExtractedData): string[] | null {
+  const raw = (data as unknown as Record<string, unknown>).payment_methods;
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((m): m is string => typeof m === "string");
 }

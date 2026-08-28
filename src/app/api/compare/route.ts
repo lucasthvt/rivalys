@@ -4,6 +4,8 @@ import { fetchSite, SiteFetchError, type FetchedSite } from "@/lib/compare/fetch
 import { extractSiteData, classifyPositioning, ExtractionError } from "@/lib/compare/extract";
 import {
   isStoredExtractedData,
+  readAuthMethods,
+  readPaymentMethods,
   readReviewPlatforms,
   readSocialPlatforms,
   readThirdPartyMentions,
@@ -12,12 +14,16 @@ import {
 import {
   detectPricingGaps,
   buildPositioningGap,
+  detectAuthMethodsGap,
+  detectPaymentMethodsGap,
   detectReviewPresenceGap,
   detectSocialPresenceGap,
   detectThirdPartyPresenceGap,
   type GapCandidate,
 } from "@/lib/compare/detect-gaps";
 import { detectSocialPlatforms, labelPlatforms, missingPlatforms } from "@/lib/compare/social";
+import { detectAuthMethods } from "@/lib/compare/auth-methods";
+import { detectPaymentMethods } from "@/lib/compare/payment-methods";
 import {
   lookupThirdPartyMentions,
   MENTION_PLATFORM_IDS,
@@ -326,6 +332,30 @@ export async function POST() {
   );
   if (reviewGap) candidates.push(reviewGap);
 
+  // Connexion : ce que la page de connexion publique de chaque côté propose. Même garde
+  // null-vs-[] que les réseaux — un côté non observé n'est pas un côté sans méthode.
+  const ownAuth = readAuthMethods(ownData);
+  const competitorAuth = readAuthMethods(competitorData);
+  const authGap = detectAuthMethodsGap(
+    ownAuth ?? [],
+    competitorAuth ?? [],
+    competitorLabel,
+    ownAuth !== null && competitorAuth !== null,
+  );
+  if (authGap) candidates.push(authGap);
+
+  // Paiement : uniquement ce qui est AFFICHÉ publiquement. Le tunnel réel est derrière un
+  // compte des deux côtés, donc hors de portée — la règle le dit explicitement.
+  const ownPayment = readPaymentMethods(ownData);
+  const competitorPayment = readPaymentMethods(competitorData);
+  const paymentGap = detectPaymentMethodsGap(
+    ownPayment ?? [],
+    competitorPayment ?? [],
+    competitorLabel,
+    ownPayment !== null && competitorPayment !== null,
+  );
+  if (paymentGap) candidates.push(paymentGap);
+
   const { data: existingOpenGaps, error: existingGapsError } = await supabase
     .from("detected_gaps")
     .select("category, title")
@@ -427,6 +457,25 @@ async function fetchAndExtract(
     ...extracted,
     social_platforms: socialPlatforms,
   };
+
+  // Moyens de connexion : relevés sur la page de connexion publique quand elle a été
+  // trouvée. Le champ est OMIS sinon — « on n'a pas lu de page de connexion » ne doit pas
+  // être stocké comme « ce site ne propose aucune connexion tierce », ce qu'affirmerait un
+  // tableau vide.
+  if (raw.loginUrl) {
+    data.login_methods = detectAuthMethods({
+      loginPageText: raw.loginText,
+      links: [...raw.loginLinks, ...raw.homepageLinks],
+    });
+  }
+
+  // Moyens de paiement : la page d'accueil est toujours lue, donc un tableau vide est ici
+  // une vraie observation (« rien d'affiché »), pas une absence de mesure.
+  data.payment_methods = detectPaymentMethods({
+    pricingText: raw.pricingText,
+    homepageText: raw.homepageText,
+    links: [...raw.homepageLinks, ...raw.loginLinks],
+  });
 
   // Review platforms: presence on G2/Capterra/Trustpilot/Product Hunt, never a rating.
   // The field is left out entirely when the check couldn't complete, so readReviewPlatforms

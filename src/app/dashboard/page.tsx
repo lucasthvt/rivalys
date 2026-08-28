@@ -312,6 +312,11 @@ export default async function DashboardPage() {
             own={ownData}
             competitor={competitorData}
             competitorLabel={competitorLabel}
+            ownMethods={{ auth: ownFlags.authMethods, payment: ownFlags.paymentMethods }}
+            competitorMethods={{
+              auth: competitorFlags.authMethods,
+              payment: competitorFlags.paymentMethods,
+            }}
             loadError={snapshotLoadError}
           />
         </section>

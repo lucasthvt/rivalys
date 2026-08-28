@@ -1,0 +1,123 @@
+// Détection déterministe des moyens de paiement AFFICHÉS publiquement par un site.
+//
+// Limite structurelle, à répéter partout où ces données sortent : un tunnel de paiement
+// vit derrière un compte. Ce qu'on relève ici, ce sont les moyens qu'un site annonce sur
+// ses pages publiques — badges de pied de page, mentions « nous acceptons », widgets de
+// paiement chargés sur la page de tarifs. Ne rien trouver ne veut donc PAS dire que le
+// site n'accepte que la carte : ça veut dire qu'il n'affiche rien. Les écarts construits
+// là-dessus parlent d'affichage, jamais de capacité (voir detect-gaps.ts).
+
+export const PAYMENT_METHODS = [
+  {
+    id: "card",
+    label: "Carte bancaire",
+    hosts: ["js.stripe.com", "checkout.stripe.com", "checkout.paddle.com", "js.chargebee.com"],
+    textPatterns: [
+      /\bvisa\b/i,
+      /\bmastercard\b/i,
+      /american\s+express/i,
+      /\bamex\b/i,
+      /carte\s+(?:bancaire|de\s+crédit)/i,
+      /credit\s+card/i,
+    ],
+  },
+  {
+    id: "paypal",
+    label: "PayPal",
+    hosts: ["paypal.com", "paypalobjects.com"],
+    textPatterns: [/\bpaypal\b/i],
+  },
+  {
+    id: "apple_pay",
+    label: "Apple Pay",
+    hosts: ["applepay.cdn-apple.com"],
+    textPatterns: [/apple\s?pay/i],
+  },
+  {
+    id: "google_pay",
+    label: "Google Pay",
+    hosts: ["pay.google.com"],
+    textPatterns: [/google\s?pay/i],
+  },
+  {
+    id: "sepa",
+    label: "Virement / SEPA",
+    hosts: [],
+    textPatterns: [/\bsepa\b/i, /virement\s+bancaire/i, /prélèvement\s+(?:sepa|automatique)/i, /bank\s+transfer/i],
+  },
+  {
+    id: "bnpl",
+    label: "Paiement fractionné",
+    hosts: ["klarna.com", "alma.eu"],
+    textPatterns: [/\bklarna\b/i, /paiement\s+en\s+(?:\d+|plusieurs)\s+fois/i, /pay\s+in\s+\d+/i],
+  },
+  {
+    id: "invoice",
+    label: "Facture / bon de commande",
+    hosts: [],
+    textPatterns: [
+      /paiement\s+sur\s+facture/i,
+      /pay\s+by\s+invoice/i,
+      /bon\s+de\s+commande/i,
+      /purchase\s+order/i,
+    ],
+  },
+] as const;
+
+export type PaymentMethodId = (typeof PAYMENT_METHODS)[number]["id"];
+
+const PAYMENT_LABEL_BY_ID = new Map<string, string>(PAYMENT_METHODS.map((m) => [m.id, m.label]));
+
+function matchesHost(link: string, fragments: readonly string[]): boolean {
+  if (fragments.length === 0) return false;
+  try {
+    const parsed = new URL(link);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    return fragments.some((fragment) => host === fragment || host.endsWith(`.${fragment}`));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Moyens de paiement observés, dans l'ordre stable de PAYMENT_METHODS.
+ *
+ * Le texte confronté est celui de la page de tarifs quand elle existe, sinon celui de la
+ * page d'accueil : c'est là que les badges de paiement sont affichés. Les libellés visés
+ * sont des noms propres (« Apple Pay », « Klarna ») ou des formules de paiement — assez
+ * spécifiques pour qu'une mention hors contexte reste rare.
+ */
+export function detectPaymentMethods(input: {
+  pricingText: string | null;
+  homepageText: string;
+  links: readonly string[];
+}): PaymentMethodId[] {
+  const haystack = [input.pricingText ?? "", input.homepageText].join("\n");
+  const found = new Set<PaymentMethodId>();
+
+  for (const method of PAYMENT_METHODS) {
+    if (input.links.some((link) => matchesHost(link, method.hosts))) {
+      found.add(method.id);
+      continue;
+    }
+    if (method.textPatterns.some((re) => re.test(haystack))) {
+      found.add(method.id);
+    }
+  }
+
+  return PAYMENT_METHODS.filter((m) => found.has(m.id)).map((m) => m.id);
+}
+
+export function labelPaymentMethods(ids: readonly string[]): string[] {
+  return ids.map((id) => PAYMENT_LABEL_BY_ID.get(id) ?? id);
+}
+
+/** Moyens affichés par le concurrent et pas par nous, ordre stable conservé. */
+export function missingPaymentMethods(
+  own: readonly string[],
+  competitor: readonly string[],
+): string[] {
+  const mine = new Set(own);
+  return competitor.filter((id) => !mine.has(id));
+}

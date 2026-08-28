@@ -8,6 +8,8 @@ import assert from "node:assert/strict";
 import {
   detectPricingGaps,
   buildPositioningGap,
+  detectAuthMethodsGap,
+  detectPaymentMethodsGap,
   detectReviewPresenceGap,
   detectSocialPresenceGap,
   detectThirdPartyPresenceGap,
@@ -481,5 +483,69 @@ describe("buildPositioningGap", () => {
     assert.equal(gap?.priority, "low");
     assert.match(gap!.description, /développeurs solo/);
     assert.match(gap!.description, /grandes entreprises/);
+  });
+});
+
+
+describe("detectAuthMethodsGap", () => {
+  test("reports the login methods the competitor offers and we don't", () => {
+    const gap = detectAuthMethodsGap([], ["google", "apple"], "Concurrent X", true);
+
+    assert.ok(gap);
+    assert.equal(gap?.category, "auth");
+    assert.equal(gap?.priority, "medium");
+    assert.match(gap!.description, /Google/);
+    assert.match(gap!.description, /Apple/);
+  });
+
+  test("scopes the claim to the public login page, never to the product", () => {
+    const gap = detectAuthMethodsGap([], ["sso"], "Concurrent X", true);
+
+    // Un SSO entreprise réservé aux comptes payants n'apparaît pas sur cette page :
+    // la formulation doit rester ce qui a été observé, pas une affirmation sur le produit.
+    assert.match(gap!.description, /page de connexion/i);
+    assert.doesNotMatch(gap!.description, /son produit (gère|supporte)/i);
+  });
+
+  test("keeps a stable title so the dedup key survives a longer list", () => {
+    const one = detectAuthMethodsGap([], ["google"], "Concurrent X", true);
+    const many = detectAuthMethodsGap([], ["google", "apple", "sso"], "Concurrent X", true);
+
+    assert.equal(one!.title, many!.title);
+  });
+
+  test("returns null when either login page was never read", () => {
+    assert.equal(detectAuthMethodsGap([], ["google"], "Concurrent X", false), null);
+  });
+
+  test("returns null when we already offer everything the competitor does", () => {
+    assert.equal(
+      detectAuthMethodsGap(["google", "apple"], ["google"], "Concurrent X", true),
+      null,
+    );
+  });
+});
+
+describe("detectPaymentMethodsGap", () => {
+  test("reports the payment methods displayed by the competitor and not by us", () => {
+    const gap = detectPaymentMethodsGap(["card"], ["card", "paypal"], "Concurrent X", true);
+
+    assert.ok(gap);
+    assert.equal(gap?.category, "payment");
+    assert.match(gap!.description, /PayPal/);
+  });
+
+  test("stays low priority and states that the claim is about display only", () => {
+    const gap = detectPaymentMethodsGap([], ["apple_pay"], "Concurrent X", true);
+
+    // Le tunnel de paiement est derrière un compte des deux côtés : la tâche doit porter
+    // cette limite dans son texte, sinon elle affirme ce qu'on ne peut pas observer.
+    assert.equal(gap?.priority, "low");
+    assert.match(gap!.description, /AFFICHÉ/);
+    assert.match(gap!.description, /derrière un compte/i);
+  });
+
+  test("returns null when either side was never observed", () => {
+    assert.equal(detectPaymentMethodsGap([], ["paypal"], "Concurrent X", false), null);
   });
 });

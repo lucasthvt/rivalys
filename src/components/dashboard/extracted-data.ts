@@ -40,6 +40,18 @@ export interface ObservationFlags {
    * two fields above (see readThirdPartyMentions in lib/compare/site-data.ts).
    */
   thirdPartyMentions: { platform: string; url: string }[] | null;
+  /**
+   * Moyens de connexion relevés sur la page de connexion publique du site, ou null quand
+   * aucune page de connexion n'a été lue. Même contrat null-vs-[] : ne pas avoir trouvé la
+   * page n'est pas avoir constaté qu'il n'y a aucune connexion tierce.
+   */
+  authMethods: string[] | null;
+  /**
+   * Moyens de paiement AFFICHÉS publiquement, ou null si le relevé est antérieur à cette
+   * détection. [] est ici une vraie observation : la page d'accueil a été lue et rien n'y
+   * est annoncé. Ne dit jamais ce que le tunnel de paiement accepte réellement.
+   */
+  paymentMethods: string[] | null;
 }
 
 /**
@@ -54,6 +66,8 @@ export function parseObservationFlags(json: unknown): ObservationFlags {
       socialPlatforms: null,
       reviewPlatforms: null,
       thirdPartyMentions: null,
+      authMethods: null,
+      paymentMethods: null,
     };
   }
 
@@ -73,6 +87,12 @@ export function parseObservationFlags(json: unknown): ObservationFlags {
           const entry = m as Record<string, unknown>;
           return typeof entry.platform === "string" && typeof entry.url === "string";
         })
+      : null,
+    authMethods: Array.isArray(data.login_methods)
+      ? data.login_methods.filter((m): m is string => typeof m === "string")
+      : null,
+    paymentMethods: Array.isArray(data.payment_methods)
+      ? data.payment_methods.filter((m): m is string => typeof m === "string")
       : null,
   };
 }

@@ -1,32 +1,61 @@
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import Link from "next/link";
 
-const PRICING_TIERS: { name: string; tagline: string; features: string[]; highlighted?: boolean }[] = [
+type PricingTier = {
+  name: string;
+  price: string;
+  period: string;
+  yearly?: string;
+  tagline: string;
+  features: string[];
+  cta: string;
+  highlighted?: boolean;
+};
+
+const PRICING_TIERS: PricingTier[] = [
   {
     name: "Starter",
-    tagline: "Gratuit. L'analyse tourne, ses résultats restent fermés.",
+    price: "0 €",
+    period: "pour toujours",
+    tagline: "L'analyse tourne. Ses résultats restent fermés.",
     features: [
       "1 concurrent suivi",
-      "Première analyse lancée",
-      "Nombre d'écarts détectés",
+      "Première analyse lancée automatiquement",
+      "Nombre d'écarts détectés et date de l'analyse",
       "Détail des résultats verrouillé",
     ],
+    cta: "Créer mon compte",
   },
   {
     name: "Pro",
-    tagline: "Pour les fondateurs qui veulent un suivi plus soutenu.",
+    price: "29 €",
+    period: "par mois",
+    yearly: "290 € par an — deux mois offerts",
+    tagline: "Tout ce que l'analyse a trouvé, et quoi en faire.",
     features: [
       "1 concurrent suivi, remplaçable tous les 30 jours",
-      "Tout le détail des écarts",
-      "Score et comparatif des tarifs",
-      "Historique de score détaillé",
+      "Tous les écarts détectés, en tâches priorisées",
+      "Score, comparatif des tarifs et face-à-face complet",
+      "Connexion et moyens de paiement comparés",
+      "Historique du score et statistiques",
+      "Analyse relançable à la demande",
     ],
+    cta: "Commencer avec Pro",
     highlighted: true,
   },
   {
     name: "Growth",
-    tagline: "Pour aller plus loin — plusieurs concurrents, bientôt.",
-    features: ["Tout le contenu de Pro", "3 concurrents suivis (à venir)", "Support prioritaire"],
+    price: "79 €",
+    period: "par mois",
+    yearly: "790 € par an — deux mois offerts",
+    tagline: "Plusieurs fronts à surveiller en même temps.",
+    features: [
+      "Tout le contenu de Pro",
+      "3 concurrents suivis (en construction)",
+      "Comparatif par concurrent",
+      "Support prioritaire",
+    ],
+    cta: "Être prévenu à l'ouverture",
   },
 ];
 
@@ -44,8 +73,9 @@ export default function TarifsPage() {
             Un outil payant, sans surprise.
           </h1>
           <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-mist">
-            La facturation arrive bientôt. Inscris-toi pour accéder au comparateur dès maintenant et
-            être prévenu à l&rsquo;ouverture des paliers.
+            Les prix sont fixés. La facturation, elle, n&rsquo;est pas encore branchée :
+            inscris-toi maintenant, tu utilises le comparateur et tu seras prévenu à
+            l&rsquo;ouverture des paliers.
           </p>
         </div>
       </section>
@@ -64,7 +94,15 @@ export default function TarifsPage() {
               >
                 <h2 className="font-brand text-lg font-semibold text-paper">{tier.name}</h2>
                 <p className="mt-2 text-sm leading-relaxed text-mist">{tier.tagline}</p>
-                <p className="mt-6 font-mono text-2xl text-paper">Bientôt</p>
+                <p className="mt-6 flex items-baseline gap-2">
+                  <span className="font-mono text-3xl text-paper">{tier.price}</span>
+                  <span className="text-sm text-mist">{tier.period}</span>
+                </p>
+                {/*
+                  Hauteur réservée même sans tarif annuel, pour que les listes de
+                  fonctionnalités des trois cartes démarrent sur la même ligne.
+                */}
+                <p className="mt-1 min-h-[1.25rem] text-xs text-mist">{tier.yearly ?? ""}</p>
                 <ul className="mt-6 flex flex-1 flex-col gap-2">
                   {tier.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2 text-sm text-mist">
@@ -81,7 +119,7 @@ export default function TarifsPage() {
                       : "border border-white/10 text-paper hover:border-signal-bright/40"
                   }`}
                 >
-                  Commencer
+                  {tier.cta}
                 </Link>
               </div>
             ))}

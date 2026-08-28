@@ -18,7 +18,13 @@ export type ProductStage = "idea" | "launched" | "growing" | "mature";
 export type PricingModel = "freemium" | "free_trial" | "subscription" | "one_time";
 export type MainGoal = "acquisition" | "conversion" | "retention" | "pricing";
 export type TargetType = "own_saas" | "competitor";
-export type GapCategory = "pricing" | "positioning" | "reviews" | "social_presence";
+export type GapCategory =
+  | "pricing"
+  | "positioning"
+  | "reviews"
+  | "social_presence"
+  | "auth"
+  | "payment";
 export type GapPriority = "high" | "medium" | "low";
 export type GapStatus = "open" | "dismissed" | "done";
 

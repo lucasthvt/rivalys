@@ -36,11 +36,18 @@ Ouvre [http://localhost:3000](http://localhost:3000).
 
 ### Tests
 
-Les règles de détection d'écarts et le calcul de score ont des tests unitaires (`node:test`) :
+Les règles de détection d'écarts, les détecteurs déterministes (réseaux, avis, connexion,
+paiement), le calcul de score et les limites d'abonnement ont des tests unitaires
+(`node:test`) :
 
 ```bash
-node --import ./src/lib/compare/__tests__/register-ts-extensions.mjs --test src/lib/compare/__tests__/*.test.ts
+npm test
 ```
+
+Ce qu'ils protègent en priorité, ce n'est pas que les règles détectent : c'est qu'elles se
+**taisent** quand la donnée n'a pas été observée. Un faux positif ressemble à un vrai
+résultat à l'écran — c'est la contrainte de fond du projet, et celle qu'une refonte casse
+en silence.
 
 ## Base de données Supabase
 

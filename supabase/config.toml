@@ -179,10 +179,15 @@ enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+#
+# 12 caracteres avec quatre categories : c'est la recommandation de la CNIL
+# (deliberation 2022-100) pour un mot de passe seul, sans second facteur ni mecanisme de
+# blocage de compte. L'ancienne valeur (6, sans contrainte de composition) etait sous le
+# seuil de toutes les recommandations en vigueur.
+minimum_password_length = 12
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
-password_requirements = ""
+password_requirements = "lower_upper_letters_digits_symbols"
 
 # Configure passkey sign-ins.
 # [auth.passkey]
@@ -211,10 +216,21 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
+#
+# A ACTIVER EN PRODUCTION. Sans captcha, /login et /signup sont ouverts au bourrage
+# d'identifiants : la limite de 30 requetes / 5 min par IP ci-dessus ne coute rien a un
+# attaquant qui dispose d'un parc d'adresses. Turnstile (Cloudflare) est gratuit et ne
+# demande pas de resoudre une grille d'images a l'utilisateur legitime.
+#
+# Le reglage doit aussi etre pose dans le tableau de bord Supabase du projet distant :
+# ce fichier ne configure que l'environnement local.
+#
+# Cote application, il faudra passer le jeton aux appels signInWithPassword / signUp :
+#   options: { captchaToken }
 # [auth.captcha]
 # enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# provider = "turnstile"
+# secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
@@ -223,9 +239,15 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+#
+# Obligatoire : sans confirmation, on peut ouvrir un compte avec l'adresse de quelqu'un
+# d'autre, et la personne legitime se retrouve bloquee sur sa propre adresse.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
-secure_password_change = false
+#
+# Une session volee ne doit pas suffire a changer le mot de passe : sans cette option,
+# l'attaquant verrouille definitivement le compte en une requete.
+secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1s"
 # Number of characters used in the email OTP.

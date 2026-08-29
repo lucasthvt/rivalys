@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, type FormEvent, useState } from "react";
+import { Suspense, type FormEvent, useCallback, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthMapPanel } from "./_components/AuthMapPanel";
 import { AuthField, authErrorBox, authPrimaryButton } from "./_components/AuthField";
 import { AuthDivider, OAuthButtons } from "./_components/OAuthButtons";
+import { Turnstile, type TurnstileHandle } from "@/components/auth/Turnstile";
+import { isTurnstileEnabled } from "@/lib/auth/turnstile";
 
 function mapLoginError(message: string): string {
   if (message.includes("Invalid login credentials")) {
@@ -47,19 +49,37 @@ function LoginForm() {
   );
   const [loading, setLoading] = useState(false);
 
+  // Jeton du captcha. `null` tant que Turnstile n'a pas répondu — et le captcha n'est
+  // exigé que s'il est configuré (voir src/lib/auth/turnstile.ts).
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captcha, setCaptcha] = useState<TurnstileHandle | null>(null);
+  const captchaRequired = isTurnstileEnabled();
+  const handleCaptchaRef = useCallback((handle: TurnstileHandle | null) => setCaptcha(handle), []);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+
+    if (captchaRequired && !captchaToken) {
+      setError("Patiente une seconde, la vérification anti-robot est en cours.");
+      return;
+    }
+
     setLoading(true);
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: captchaToken ? { captchaToken } : undefined,
     });
 
     if (signInError) {
       setError(mapLoginError(signInError.message));
       setLoading(false);
+      // Un jeton Turnstile ne sert qu'une fois : sans cette remise à zéro, une seconde
+      // tentative après un mot de passe erroné serait refusée par Supabase avec une erreur
+      // de captcha, et la personne n'y comprendrait rien.
+      captcha?.reset();
       return;
     }
 
@@ -67,6 +87,7 @@ function LoginForm() {
     if (!user) {
       setError("Impossible de te connecter pour le moment. Réessaie dans un instant.");
       setLoading(false);
+      captcha?.reset();
       return;
     }
 
@@ -139,7 +160,13 @@ function LoginForm() {
               placeholder="••••••••"
             />
 
-            <button type="submit" className={`${authPrimaryButton} mt-2`} disabled={loading}>
+            <Turnstile onToken={setCaptchaToken} onError={setError} handleRef={handleCaptchaRef} />
+
+            <button
+              type="submit"
+              className={`${authPrimaryButton} mt-2 disabled:cursor-not-allowed disabled:opacity-50`}
+              disabled={loading || (captchaRequired && !captchaToken)}
+            >
               {loading ? "Connexion..." : "Se connecter"}
             </button>
           </form>

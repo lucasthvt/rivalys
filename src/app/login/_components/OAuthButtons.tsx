@@ -9,6 +9,13 @@ type OAuthButtonsProps = {
   nextPath?: string | null;
   /** Reported to the parent so /login and /signup keep one error surface. */
   onError: (message: string | null) => void;
+  /**
+   * Bloque le bouton tant qu'une condition parente n'est pas remplie. /signup s'en sert
+   * pour l'acceptation des CGU : sans ça, le parcours Google contournerait la case que le
+   * parcours email impose.
+   */
+  disabled?: boolean;
+  disabledReason?: string;
 };
 
 function GoogleMark() {
@@ -39,11 +46,15 @@ function GoogleMark() {
  * call — an OAuth account that doesn't exist yet is created on the spot,
  * so there's no separate "sign up with Google" path.
  */
-export function OAuthButtons({ nextPath, onError }: OAuthButtonsProps) {
+export function OAuthButtons({ nextPath, onError, disabled, disabledReason }: OAuthButtonsProps) {
   const supabase = createClient();
   const [pending, setPending] = useState(false);
 
   async function signIn() {
+    if (disabled) {
+      onError(disabledReason ?? null);
+      return;
+    }
     onError(null);
     setPending(true);
 
@@ -67,8 +78,8 @@ export function OAuthButtons({ nextPath, onError }: OAuthButtonsProps) {
     <button
       type="button"
       onClick={signIn}
-      disabled={pending}
-      className={buttonVariants({ variant: "secondary", size: "lg", fullWidth: true })}
+      disabled={pending || disabled}
+      className={`${buttonVariants({ variant: "secondary", size: "lg", fullWidth: true })} disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <GoogleMark />
       {pending ? "Redirection..." : "Continuer avec Google"}

@@ -24,6 +24,10 @@ export class SiteFetchError extends Error {
 }
 
 const FETCH_TIMEOUT_MS = 10_000;
+// Pages secondaires (tarifs, connexion) : leur absence est un résultat acceptable,
+// donc on ne leur accorde pas le même temps d'attente qu'à la page d'accueil, dont
+// l'échec fait échouer toute l'analyse.
+const SECONDARY_FETCH_TIMEOUT_MS = 5_000;
 const MAX_REDIRECTS = 5;
 const PRICING_PATHS = ["/pricing", "/plans", "/tarifs", "/prix"] as const;
 const LOGIN_PATHS = ["/login", "/signin", "/sign-in", "/connexion"] as const;
@@ -151,40 +155,40 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
     // route rather than burning a credit on each of the four.
     `${origin}${PRICING_PATHS[0]}`;
 
-  let pricingText: string | null = null;
-  let pricingHtml: string | null = null;
-  let resolvedPricingUrl: string | null = null;
-  try {
-    guardUrl(pricingUrl);
-    const pricing = await scrapePage(pricingUrl);
-    pricingText = pricing.markdown;
-    pricingHtml = pricing.rawHtml;
-    resolvedPricingUrl = pricingUrl;
-  } catch {
-    // No pricing page reachable — fall back to homepage-only extraction rather than
-    // inventing pricing data (extract.ts is told explicitly when this happens).
-  }
-
   // Page de connexion : contrairement au pricing, on ne tente PAS de route canonique en
   // aveugle. Un crédit Firecrawl brûlé sur un /login inexistant coûte à chaque analyse,
   // alors que l'absence de lien de connexion sur la page d'accueil est déjà une réponse :
   // on n'a rien observé, et readAuthMethods renverra null plutôt qu'un tableau vide.
   const loginUrl = findSameOriginLink(homepage.links, origin, LOGIN_PATH_RE);
-  let loginText: string | null = null;
-  let resolvedLoginUrl: string | null = null;
-  let loginLinks: string[] = [];
 
-  if (loginUrl) {
-    try {
+  // Les deux pages secondaires sont récupérées EN PARALLÈLE. Enchaînées, elles ajoutaient
+  // deux délais de 30 s l'un après l'autre au pire cas, sur chacun des deux sites — de
+  // quoi faire durer une analyse plusieurs minutes pour rien : ni l'une ni l'autre ne
+  // dépend du résultat de sa voisine.
+  const [pricingResult, loginResult] = await Promise.allSettled([
+    (async () => {
+      guardUrl(pricingUrl);
+      return { url: pricingUrl, page: await scrapePage(pricingUrl) };
+    })(),
+    (async () => {
+      if (!loginUrl) return null;
       guardUrl(loginUrl);
-      const login = await scrapePage(loginUrl);
-      loginText = login.markdown;
-      loginLinks = login.links;
-      resolvedLoginUrl = loginUrl;
-    } catch {
-      // Page de connexion injoignable — on ne conclut rien sur les moyens de connexion.
-    }
-  }
+      return { url: loginUrl, page: await scrapePage(loginUrl) };
+    })(),
+  ]);
+
+  // Page injoignable des deux côtés : on repart sur ce qu'on a, sans rien inventer
+  // (extract.ts est prévenu explicitement quand le pricing manque).
+  const pricing = pricingResult.status === "fulfilled" ? pricingResult.value : null;
+  const login = loginResult.status === "fulfilled" ? loginResult.value : null;
+
+  const pricingText = pricing?.page.markdown ?? null;
+  const pricingHtml = pricing?.page.rawHtml ?? null;
+  const resolvedPricingUrl = pricing?.url ?? null;
+
+  const loginText = login?.page.markdown ?? null;
+  const resolvedLoginUrl = login?.url ?? null;
+  const loginLinks = login?.page.links ?? [];
 
   return {
     homepageText: homepage.markdown,
@@ -226,7 +230,10 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
   for (const path of PRICING_PATHS) {
     const candidateUrl = origin + path;
     try {
-      const res = await fetchWithTimeout(candidateUrl);
+      // Même délai court que la page de connexion : quatre routes sondées à 10 s
+      // chacune, c'était 40 s d'attente possible avant de conclure « pas de page de
+      // tarifs » — un constat qu'on sait déjà rendre honnêtement.
+      const res = await fetchWithTimeout(candidateUrl, SECONDARY_FETCH_TIMEOUT_MS);
       if (!res.ok) continue;
       const text = await res.text();
       if (text.trim()) {
@@ -245,14 +252,22 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
 
   let loginHtml: string | null = null;
   let loginUrl: string | null = null;
+
+  // Au plus DEUX candidats, et un délai court.
+  //
+  // La version précédente sondait le lien annoncé puis les quatre routes canoniques, à
+  // 10 s chacune : jusqu'à 50 s par site passées à attendre des 404, sur une page qui
+  // n'est qu'un bonus. Un site qui n'annonce pas sa page de connexion et n'expose pas
+  // /login est simplement un site dont on n'a pas observé les moyens de connexion —
+  // readAuthMethods renvoie null et aucune comparaison n'est bâtie dessus.
   const advertisedLogin = findSameOriginLink(homepageLinks, origin, LOGIN_PATH_RE);
   const loginCandidates = advertisedLogin
-    ? [advertisedLogin, ...LOGIN_PATHS.map((path) => origin + path)]
-    : LOGIN_PATHS.map((path) => origin + path);
+    ? [advertisedLogin, origin + LOGIN_PATHS[0]]
+    : [origin + LOGIN_PATHS[0]];
 
   for (const candidateUrl of loginCandidates) {
     try {
-      const res = await fetchWithTimeout(candidateUrl);
+      const res = await fetchWithTimeout(candidateUrl, SECONDARY_FETCH_TIMEOUT_MS);
       if (!res.ok) continue;
       const text = await res.text();
       if (text.trim()) {

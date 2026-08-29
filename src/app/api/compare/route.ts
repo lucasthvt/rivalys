@@ -477,16 +477,22 @@ async function fetchAndExtract(
     links: [...raw.homepageLinks, ...raw.loginLinks],
   });
 
+  // Les deux relevés web-groundés sont indépendants l'un de l'autre : enchaînés, leurs
+  // deux délais de 30 s s'additionnaient sur chaque site. Lancés ensemble, le pire cas
+  // redevient celui du plus lent des deux.
+  //
   // Review platforms: presence on G2/Capterra/Trustpilot/Product Hunt, never a rating.
   // The field is left out entirely when the check couldn't complete, so readReviewPlatforms
   // returns null and no comparison is built on it.
-  const reviewPlatforms = await observeReviewPlatforms(siteLabel, url, raw.homepageLinks);
-  if (reviewPlatforms !== null) data.review_platforms = reviewPlatforms;
+  const [reviewPlatforms, mentions] = await Promise.all([
+    observeReviewPlatforms(siteLabel, url, raw.homepageLinks),
+    observeMentions
+      ? observeThirdPartyMentions(siteLabel, url, socialPlatforms)
+      : Promise.resolve(null),
+  ]);
 
-  if (observeMentions) {
-    const mentions = await observeThirdPartyMentions(siteLabel, url, socialPlatforms);
-    if (mentions !== null) data.third_party_mentions = mentions;
-  }
+  if (reviewPlatforms !== null) data.review_platforms = reviewPlatforms;
+  if (mentions !== null) data.third_party_mentions = mentions;
 
   return { raw, data };
 }

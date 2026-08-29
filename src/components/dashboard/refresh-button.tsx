@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 interface CompareResponse {
@@ -21,9 +21,30 @@ export function RefreshButton() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  /**
+   * Compteur de secondes pendant l'analyse.
+   *
+   * Le pipeline lit quatre pages, appelle Claude deux fois et interroge le web : une
+   * minute est normale, deux arrivent. Sans ce compteur, un bouton figé sur « Analyse en
+   * cours… » ne se distingue pas d'une page bloquée, et l'utilisateur recharge — ce qui
+   * ne fait qu'abandonner le travail en cours.
+   */
+  useEffect(() => {
+    // La remise à zéro se fait au clic, pas ici : appeler setState dans le corps d'un
+    // effet déclenche un rendu supplémentaire pour rien (react-hooks/set-state-in-effect).
+    if (!isPending) return;
+    const started = Date.now();
+    const timer = setInterval(() => {
+      setElapsed(Math.round((Date.now() - started) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isPending]);
 
   function handleClick() {
     setFeedback(null);
+    setElapsed(0);
     startTransition(async () => {
       try {
         const res = await fetch("/api/compare", { method: "POST" });
@@ -67,8 +88,14 @@ export function RefreshButton() {
         disabled={isPending}
         className="font-mono rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-foreground transition-colors hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isPending ? "Analyse en cours…" : "Actualiser"}
+        {isPending ? `Analyse en cours… ${elapsed} s` : "Actualiser"}
       </button>
+      {isPending && elapsed >= 45 && (
+        <p className="max-w-[220px] text-right text-xs text-foreground-muted">
+          Lecture des deux sites et relevés publics en cours. Compte jusqu&rsquo;à deux
+          minutes — ne recharge pas la page.
+        </p>
+      )}
       {feedback && (
         <p
           className={`max-w-[220px] text-right text-xs ${

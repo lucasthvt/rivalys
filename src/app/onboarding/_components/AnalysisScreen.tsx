@@ -24,6 +24,7 @@ export function AnalysisScreen({ competitorLabel }: { competitorLabel: string })
   const [phase, setPhase] = useState<Phase>("running");
   const [error, setError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
 
   // React runs effects twice in dev StrictMode. The analysis costs real
   // Firecrawl/Claude credits, so it must fire exactly once.
@@ -74,6 +75,21 @@ export function AnalysisScreen({ competitorLabel }: { competitorLabel: string })
     return () => clearInterval(timer);
   }, [phase]);
 
+  /**
+   * Secondes écoulées. Le pipeline lit quatre pages, appelle Claude deux fois et
+   * interroge le web : une minute est normale, deux arrivent. Sans ce compteur, l'écran
+   * ne se distingue pas d'une page bloquée, et le fondateur recharge — ce qui abandonne
+   * l'analyse en cours.
+   */
+  useEffect(() => {
+    if (phase !== "running") return;
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      setElapsed(Math.round((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [phase]);
+
   return (
     <div className="flex min-h-screen flex-1 flex-col justify-center bg-background px-6 py-10 sm:px-10 lg:px-16">
       <div className="mx-auto w-full max-w-xl">
@@ -87,8 +103,11 @@ export function AnalysisScreen({ competitorLabel }: { competitorLabel: string })
               Analyse en cours...
             </h1>
             <p className="mt-4 text-foreground-muted">
-              On compare ton SaaS à {competitorLabel}. Ça prend en général moins d&apos;une
-              minute — ne ferme pas cette page.
+              On compare ton SaaS à {competitorLabel}. Compte une à deux minutes — ne ferme
+              pas cette page.
+            </p>
+            <p className="font-mono mt-3 text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
+              {elapsed} s écoulées
             </p>
 
             <ul className="mt-10 flex flex-col gap-3">

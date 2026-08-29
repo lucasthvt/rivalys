@@ -99,6 +99,47 @@ describe("detectAuthMethods — via le texte de la page de connexion", () => {
   });
 });
 
+describe("detectAuthMethods — liste de boutons après une seule amorce", () => {
+  /**
+   * Texte réellement servi par la page de connexion de Notion, relevé via le pipeline.
+   * Une seule amorce « continue with », puis la liste des boutons : exiger « with » collé
+   * à chaque nom ne reconnaissait que le premier, et l'écran affichait « Google » là où
+   * six méthodes sont proposées.
+   */
+  const NOTION_LOGIN =
+    "Log in to your Notion account Email Use an organization email to easily collaborate " +
+    "with teammates Continue or continue with Google ChatGPT Apple Microsoft Passkey SSO " +
+    "New user? Sign up";
+
+  test("reconnaît toute la liste, pas seulement le premier nom", () => {
+    assert.deepEqual(detectAuthMethods({ loginPageText: NOTION_LOGIN, links: [] }), [
+      "google",
+      "apple",
+      "microsoft",
+      "openai",
+      "passkey",
+      "sso",
+    ]);
+  });
+
+  test("un nom nu hors de cette liste ne compte pas", () => {
+    // « Apple » en pied de page (lien App Store, mentions) n'est pas un bouton de
+    // connexion : sans amorce devant, il ne prouve rien.
+    assert.deepEqual(
+      detectAuthMethods({
+        loginPageText: "Télécharge notre application sur l'App Store d'Apple.",
+        links: [],
+      }),
+      [],
+    );
+  });
+
+  test("la fenêtre reste courte : un nom très éloigné de l'amorce ne compte pas", () => {
+    const text = `Continue with Google. ${"x".repeat(300)} Microsoft`;
+    assert.deepEqual(detectAuthMethods({ loginPageText: text, links: [] }), ["google"]);
+  });
+});
+
 describe("missingAuthMethods", () => {
   test("ne renvoie que ce que le concurrent a en plus", () => {
     assert.deepEqual(missingAuthMethods(["google"], ["google", "apple"]), ["apple"]);

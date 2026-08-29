@@ -11,6 +11,7 @@
 export const AUTH_PROVIDERS = [
   {
     id: "google",
+    aliases: ["google"],
     label: "Google",
     hosts: ["accounts.google.com"],
     // Le mot « Google » seul ne prouve rien (Google Analytics, intégration Workspace) :
@@ -23,6 +24,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "apple",
+    aliases: ["apple"],
     label: "Apple",
     hosts: ["appleid.apple.com"],
     textPatterns: [
@@ -33,6 +35,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "microsoft",
+    aliases: ["microsoft"],
     label: "Microsoft",
     hosts: ["login.microsoftonline.com", "login.live.com"],
     textPatterns: [
@@ -42,6 +45,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "github",
+    aliases: ["github"],
     label: "GitHub",
     hosts: ["github.com/login/oauth"],
     textPatterns: [
@@ -51,6 +55,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "facebook",
+    aliases: ["facebook"],
     label: "Facebook",
     hosts: ["facebook.com/dialog/oauth", "facebook.com/v"],
     textPatterns: [
@@ -60,6 +65,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "linkedin",
+    aliases: ["linkedin"],
     label: "LinkedIn",
     hosts: ["linkedin.com/oauth"],
     textPatterns: [
@@ -69,6 +75,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "openai",
+    aliases: ["chatgpt", "openai"],
     label: "ChatGPT",
     hosts: ["auth.openai.com", "auth0.openai.com"],
     textPatterns: [
@@ -78,6 +85,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "slack",
+    aliases: ["slack"],
     label: "Slack",
     hosts: ["slack.com/openid", "slack.com/oauth"],
     textPatterns: [
@@ -87,12 +95,14 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "passkey",
+    aliases: [] as string[],
     label: "Clé d'accès",
     hosts: [],
     textPatterns: [/\bpasskeys?\b/i, /clés?\s+d[e']\s?accès/i],
   },
   {
     id: "email_code",
+    aliases: [] as string[],
     label: "Code par email",
     hosts: [],
     textPatterns: [
@@ -102,6 +112,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "sso",
+    aliases: [] as string[],
     label: "SSO / SAML",
     hosts: [],
     textPatterns: [
@@ -113,6 +124,7 @@ export const AUTH_PROVIDERS = [
   },
   {
     id: "magic_link",
+    aliases: [] as string[],
     label: "Lien magique",
     hosts: [],
     textPatterns: [
@@ -127,6 +139,24 @@ export const AUTH_PROVIDERS = [
 export type AuthProviderId = (typeof AUTH_PROVIDERS)[number]["id"];
 
 const AUTH_LABEL_BY_ID = new Map<string, string>(AUTH_PROVIDERS.map((p) => [p.id, p.label]));
+
+/**
+ * Segments qui suivent une amorce de connexion tierce.
+ *
+ * Notion écrit « or continue with Google ChatGPT Apple Microsoft Passkey SSO » : une
+ * seule amorce, puis la liste des boutons. Exiger « with » collé à chaque nom ne
+ * reconnaissait que le premier. On isole donc ce qui suit l'amorce, et c'est là — et
+ * seulement là — qu'un nom nu vaut preuve.
+ *
+ * La fenêtre est courte (160 caractères) et limitée au texte de la page de connexion :
+ * un « Apple » de pied de page ou un lien vers l'App Store reste hors d'atteinte.
+ */
+const CONTINUE_WITH_RE =
+  /(?:continue|continuer|sign\s?in|sign\s?up|log\s?in|se\s+connecter|s'inscrire)\s+(?:with|avec)\b([\s\S]{0,160})/gi;
+
+function continuationWindows(text: string): string[] {
+  return [...text.matchAll(CONTINUE_WITH_RE)].map((match) => match[1]);
+}
 
 function matchesHost(link: string, fragments: readonly string[]): boolean {
   if (fragments.length === 0) return false;
@@ -155,13 +185,25 @@ export function detectAuthMethods(input: {
   links: readonly string[];
 }): AuthProviderId[] {
   const found = new Set<AuthProviderId>();
+  const text = input.loginPageText ?? "";
+  const windows = text ? continuationWindows(text) : [];
 
   for (const provider of AUTH_PROVIDERS) {
     if (input.links.some((link) => matchesHost(link, provider.hosts))) {
       found.add(provider.id);
       continue;
     }
-    if (input.loginPageText && provider.textPatterns.some((re) => re.test(input.loginPageText!))) {
+    if (text && provider.textPatterns.some((re) => re.test(text))) {
+      found.add(provider.id);
+      continue;
+    }
+    // Nom nu, mais uniquement dans la liste qui suit « continue with ».
+    if (
+      provider.aliases.length > 0 &&
+      windows.some((window) =>
+        provider.aliases.some((alias) => new RegExp(`\\b${alias}\\b`, "i").test(window)),
+      )
+    ) {
       found.add(provider.id);
     }
   }

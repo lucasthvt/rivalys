@@ -34,6 +34,13 @@ npm run dev
 
 Ouvre [http://localhost:3000](http://localhost:3000).
 
+### Contrôle de configuration
+
+```bash
+npm run preflight            # vérifie .env.local
+npm run preflight -- --prod  # applique en plus les exigences de production
+```
+
 ### Tests
 
 Les règles de détection d'écarts, les détecteurs déterministes (réseaux, avis, connexion,
@@ -316,9 +323,25 @@ uniquement quand la clé est présente — vérifié par les tests de `src/lib/s
 
 ### À faire avant la mise en production
 
-- [ ] **Tableau de bord Supabase** — `supabase/config.toml` ne configure que le local, et
-      `supabase config push` écraserait `site_url` avec `http://127.0.0.1:3000`. À régler à la
-      main dans Authentication :
+Avant tout, la commande qui répond à la place de cette liste :
+
+```bash
+npm run preflight -- --prod
+```
+
+Elle vérifie ce qu'aucune relecture ne rattrape : variables absentes, URL publique restée
+sur localhost, clé Stripe encore en mode test, **identifiants de prix qui n'existent pas
+dans le mode de la clé** (l'erreur qui ne se voit qu'au moment où un client clique sur
+Payer), secret de webhook manquant, mentions légales incomplètes. Elle n'affiche jamais la
+valeur d'un secret. Sortie non nulle tant qu'il reste un bloquant.
+
+
+- [ ] **Tableau de bord Supabase**, à la main. ⚠️ **Ne jamais lancer `supabase config
+      push`** : la commande envoie tout le bloc `[auth]` local sans fusion possible (le CLI
+      n'a pas de `config pull`), et ce fichier contient `site_url = "http://127.0.0.1:3000"`
+      ainsi que `[auth.external.google] enabled = false` — le pousser casserait toutes les
+      redirections ET désactiverait la connexion Google en production. L'avertissement est
+      aussi en tête de `supabase/config.toml`. Réglages à poser dans Authentication :
       - Site URL et Redirect URLs = domaine de production
       - Confirm email = activé — **exige un SMTP personnalisé** (Resend, SendGrid…) : le
         service d'emails intégré est plafonné à quelques envois par heure et n'est pas prévu
@@ -343,7 +366,6 @@ uniquement quand la clé est présente — vérifié par les tests de `src/lib/s
       l'entrepreneur. Publier le SIRET rend donc le nom public de toute façon — masquer le
       nom sur le site n'apporte rien.
 - [ ] Repasser `registrationPending` à `false` et renseigner `siret` dès réception.
-- [ ] Supprimer la page de prévisualisation temporaire : `rm -rf src/app/apercu`.
 - [ ] Utiliser une clé Stripe **restreinte** (`rk_...`), pas une clé secrète complète.
 - [ ] Vérifier que `NEXT_PUBLIC_APP_URL` pointe sur le domaine de production (Checkout et le
       portail y renvoient le navigateur).

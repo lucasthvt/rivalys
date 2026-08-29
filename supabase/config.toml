@@ -1,3 +1,22 @@
+# ==============================================================================
+#  NE JAMAIS LANCER `supabase config push` SUR CE PROJET.
+#
+#  Cette commande envoie TOUT le bloc [auth] local vers le projet distant, sans
+#  fusion possible (le CLI n'a pas de `config pull`). Trois valeurs de ce fichier
+#  casseraient la production immediatement :
+#
+#    - site_url / additional_redirect_urls pointent sur 127.0.0.1 : toutes les
+#      redirections OAuth et tous les liens des emails partiraient vers localhost.
+#    - [auth.external.google] enabled = false : la connexion Google, active en
+#      production, serait desactivee.
+#    - enable_confirmations : a n'activer qu'une fois un SMTP personnalise branche,
+#      sinon les inscriptions cassent au bout de quelques emails par heure.
+#
+#  Les reglages d'authentification de la production se font A LA MAIN dans le
+#  tableau de bord Supabase. Ce fichier ne decrit que la pile locale.
+#  Liste des reglages a poser : voir la section Securite du README.
+# ==============================================================================
+
 # For detailed configuration reference documentation, visit:
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the

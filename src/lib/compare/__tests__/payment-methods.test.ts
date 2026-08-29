@@ -14,6 +14,7 @@ function input(overrides: Partial<Parameters<typeof detectPaymentMethods>[0]> = 
     pricingText: null,
     homepageText: "",
     links: [] as string[],
+    html: null as string | null,
     ...overrides,
   };
 }
@@ -42,6 +43,35 @@ describe("detectPaymentMethods — via les liens", () => {
     );
     assert.deepEqual(
       detectPaymentMethods(input({ links: ["https://notpaypal.com/x.js"] })),
+      [],
+    );
+  });
+});
+
+describe("detectPaymentMethods — via le balisage", () => {
+  /**
+   * Le cas qui a motivé cette lecture : un SDK de paiement se charge par un `<script src>`,
+   * pas par un `href`. En ne regardant que les liens, on ratait le signal le plus fiable
+   * sur les sites où le tunnel est derrière un clic.
+   */
+  test("un SDK chargé en <script src> est vu, alors qu'il n'est pas un lien", () => {
+    const found = detectPaymentMethods(
+      input({ html: '<script src="https://js.stripe.com/v3" async></script>' }),
+    );
+
+    assert.deepEqual(found, ["card"]);
+  });
+
+  test("reconnaît un preconnect ou une iframe du prestataire", () => {
+    assert.deepEqual(
+      detectPaymentMethods(input({ html: '<link rel="preconnect" href="https://paypal.com">' })),
+      ["paypal"],
+    );
+  });
+
+  test("du balisage sans prestataire ne conclut rien", () => {
+    assert.deepEqual(
+      detectPaymentMethods(input({ html: '<script src="https://www.clarity.ms/tag/x"></script>' })),
       [],
     );
   });

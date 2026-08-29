@@ -475,6 +475,7 @@ async function fetchAndExtract(
     pricingText: raw.pricingText,
     homepageText: raw.homepageText,
     links: [...raw.homepageLinks, ...raw.loginLinks],
+    html: [raw.homepageHtml ?? "", raw.pricingHtml ?? ""].join("\n"),
   });
 
   // Les deux relevés web-groundés sont indépendants l'un de l'autre : enchaînés, leurs

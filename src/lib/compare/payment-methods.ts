@@ -92,12 +92,28 @@ export function detectPaymentMethods(input: {
   pricingText: string | null;
   homepageText: string;
   links: readonly string[];
+  /**
+   * HTML brut des pages lues, quand il est disponible.
+   *
+   * Indispensable : un SDK de paiement se charge par `<script src="https://js.stripe.com/v3">`,
+   * et un script n'est pas un lien. En ne regardant que les `href`, on ratait le signal le
+   * plus fiable qui soit — la présence du prestataire de paiement sur la page elle-même.
+   */
+  html?: string | null;
 }): PaymentMethodId[] {
   const haystack = [input.pricingText ?? "", input.homepageText].join("\n");
+  const markup = input.html ?? "";
   const found = new Set<PaymentMethodId>();
 
   for (const method of PAYMENT_METHODS) {
     if (input.links.some((link) => matchesHost(link, method.hosts))) {
+      found.add(method.id);
+      continue;
+    }
+    // Le domaine du prestataire cité n'importe où dans le balisage : attribut src,
+    // preconnect, iframe. On ne cherche que des noms d'hôtes techniques, pas des mots
+    // courants, donc une mention de passage reste improbable.
+    if (method.hosts.some((host) => markup.includes(host))) {
       found.add(method.id);
       continue;
     }

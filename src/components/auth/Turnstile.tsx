@@ -25,7 +25,8 @@ type TurnstileApi = {
       sitekey: string;
       callback: (token: string) => void;
       "expired-callback": () => void;
-      "error-callback": () => void;
+      /** Turnstile passe son code d'erreur en premier argument (ex. "400020"). */
+      "error-callback": (errorCode: string) => void;
       theme?: "auto" | "light" | "dark";
       language?: string;
     },
@@ -69,6 +70,32 @@ function loadTurnstileScript(): Promise<void> {
   return scriptPromise;
 }
 
+/**
+ * Ce que veut dire un code d'erreur Turnstile, en clair.
+ *
+ * Sans cette table, l'écran affichait « un bloqueur de contenu peut en être la cause » quelle
+ * que soit la panne. C'était faux dans le cas le plus fréquent — une clé mal recopiée — et ça
+ * envoie chercher le problème là où il n'est pas. Un message d'erreur qui accuse au hasard
+ * coûte plus de temps qu'un message générique.
+ *
+ * Codes : developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
+ */
+function explainTurnstileError(code: string): string {
+  if (code === "400020" || code.startsWith("1101")) {
+    return "Clé de site du captcha invalide. Vérifie NEXT_PUBLIC_TURNSTILE_SITE_KEY : c'est la clé « Site Key » de Cloudflare, pas la clé secrète — les deux commencent par 0x4AAAAA.";
+  }
+  if (code.startsWith("1102")) {
+    return "Ce domaine n'est pas autorisé pour ce widget Turnstile. Ajoute-le dans Cloudflare, Turnstile → le widget → Hostname Management.";
+  }
+  if (code.startsWith("1105")) {
+    return "Ce navigateur n'est pas pris en charge par le captcha.";
+  }
+  if (code.startsWith("1106") || code.startsWith("300") || code.startsWith("600")) {
+    return "La vérification anti-robot a échoué. Recharge la page pour réessayer.";
+  }
+  return `La vérification anti-robot n'a pas abouti (code ${code}).`;
+}
+
 export type TurnstileHandle = {
   /** Redemande un jeton neuf. Un jeton Turnstile est à usage unique : après un échec de
    *  connexion, le rejouer serait refusé par Supabase. */
@@ -88,7 +115,7 @@ export function Turnstile({
   const siteKey = turnstileSiteKey();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   // Gardés dans des refs pour que l'effet de montage ne dépende pas de leur identité :
   // sinon chaque rendu du parent démonterait et remonterait le widget, et la personne
@@ -134,15 +161,19 @@ export function Turnstile({
           language: "fr",
           callback: (token) => onTokenRef.current(token),
           "expired-callback": () => onTokenRef.current(null),
-          "error-callback": () => {
+          "error-callback": (errorCode: string) => {
             onTokenRef.current(null);
-            setFailed(true);
+            setFailure(explainTurnstileError(String(errorCode)));
           },
         });
       })
       .catch(() => {
         if (cancelled) return;
-        setFailed(true);
+        // Ici, et ici seulement, le blocage réseau est une explication plausible : le script
+        // lui-même n'est pas arrivé.
+        setFailure(
+          "Le script du captcha n'a pas pu être chargé. Vérifie ta connexion ou ton bloqueur de contenu.",
+        );
         onErrorRef.current?.(
           "Le captcha n'a pas pu se charger. Vérifie ta connexion ou ton bloqueur de contenu.",
         );
@@ -165,9 +196,9 @@ export function Turnstile({
   return (
     <div>
       <div ref={containerRef} />
-      {failed ? (
-        <p className="mt-2 text-xs leading-relaxed text-flare">
-          Le captcha n&rsquo;a pas pu se charger. Un bloqueur de contenu peut en être la cause.
+      {failure ? (
+        <p role="alert" className="mt-2 text-xs leading-relaxed text-flare">
+          {failure}
         </p>
       ) : null}
     </div>

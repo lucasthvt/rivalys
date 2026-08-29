@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { createClient } from "@/lib/supabase/client";
 import type { SubscriptionTier } from "@/lib/supabase/database.types";
+import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 
 // Toute entrée ajoutée ici doit l'être aussi dans HIDE_NAV_PREFIXES (NavBar.tsx),
 // sinon la nav marketing se superpose à cette sidebar sur la route concernée.
@@ -130,6 +131,16 @@ export function Sidebar({
             </span>
           ) : null}
         </div>
+        {/*
+          Visible seulement pour un abonné : le portail Stripe n'a rien à montrer à un
+          compte gratuit, et le bouton renverrait une erreur.
+        */}
+        {tier && tier !== "starter" ? (
+          <div className="mt-2">
+            <ManageBillingButton className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-surface-hover hover:text-paper disabled:opacity-50" />
+          </div>
+        ) : null}
+
         <button
           type="button"
           onClick={handleSignOut}

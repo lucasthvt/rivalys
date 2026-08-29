@@ -58,6 +58,10 @@ export interface Database {
           main_goal: MainGoal | null;
           target_customer: string | null;
           subscription_tier: SubscriptionTier;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          subscription_status: string | null;
+          subscription_current_period_end: string | null;
           onboarding_completed: boolean;
           created_at: string;
         };
@@ -73,6 +77,10 @@ export interface Database {
           main_goal?: MainGoal | null;
           target_customer?: string | null;
           subscription_tier?: SubscriptionTier;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          subscription_status?: string | null;
+          subscription_current_period_end?: string | null;
           onboarding_completed?: boolean;
           created_at?: string;
         };
@@ -88,6 +96,10 @@ export interface Database {
           main_goal?: MainGoal | null;
           target_customer?: string | null;
           subscription_tier?: SubscriptionTier;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          subscription_status?: string | null;
+          subscription_current_period_end?: string | null;
           onboarding_completed?: boolean;
           created_at?: string;
         };

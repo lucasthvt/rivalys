@@ -89,6 +89,57 @@ palier à la main depuis le SQL editor Supabase :
 update profiles set subscription_tier = 'pro' where id = '<user-uuid>';
 ```
 
+## Paiement (Stripe)
+
+Les paliers Pro et Growth sont facturés via **Stripe Checkout hébergé** — pas un formulaire
+intégré. C'est ce qui fait apparaître **Apple Pay et Google Pay automatiquement** sur les
+appareils compatibles : le paiement a lieu sur `checkout.stripe.com`, domaine déjà vérifié
+auprès d'Apple. Un formulaire intégré à notre domaine imposerait de le faire vérifier nous-mêmes.
+
+Le code ne passe jamais `payment_method_types` : Stripe choisit dynamiquement les moyens
+éligibles selon le client et la configuration du Dashboard. Le figer à `["card"]`
+supprimerait précisément Apple Pay.
+
+### Mise en place
+
+1. Dans le Dashboard Stripe, active **Apple Pay** et **Google Pay** :
+   *Settings → Payments → Payment methods*. Sans ça, ils n'apparaîtront pas au paiement.
+2. Crée **un produit par palier** (Pro, Growth) — jamais deux paliers sur un même produit,
+   sinon les lignes de facture portent toutes le même nom. Sur chaque produit, crée deux
+   prix récurrents : mensuel et annuel.
+3. Crée une **clé restreinte** (`rk_...`, *Developers → API keys → Restricted keys*) avec
+   les permissions en écriture sur Checkout Sessions, Customers, Subscriptions et Billing
+   Portal, et rien d'autre. Une clé secrète `sk_...` fonctionne aussi mais donne bien plus
+   de pouvoir que ce que ce serveur utilise.
+4. Active le **portail client** : *Settings → Billing → Customer portal*.
+5. Crée le webhook vers `https://<ton-domaine>/api/billing/webhook`, abonné à
+   `checkout.session.completed`, `customer.subscription.created`,
+   `customer.subscription.updated` et `customer.subscription.deleted`. Récupère son secret
+   de signature.
+
+En local, le webhook s'écoute avec le CLI Stripe (qui affiche le secret à utiliser) :
+
+```bash
+stripe listen --forward-to localhost:3000/api/billing/webhook
+```
+
+### Ce que le webhook décide
+
+`src/app/api/billing/webhook/route.ts` est le **seul** endroit qui écrit
+`profiles.subscription_tier`, dont dépend tout l'accès aux résultats. Trois règles :
+
+- la signature est vérifiée sur le corps brut avant toute lecture du contenu ;
+- le palier accordé est déduit de **l'identifiant de prix réellement facturé**, jamais des
+  métadonnées : un abonnement peut être modifié depuis le Dashboard ou le portail client ;
+- un prix qui ne correspond à aucun palier configuré n'accorde rien.
+
+### Clés à ne jamais committer
+
+`STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET` sont des secrets au même titre que la clé
+service-role Supabase. En production sur Vercel, déclare-les en
+[variable d'environnement sensible](https://vercel.com/docs/environment-variables/sensitive-environment-variables)
+pour que leur valeur ne soit jamais relisible dans l'interface ni dans les logs.
+
 ## Clé API Anthropic
 
 Utilisée côté serveur uniquement (`src/lib/compare/extract.ts`) pour extraire les données de pricing des pages web au format JSON structuré.
@@ -131,9 +182,23 @@ SUPABASE_SERVICE_ROLE_KEY=
 ANTHROPIC_API_KEY=
 FIRECRAWL_API_KEY=
 PERPLEXITY_API_KEY=
+NEXT_PUBLIC_APP_URL=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRICE_PRO_MONTHLY=
+STRIPE_PRICE_PRO_YEARLY=
+STRIPE_PRICE_GROWTH_MONTHLY=
+STRIPE_PRICE_GROWTH_YEARLY=
 ```
 
-Les deux dernières sont optionnelles : sans elles, le comparateur fonctionne en mode dégradé (fetch direct, pas d'enrichissement social).
+`FIRECRAWL_API_KEY` et `PERPLEXITY_API_KEY` sont optionnelles : sans elles, le comparateur
+fonctionne en mode dégradé (fetch direct, pas d'enrichissement social).
+
+Les variables Stripe le sont aussi : sans `STRIPE_SECRET_KEY`, la page tarifs affiche les
+prix sans bouton de paiement, et les routes `/api/billing/*` répondent 503 au lieu de
+planter. `NEXT_PUBLIC_APP_URL` est l'URL publique de l'application (ex.
+`https://rivalys.com`) — Stripe y renvoie le navigateur après paiement, elle ne se devine
+pas.
 
 ## Structure
 

@@ -1,5 +1,8 @@
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { isStripeConfigured } from "@/lib/billing/stripe";
+import { CheckoutButton } from "./_components/CheckoutButton";
 
 type PricingTier = {
   name: string;
@@ -9,6 +12,8 @@ type PricingTier = {
   tagline: string;
   features: string[];
   cta: string;
+  /** Palier facturable. Absent = carte non payable (gratuit, ou pas encore ouvert). */
+  checkout?: "pro" | "growth";
   highlighted?: boolean;
 };
 
@@ -41,6 +46,7 @@ const PRICING_TIERS: PricingTier[] = [
       "Analyse relançable à la demande",
     ],
     cta: "Commencer avec Pro",
+    checkout: "pro",
     highlighted: true,
   },
   {
@@ -59,7 +65,16 @@ const PRICING_TIERS: PricingTier[] = [
   },
 ];
 
-export default function TarifsPage() {
+export default async function TarifsPage() {
+  // L'état de session ne sert qu'à router le bouton : un visiteur déconnecté part
+  // s'inscrire, il n'a pas encore de compte auquel rattacher un abonnement.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const paymentOpen = isStripeConfigured();
+
   return (
     <div className="bg-void text-paper">
       <section className="relative overflow-hidden border-b border-white/[0.06]">
@@ -73,9 +88,9 @@ export default function TarifsPage() {
             Un outil payant, sans surprise.
           </h1>
           <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-mist">
-            Les prix sont fixés. La facturation, elle, n&rsquo;est pas encore branchée :
-            inscris-toi maintenant, tu utilises le comparateur et tu seras prévenu à
-            l&rsquo;ouverture des paliers.
+            {paymentOpen
+              ? "Sans engagement, résiliable en un clic depuis ton compte. Carte, Apple Pay et Google Pay acceptés."
+              : "Les prix sont fixés. La facturation, elle, n'est pas encore branchée : inscris-toi maintenant, tu utilises le comparateur et tu seras prévenu à l'ouverture des paliers."}
           </p>
         </div>
       </section>
@@ -111,16 +126,31 @@ export default function TarifsPage() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  href="/signup"
-                  className={`mt-6 inline-flex h-10 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-150 ${
-                    tier.highlighted
-                      ? "bg-signal text-paper hover:bg-signal-bright hover:text-void"
-                      : "border border-white/10 text-paper hover:border-signal-bright/40"
-                  }`}
-                >
-                  {tier.cta}
-                </Link>
+                {tier.checkout && paymentOpen ? (
+                  <div className="mt-6">
+                    <CheckoutButton
+                      tier={tier.checkout}
+                      label={tier.cta}
+                      authenticated={Boolean(user)}
+                      className={`inline-flex h-10 w-full items-center justify-center rounded-full text-sm font-semibold transition-colors duration-150 disabled:opacity-60 ${
+                        tier.highlighted
+                          ? "bg-signal text-paper hover:bg-signal-bright hover:text-void"
+                          : "border border-white/10 text-paper hover:border-signal-bright/40"
+                      }`}
+                    />
+                  </div>
+                ) : (
+                  <Link
+                    href="/signup"
+                    className={`mt-6 inline-flex h-10 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-150 ${
+                      tier.highlighted
+                        ? "bg-signal text-paper hover:bg-signal-bright hover:text-void"
+                        : "border border-white/10 text-paper hover:border-signal-bright/40"
+                    }`}
+                  >
+                    {tier.cta}
+                  </Link>
+                )}
               </div>
             ))}
           </div>

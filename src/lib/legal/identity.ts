@@ -73,6 +73,16 @@ export type LegalIdentity = {
   publicationDirector: string | null;
   /** Adresse par laquelle s'exercent les droits RGPD. Doit être relevée. */
   contactEmail: string | null;
+  /**
+   * Téléphone de contact. Obligatoire au même titre que l'email : l'article 6-III de la
+   * LCEN impose « un numéro de téléphone » permettant de joindre l'éditeur, et
+   * service-public.fr le rappelle explicitement pour l'entrepreneur individuel. Un email
+   * seul ne suffit pas.
+   *
+   * Rien n'oblige à publier une ligne personnelle : un numéro dédié suffit, et un abonné
+   * qui ne veut pas exposer son mobile peut prendre un numéro virtuel.
+   */
+  contactPhone: string | null;
   /** Délégué à la protection des données, si désigné. Non obligatoire ici. */
   dpoEmail: string | null;
   /** Domaine de production, tel qu'il apparaîtra dans la barre d'adresse. */
@@ -92,6 +102,7 @@ export const LEGAL_IDENTITY: LegalIdentity = {
   address: null,
   publicationDirector: null,
   contactEmail: "rivalysai.contact@gmail.com",
+  contactPhone: null,
   dpoEmail: null,
   domain: "rivalys.com",
 };
@@ -107,6 +118,7 @@ const REQUIRED_FIELDS = [
   "legalForm",
   "address",
   "contactEmail",
+  "contactPhone",
 ] as const satisfies readonly StringField[];
 
 export function missingLegalFields(): string[] {

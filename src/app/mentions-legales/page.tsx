@@ -29,7 +29,7 @@ const SECTIONS: LegalSection[] = [
         ? `Numéro de TVA intracommunautaire : ${LEGAL_IDENTITY.vatNumber}.`
         : "TVA non applicable, article 293 B du code général des impôts (franchise en base de TVA).",
       `Directeur de la publication : ${publicationDirectorName()}.`,
-      `Contact : ${legalField("contactEmail")}.`,
+      `Contact : ${legalField("contactEmail")} — ${legalField("contactPhone")}.`,
     ],
   },
   {

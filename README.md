@@ -325,11 +325,23 @@ uniquement quand la clé est présente — vérifié par les tests de `src/lib/s
         pour la production
       - Minimum password length = 12, requirements = lettres min/maj + chiffres + symboles
       - Secure password change = activé
-- [ ] Renseigner les deux champs restants de `src/lib/legal/identity.ts` : `address` et
-      `publicationDirector` (obligation de l'article 6-III de la LCEN). Tant qu'ils sont
-      vides, les trois pages légales affichent un bandeau rouge. Le SIRET peut rester `null`
-      avec `registrationPending: true` — les pages écrivent alors « immatriculation en
-      cours ».
+- [ ] Renseigner les champs restants de `src/lib/legal/identity.ts` — obligation de
+      l'article 6-III de la LCEN, punie d'un an d'emprisonnement et 75 000 € d'amende :
+      - `companyName` : le nom civil de l'entrepreneur. Pas « Rivalys », qui est le nom
+        commercial (`tradeName`) — une entreprise individuelle n'a pas de dénomination
+        sociale, et service-public.fr exige « nom et prénom accompagnés de la mention
+        entrepreneur individuel ou des initiales EI ».
+      - `address` : le siège déclaré à l'INPI.
+      - `contactPhone` : un numéro joignable. L'email seul ne suffit pas.
+
+      Tant qu'un de ces champs est vide, les trois pages légales affichent un bandeau rouge
+      qui le nomme. Le SIRET, lui, peut rester `null` avec `registrationPending: true` — les
+      pages écrivent alors « immatriculation en cours », ce qui est un état annonçable.
+
+      À noter : le SIRET est lui aussi obligatoire une fois attribué, et pour une entreprise
+      individuelle le répertoire SIRENE enregistre l'entreprise sous le nom civil de
+      l'entrepreneur. Publier le SIRET rend donc le nom public de toute façon — masquer le
+      nom sur le site n'apporte rien.
 - [ ] Repasser `registrationPending` à `false` et renseigner `siret` dès réception.
 - [ ] Supprimer la page de prévisualisation temporaire : `rm -rf src/app/apercu`.
 - [ ] Utiliser une clé Stripe **restreinte** (`rk_...`), pas une clé secrète complète.

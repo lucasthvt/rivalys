@@ -1,5 +1,11 @@
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
-import { LEGAL_IDENTITY, isVatRegistered, legalField, registrationLine } from "@/lib/legal/identity";
+import {
+  LEGAL_IDENTITY,
+  isVatRegistered,
+  legalField,
+  publicationDirectorName,
+  registrationLine,
+} from "@/lib/legal/identity";
 
 /**
  * Mentions légales — obligation de l'article 6-III de la LCEN.
@@ -13,14 +19,16 @@ const SECTIONS: LegalSection[] = [
   {
     title: "Éditeur du site",
     body: [
-      `Le site Rivalys (${LEGAL_IDENTITY.domain}) est édité par ${legalField("companyName")}, ${legalField("legalForm")} — ${registrationLine()} —, dont le siège est situé ${legalField("address")}.`,
+      `Le site ${LEGAL_IDENTITY.tradeName ?? "Rivalys"} (${LEGAL_IDENTITY.domain}) est édité par ${legalField("companyName")}, ${legalField("legalForm")}${
+        LEGAL_IDENTITY.tradeName ? ` exerçant sous le nom commercial ${LEGAL_IDENTITY.tradeName}` : ""
+      } — ${registrationLine()} —, dont le siège est situé ${legalField("address")}.`,
       ...(LEGAL_IDENTITY.shareCapital && LEGAL_IDENTITY.rcsCity
         ? [`Capital social : ${LEGAL_IDENTITY.shareCapital}. Immatriculée au RCS de ${LEGAL_IDENTITY.rcsCity}.`]
         : []),
       isVatRegistered()
         ? `Numéro de TVA intracommunautaire : ${LEGAL_IDENTITY.vatNumber}.`
         : "TVA non applicable, article 293 B du code général des impôts (franchise en base de TVA).",
-      `Directeur de la publication : ${legalField("publicationDirector")}.`,
+      `Directeur de la publication : ${publicationDirectorName()}.`,
       `Contact : ${legalField("contactEmail")}.`,
     ],
   },

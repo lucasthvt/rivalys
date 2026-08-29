@@ -21,8 +21,23 @@
  */
 
 export type LegalIdentity = {
-  /** Raison sociale ou nom de l'entrepreneur individuel. */
+  /**
+   * L'ÉDITEUR au sens juridique.
+   *
+   * Pour une société, sa raison sociale. Pour une entreprise individuelle, le nom civil de
+   * l'entrepreneur — une EI n'a pas de personnalité morale distincte, donc pas de raison
+   * sociale : le nom légal de l'entreprise EST celui de la personne. C'est d'ailleurs sous
+   * ce nom qu'elle figure déjà au répertoire SIRENE, consultable publiquement.
+   *
+   * Y écrire un nom de marque rendrait la mention légale fausse.
+   */
   companyName: string | null;
+  /**
+   * Nom commercial / enseigne, si différent du nom de l'éditeur. « Rivalys » pour une EI
+   * exploitée sous cette marque. Purement informatif : il complète l'identité légale, il ne
+   * la remplace jamais.
+   */
+  tradeName: string | null;
   /** Forme juridique : « SASU », « entreprise individuelle », … */
   legalForm: string | null;
   siret: string | null;
@@ -45,7 +60,16 @@ export type LegalIdentity = {
    */
   vatNumber: string | null;
   address: string | null;
-  /** Directeur de la publication (LCEN). */
+  /**
+   * Directeur de la publication (LCEN, article 6-III).
+   *
+   * Doit être une personne physique nommée : c'est elle qui répond du contenu publié. Un nom
+   * de marque ou de société n'en tient pas lieu.
+   *
+   * Laisser à `null` pour une entreprise individuelle : la fonction revient forcément à
+   * l'entrepreneur, et `publicationDirectorName()` reprend alors `companyName`. Ne le
+   * renseigner que si la personne diffère de l'éditeur — cas d'une société.
+   */
   publicationDirector: string | null;
   /** Adresse par laquelle s'exercent les droits RGPD. Doit être relevée. */
   contactEmail: string | null;
@@ -56,8 +80,10 @@ export type LegalIdentity = {
 };
 
 export const LEGAL_IDENTITY: LegalIdentity = {
-  companyName: "Rivalys",
-  legalForm: "entreprise individuelle (micro-entreprise)",
+  // Nom civil de l'entrepreneur, PAS « Rivalys » : voir le commentaire de `companyName`.
+  companyName: null,
+  tradeName: "Rivalys",
+  legalForm: "entrepreneur individuel (micro-entreprise)",
   siret: null,
   registrationPending: true,
   shareCapital: null,
@@ -80,7 +106,6 @@ const REQUIRED_FIELDS = [
   "companyName",
   "legalForm",
   "address",
-  "publicationDirector",
   "contactEmail",
 ] as const satisfies readonly StringField[];
 
@@ -90,6 +115,18 @@ export function missingLegalFields(): string[] {
   // c'est un champ manquant comme un autre.
   if (!LEGAL_IDENTITY.siret && !LEGAL_IDENTITY.registrationPending) missing.push("siret");
   return missing;
+}
+
+/**
+ * Le directeur de la publication.
+ *
+ * Dérivé plutôt que saisi quand il n'est pas renseigné : en entreprise individuelle, la
+ * fonction ne peut revenir qu'à l'entrepreneur. Une valeur à saisir de plus, c'est une
+ * valeur de plus à saisir de travers — et l'erreur typique est justement d'y mettre le nom
+ * de la marque.
+ */
+export function publicationDirectorName(): string {
+  return LEGAL_IDENTITY.publicationDirector ?? legalField("companyName");
 }
 
 /** Comment nommer l'immatriculation, selon qu'elle est faite ou en cours. */

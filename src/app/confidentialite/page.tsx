@@ -23,7 +23,7 @@ const SECTIONS: LegalSection[] = [
   {
     title: "1. Responsable de traitement",
     body: [
-      `Le responsable du traitement des données personnelles collectées via Rivalys est ${legalField("companyName")}, ${legalField("legalForm")}, dont le siège est situé ${legalField("address")}.`,
+      `Le responsable du traitement des données personnelles collectées via ${LEGAL_IDENTITY.tradeName ?? "Rivalys"} est ${legalField("companyName")}, ${legalField("legalForm")}, dont le siège est situé ${legalField("address")}.`,
       `Toute question relative à tes données, et l'exercice de tes droits, se font à l'adresse ${privacyContact()}.`,
       LEGAL_IDENTITY.dpoEmail
         ? "Un délégué à la protection des données a été désigné ; c'est lui qui répond à cette adresse."

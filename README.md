@@ -256,7 +256,7 @@ correspondante ne va pas ici : elle se pose dans le tableau de bord Supabase, qu
 | SSRF via l'URL d'un concurrent | Rejet des IP privées/réservées, revalidation à chaque redirection, 5 sauts max | `src/lib/compare/url-safety.ts`, `fetch-site.ts` |
 | Redirection ouverte après connexion | `next` accepté seulement s'il est un chemin interne | `src/app/login/page.tsx`, `src/app/auth/callback/route.ts` |
 | Abus de coût (Firecrawl / Claude / Perplexity) | 24 h entre deux analyses, 30 jours entre deux changements de concurrent | `src/lib/compare/rate-limit.ts`, `src/lib/billing/competitor-slots.ts` |
-| Bourrage d'identifiants | Limites Supabase par IP — **captcha à activer**, voir ci-dessous | `supabase/config.toml` |
+| Bourrage d'identifiants | Mot de passe 12 caractères / 4 catégories, limites Supabase par IP (30 tentatives / 5 min). Captcha écrit mais volontairement éteint, voir ci-dessous | `src/lib/auth/password.ts`, `supabase/config.toml` |
 
 ### La règle des colonnes de `profiles`
 
@@ -266,39 +266,56 @@ de profil doit y être ajoutée**, sinon son écriture est refusée. C'est volon
 est bruyant, alors qu'un `grant all` de confort rouvrirait silencieusement la possibilité pour
 n'importe quel compte gratuit de se passer en Growth.
 
-### Captcha Turnstile
+### Captcha Turnstile — écrit, éteint, assumé
 
-Le code est écrit et **inerte tant que `NEXT_PUBLIC_TURNSTILE_SITE_KEY` est absente** : en
-local, les formulaires fonctionnent sans captcha. Pour l'activer, deux clés vont à deux
-endroits différents :
+**Le captcha n'est pas obligatoire et n'est pas activé.** Ce n'est pas un oubli.
+
+La CNIL (délibération 2022-100) raisonne par équivalence sur les mots de passe : douze
+caractères avec quatre catégories suffisent seuls, sans mesure complémentaire ; c'est à
+partir de huit qu'il faut y adjoindre un blocage de compte, une limitation de débit **ou** un
+captcha. Le projet a pris le premier chemin, donc rien n'exige le second.
+
+Ce que le captcha couvrirait en plus : le bourrage d'identifiants réparti sur des centaines
+d'adresses IP, que la limite Supabase (30 tentatives / 5 min / IP) ne voit pas passer. C'est
+une attaque montée contre des services où un compte a de la valeur marchande. Ici, un compte
+compromis donne accès à l'URL d'un concurrent — les moyens de paiement sont chez Stripe.
+À activer le jour où il y a de vrais utilisateurs, ou à la première vague d'inscriptions
+suspectes.
+
+Le code est écrit et **inerte tant que `NEXT_PUBLIC_TURNSTILE_SITE_KEY` est absente**.
+L'allumer ne demande aucune ligne de code :
 
 1. Créer un widget sur [dash.cloudflare.com](https://dash.cloudflare.com) → Turnstile,
-   domaine `rivalys.com` (+ `localhost` pour tester).
-2. Clé **de site** (publique) → `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, dans `.env.local` et dans
-   les variables d'environnement Vercel.
-3. Clé **secrète** → tableau de bord Supabase, Authentication → Attack Protection → Enable
-   Captcha protection, provider `Turnstile`. **Jamais dans ce dépôt** : c'est Supabase qui
-   vérifie le jeton, pas notre serveur.
+   hostnames `rivalys.com` **et** `localhost`.
+2. Clé **de site** → `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, dans `.env.local` et dans les
+   variables d'environnement Vercel. Redémarrer le serveur.
+3. Vérifier que le widget s'affiche sur `/login` **avant** l'étape suivante.
+4. Clé **secrète** → Supabase, Authentication → Attack Protection → Enable Captcha
+   protection, provider `Turnstile`. Jamais dans ce dépôt : c'est Supabase qui vérifie le
+   jeton, pas notre serveur.
 
-Les deux doivent être posées **ensemble**. Supabase activé sans la variable rejetterait
-toutes les connexions ; la variable sans Supabase afficherait un widget que personne ne
-vérifie.
+⚠️ Les deux clés commencent par `0x4AAAAA` et se confondent à l'œil. Coller la secrète à la
+place de celle de site donne l'erreur Turnstile `400020`. L'écran affiche désormais le vrai
+motif plutôt qu'un diagnostic au hasard — voir `explainTurnstileError` dans
+`src/components/auth/Turnstile.tsx`.
 
-La politique de sécurité du contenu s'ouvre automatiquement sur
-`challenges.cloudflare.com` (script + iframe) uniquement quand la clé est présente — voir
-`buildCsp` dans `src/proxy.ts`.
+⚠️ L'ordre compte. Supabase activé sans la variable rejette **toutes** les connexions par mot
+de passe, y compris la tienne. En cas de blocage : décocher Enable Captcha protection.
+
+La politique de sécurité du contenu s'ouvre sur `challenges.cloudflare.com` (script + iframe)
+uniquement quand la clé est présente — vérifié par les tests de `src/lib/security/csp.ts`.
 
 ### Déjà fait
 
 - [x] Migrations `20260830000000` et `20260830010000` appliquées au projet lié
       (`nzmcdbaetinpemiwlrhl`). Vérifié : `update profiles set subscription_tier` sous le rôle
       `authenticated` renvoie `42501 permission denied for table profiles`.
-- [x] Code du captcha écrit et branché sur `/login` et `/signup` (jeton remis à zéro après
-      chaque échec — un jeton Turnstile ne sert qu'une fois).
+- [x] Code du captcha écrit et branché sur `/login` et `/signup`, éteint par défaut (jeton
+      remis à zéro après chaque échec — un jeton Turnstile ne sert qu'une fois ; pas de
+      relance automatique sur une erreur de configuration).
 
 ### À faire avant la mise en production
 
-- [ ] **Créer les clés Turnstile** et les poser aux deux endroits ci-dessus.
 - [ ] **Tableau de bord Supabase** — `supabase/config.toml` ne configure que le local, et
       `supabase config push` écraserait `site_url` avec `http://127.0.0.1:3000`. À régler à la
       main dans Authentication :
@@ -308,12 +325,11 @@ La politique de sécurité du contenu s'ouvre automatiquement sur
         pour la production
       - Minimum password length = 12, requirements = lettres min/maj + chiffres + symboles
       - Secure password change = activé
-      - **Leaked password protection = activé** (seul point relevé par
-        `npx supabase db advisors --linked --type security`)
-- [ ] Renseigner les trois champs restants de `src/lib/legal/identity.ts` : `address`,
-      `publicationDirector`, `contactEmail`. Tant qu'ils sont vides, les trois pages légales
-      affichent un bandeau rouge. Le SIRET peut rester `null` avec
-      `registrationPending: true` — les pages écrivent alors « immatriculation en cours ».
+- [ ] Renseigner les deux champs restants de `src/lib/legal/identity.ts` : `address` et
+      `publicationDirector` (obligation de l'article 6-III de la LCEN). Tant qu'ils sont
+      vides, les trois pages légales affichent un bandeau rouge. Le SIRET peut rester `null`
+      avec `registrationPending: true` — les pages écrivent alors « immatriculation en
+      cours ».
 - [ ] Repasser `registrationPending` à `false` et renseigner `siret` dès réception.
 - [ ] Supprimer la page de prévisualisation temporaire : `rm -rf src/app/apercu`.
 - [ ] Utiliser une clé Stripe **restreinte** (`rk_...`), pas une clé secrète complète.
@@ -321,6 +337,16 @@ La politique de sécurité du contenu s'ouvre automatiquement sur
       portail y renvoient le navigateur).
 - [ ] Mettre en place la suppression des comptes inactifs depuis trois ans, annoncée dans la
       politique de confidentialité. Rien ne l'automatise aujourd'hui.
+
+### Reporté, en connaissance de cause
+
+- **Captcha Turnstile** — non obligatoire, voir ci-dessus. À rallumer quand le service a de
+  vrais utilisateurs.
+- **Leaked password protection** (refus des mots de passe présents dans des fuites connues,
+  via HaveIBeenPwned) — **réservé au plan Pro de Supabase**, donc indisponible tant que le
+  projet est en Free. C'est le seul point que relève encore
+  `npx supabase db advisors --linked --type security` : l'avertissement est attendu et ne
+  se corrige pas par du code. À activer le jour d'un passage en Pro.
 
 ## RGPD
 

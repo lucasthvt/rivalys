@@ -29,6 +29,7 @@ type TurnstileApi = {
       "error-callback": (errorCode: string) => void;
       theme?: "auto" | "light" | "dark";
       language?: string;
+      retry?: "auto" | "never";
     },
   ) => string;
   reset: (widgetId?: string) => void;
@@ -80,6 +81,17 @@ function loadTurnstileScript(): Promise<void> {
  *
  * Codes : developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
  */
+/**
+ * L'échec est-il de ceux qu'un nouvel essai peut résoudre ?
+ *
+ * Un délai dépassé ou un challenge raté, oui — le réseau a hoqueté. Une clé invalide ou un
+ * domaine non autorisé, non : c'est une erreur de configuration, et réessayer produira
+ * exactement la même erreur, indéfiniment.
+ */
+function isTransientTurnstileError(code: string): boolean {
+  return code.startsWith("300") || code.startsWith("600") || code.startsWith("1106");
+}
+
 function explainTurnstileError(code: string): string {
   if (code === "400020" || code.startsWith("1101")) {
     return "Clé de site du captcha invalide. Vérifie NEXT_PUBLIC_TURNSTILE_SITE_KEY : c'est la clé « Site Key » de Cloudflare, pas la clé secrète — les deux commencent par 0x4AAAAA.";
@@ -115,6 +127,8 @@ export function Turnstile({
   const siteKey = turnstileSiteKey();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const retriedRef = useRef(false);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
   // Gardés dans des refs pour que l'effet de montage ne dépende pas de leur identité :
@@ -135,6 +149,7 @@ export function Turnstile({
 
   const reset = useCallback(() => {
     onTokenRef.current(null);
+    retriedRef.current = false;
     if (widgetIdRef.current && window.turnstile) {
       window.turnstile.reset(widgetIdRef.current);
     }
@@ -159,11 +174,29 @@ export function Turnstile({
           sitekey: siteKey,
           theme: "dark",
           language: "fr",
+          // Turnstile réessaie tout seul toutes les huit secondes par défaut, quelle que
+          // soit la cause. Sur une erreur de configuration, ça ne corrige rien et ça
+          // inonde la console et les journaux serveur — c'est du bruit qui masque les
+          // vraies pannes. On reprend la décision de réessayer, une fois, et seulement
+          // quand le code d'erreur dit que ça peut aider.
+          retry: "never",
           callback: (token) => onTokenRef.current(token),
           "expired-callback": () => onTokenRef.current(null),
           "error-callback": (errorCode: string) => {
+            const code = String(errorCode);
             onTokenRef.current(null);
-            setFailure(explainTurnstileError(String(errorCode)));
+
+            if (isTransientTurnstileError(code) && !retriedRef.current) {
+              retriedRef.current = true;
+              retryTimerRef.current = setTimeout(() => {
+                if (widgetIdRef.current && window.turnstile) {
+                  window.turnstile.reset(widgetIdRef.current);
+                }
+              }, 3000);
+              return;
+            }
+
+            setFailure(explainTurnstileError(code));
           },
         });
       })
@@ -181,6 +214,7 @@ export function Turnstile({
 
     return () => {
       cancelled = true;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       const id = widgetIdRef.current;
       if (id && window.turnstile) {
         window.turnstile.remove(id);

@@ -117,6 +117,10 @@ palier à la main depuis le SQL editor Supabase :
 update profiles set subscription_tier = 'pro' where id = '<user-uuid>';
 ```
 
+Cette requête ne fonctionne que depuis le SQL editor (rôle `postgres`) ou avec la clé
+service_role. Depuis un client authentifié, elle est refusée : `subscription_tier` n'est plus
+accessible en écriture au rôle `authenticated` (voir la section Sécurité).
+
 ## Paiement (Stripe)
 
 Les paliers Pro et Growth sont facturés via **Stripe Checkout hébergé** — pas un formulaire
@@ -218,7 +222,10 @@ STRIPE_PRICE_PRO_MONTHLY=
 STRIPE_PRICE_PRO_YEARLY=
 STRIPE_PRICE_GROWTH_MONTHLY=
 STRIPE_PRICE_GROWTH_YEARLY=
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 ```
+
+> `.env.example` ne contient pas encore `NEXT_PUBLIC_TURNSTILE_SITE_KEY` — à y ajouter.
 
 `FIRECRAWL_API_KEY` et `PERPLEXITY_API_KEY` sont optionnelles : sans elles, le comparateur
 fonctionne en mode dégradé (fetch direct, pas d'enrichissement social).
@@ -228,6 +235,107 @@ prix sans bouton de paiement, et les routes `/api/billing/*` répondent 503 au l
 planter. `NEXT_PUBLIC_APP_URL` est l'URL publique de l'application (ex.
 `https://rivalys.com`) — Stripe y renvoie le navigateur après paiement, elle ne se devine
 pas.
+
+`NEXT_PUBLIC_TURNSTILE_SITE_KEY` est la clé **publique** du captcha. La clé secrète
+correspondante ne va pas ici : elle se pose dans le tableau de bord Supabase, qui est le seul
+à vérifier le jeton. Voir la section Sécurité.
+
+## Sécurité
+
+### Ce qui protège quoi
+
+| Menace | Défense | Où |
+| --- | --- | --- |
+| Lire les données d'un autre utilisateur | Row Level Security sur les cinq tables, filtrée sur `auth.uid()` | `supabase/migrations/20260825000000_init_schema.sql` |
+| S'accorder un palier payant sans payer | Privilèges au niveau colonne + déclencheur sur `profiles` | `supabase/migrations/20260830000000_lock_billing_columns.sql` |
+| Ouvrir le portail Stripe de quelqu'un d'autre | Mêmes privilèges : `stripe_customer_id` non inscriptible depuis le navigateur | idem |
+| Falsifier un événement de paiement | Vérification de la signature Stripe avant toute lecture du corps | `src/app/api/billing/webhook/route.ts` |
+| XSS | CSP à nonce avec `strict-dynamic` — aucun script sans nonce ne s'exécute | `src/proxy.ts` |
+| Clickjacking | `frame-ancestors 'none'` + `X-Frame-Options: DENY` | `src/proxy.ts`, `next.config.ts` |
+| Interception réseau | HSTS deux ans, `upgrade-insecure-requests` | `next.config.ts`, `src/proxy.ts` |
+| SSRF via l'URL d'un concurrent | Rejet des IP privées/réservées, revalidation à chaque redirection, 5 sauts max | `src/lib/compare/url-safety.ts`, `fetch-site.ts` |
+| Redirection ouverte après connexion | `next` accepté seulement s'il est un chemin interne | `src/app/login/page.tsx`, `src/app/auth/callback/route.ts` |
+| Abus de coût (Firecrawl / Claude / Perplexity) | 24 h entre deux analyses, 30 jours entre deux changements de concurrent | `src/lib/compare/rate-limit.ts`, `src/lib/billing/competitor-slots.ts` |
+| Bourrage d'identifiants | Limites Supabase par IP — **captcha à activer**, voir ci-dessous | `supabase/config.toml` |
+
+### La règle des colonnes de `profiles`
+
+Le rôle `authenticated` n'a PAS `insert`/`update` sur toute la table : seulement sur la liste
+de colonnes énumérée dans `20260830000000_lock_billing_columns.sql`. **Toute nouvelle colonne
+de profil doit y être ajoutée**, sinon son écriture est refusée. C'est volontaire : l'oubli
+est bruyant, alors qu'un `grant all` de confort rouvrirait silencieusement la possibilité pour
+n'importe quel compte gratuit de se passer en Growth.
+
+### Captcha Turnstile
+
+Le code est écrit et **inerte tant que `NEXT_PUBLIC_TURNSTILE_SITE_KEY` est absente** : en
+local, les formulaires fonctionnent sans captcha. Pour l'activer, deux clés vont à deux
+endroits différents :
+
+1. Créer un widget sur [dash.cloudflare.com](https://dash.cloudflare.com) → Turnstile,
+   domaine `rivalys.com` (+ `localhost` pour tester).
+2. Clé **de site** (publique) → `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, dans `.env.local` et dans
+   les variables d'environnement Vercel.
+3. Clé **secrète** → tableau de bord Supabase, Authentication → Attack Protection → Enable
+   Captcha protection, provider `Turnstile`. **Jamais dans ce dépôt** : c'est Supabase qui
+   vérifie le jeton, pas notre serveur.
+
+Les deux doivent être posées **ensemble**. Supabase activé sans la variable rejetterait
+toutes les connexions ; la variable sans Supabase afficherait un widget que personne ne
+vérifie.
+
+La politique de sécurité du contenu s'ouvre automatiquement sur
+`challenges.cloudflare.com` (script + iframe) uniquement quand la clé est présente — voir
+`buildCsp` dans `src/proxy.ts`.
+
+### Déjà fait
+
+- [x] Migrations `20260830000000` et `20260830010000` appliquées au projet lié
+      (`nzmcdbaetinpemiwlrhl`). Vérifié : `update profiles set subscription_tier` sous le rôle
+      `authenticated` renvoie `42501 permission denied for table profiles`.
+- [x] Code du captcha écrit et branché sur `/login` et `/signup` (jeton remis à zéro après
+      chaque échec — un jeton Turnstile ne sert qu'une fois).
+
+### À faire avant la mise en production
+
+- [ ] **Créer les clés Turnstile** et les poser aux deux endroits ci-dessus.
+- [ ] **Tableau de bord Supabase** — `supabase/config.toml` ne configure que le local, et
+      `supabase config push` écraserait `site_url` avec `http://127.0.0.1:3000`. À régler à la
+      main dans Authentication :
+      - Site URL et Redirect URLs = domaine de production
+      - Confirm email = activé — **exige un SMTP personnalisé** (Resend, SendGrid…) : le
+        service d'emails intégré est plafonné à quelques envois par heure et n'est pas prévu
+        pour la production
+      - Minimum password length = 12, requirements = lettres min/maj + chiffres + symboles
+      - Secure password change = activé
+      - **Leaked password protection = activé** (seul point relevé par
+        `npx supabase db advisors --linked --type security`)
+- [ ] Renseigner les trois champs restants de `src/lib/legal/identity.ts` : `address`,
+      `publicationDirector`, `contactEmail`. Tant qu'ils sont vides, les trois pages légales
+      affichent un bandeau rouge. Le SIRET peut rester `null` avec
+      `registrationPending: true` — les pages écrivent alors « immatriculation en cours ».
+- [ ] Repasser `registrationPending` à `false` et renseigner `siret` dès réception.
+- [ ] Supprimer la page de prévisualisation temporaire : `rm -rf src/app/apercu`.
+- [ ] Utiliser une clé Stripe **restreinte** (`rk_...`), pas une clé secrète complète.
+- [ ] Vérifier que `NEXT_PUBLIC_APP_URL` pointe sur le domaine de production (Checkout et le
+      portail y renvoient le navigateur).
+- [ ] Mettre en place la suppression des comptes inactifs depuis trois ans, annoncée dans la
+      politique de confidentialité. Rien ne l'automatise aujourd'hui.
+
+## RGPD
+
+- **Base légale** : exécution du contrat pour le service, obligation légale pour la
+  conservation comptable, intérêt légitime pour la sécurité. Aucun traitement publicitaire.
+- **Sous-traitants** : Supabase (UE), Vercel, Anthropic, Firecrawl, Perplexity, Stripe, Google
+  (OAuth uniquement). La liste de `src/app/confidentialite/page.tsx` doit être tenue à jour
+  avec le code : **ajouter un appel réseau à un nouveau prestataire oblige à l'y déclarer.**
+- **Droits en libre-service** : la page `/compte` télécharge l'export complet (articles 15 et
+  20) et supprime le compte avec résiliation de l'abonnement (article 17). Aucun échange
+  d'email n'est nécessaire.
+- **Preuve d'acceptation** : `profiles.terms_accepted_at`, horodatée par un déclencheur avec
+  l'horloge de la base — la date ne peut pas être choisie par celui qui accepte.
+- **Cookies** : uniquement ceux de session de Supabase Auth. Exemptés de consentement, donc
+  aucune bannière. Ajouter le moindre outil de mesure d'audience oblige à en poser une.
 
 ## Structure
 

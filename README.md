@@ -247,6 +247,31 @@ pas.
 correspondante ne va pas ici : elle se pose dans le tableau de bord Supabase, qui est le seul
 à vérifier le jeton. Voir la section Sécurité.
 
+## Déploiement (Vercel)
+
+```bash
+vercel login                              # OAuth navigateur, interactif
+vercel link                               # rattache ce dossier à un projet Vercel
+./scripts/vercel-env-push.sh production   # reporte .env.local, sans afficher les valeurs
+vercel --prod                             # déploie
+vercel domains add rivalys.com            # puis suivre les instructions DNS
+```
+
+Le script de report est relançable : une variable déjà définie chez Vercel est signalée et
+laissée telle quelle. Pour en remplacer une, `vercel env rm NOM production` d'abord.
+
+Après le déploiement, deux choses ne sont PAS dans le code et doivent être posées à la main
+dans le tableau de bord Supabase, sous peine de casser la connexion Google :
+
+- Authentication → URL Configuration → *Site URL* = `https://rivalys.com`
+- Authentication → URL Configuration → *Redirect URLs* = `https://rivalys.com/**`
+
+Puis, pour vérifier que la production tient debout :
+
+```bash
+npm run preflight -- --prod
+```
+
 ## Sécurité
 
 ### Ce qui protège quoi

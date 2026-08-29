@@ -1,8 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
+import { buildCsp } from "@/lib/security/csp";
 
-const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/tasks", "/concurrent"];
+const PROTECTED_PREFIXES = [
+  "/onboarding",
+  "/dashboard",
+  "/tasks",
+  "/concurrent",
+  "/score",
+  "/statistiques",
+  "/compte",
+];
 
 function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some(
@@ -11,9 +20,30 @@ function isProtectedPath(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  // Un nonce neuf par requête. `crypto` est l'API Web disponible dans le runtime des
+  // proxies Next — pas besoin d'importer node:crypto.
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const csp = buildCsp({ nonce, dev: process.env.NODE_ENV === "development" });
+
+  /**
+   * Next lit le nonce dans l'en-tête `content-security-policy` de la REQUÊTE pour
+   * l'appliquer à ses propres balises `<script>`. Il faut donc le poser sur les en-têtes
+   * transmis en aval, pas seulement sur la réponse.
+   *
+   * Reconstruit à chaque appel plutôt que capturé une fois : Supabase peut rafraîchir les
+   * cookies d'authentification en cours de route (`request.cookies.set`), et les en-têtes
+   * doivent refléter cet état-là.
+   */
+  function forwardedHeaders(): Headers {
+    const headers = new Headers(request.headers);
+    headers.set("x-nonce", nonce);
+    headers.set("content-security-policy", csp);
+    return headers;
+  }
+
   // Response we'll eventually return. Supabase may need to overwrite this
   // (via setAll below) if it refreshes the auth token, so keep it mutable.
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: forwardedHeaders() } });
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,7 +60,7 @@ export async function proxy(request: NextRequest) {
           for (const { name, value } of cookiesToSet) {
             request.cookies.set(name, value);
           }
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: forwardedHeaders() } });
           for (const { name, value, options } of cookiesToSet) {
             response.cookies.set(name, value, options);
           }
@@ -48,7 +78,19 @@ export async function proxy(request: NextRequest) {
   if (isProtectedPath(request.nextUrl.pathname) && !user) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    redirectResponse.headers.set("Content-Security-Policy", csp);
+    return redirectResponse;
+  }
+
+  response.headers.set("Content-Security-Policy", csp);
+
+  // Les écrans authentifiés ne doivent jamais finir dans un index public : ils ne portent
+  // que des données appartenant à une personne, et un cache partagé mal réglé suffit à
+  // les faire fuir.
+  if (isProtectedPath(request.nextUrl.pathname)) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
   }
 
   return response;

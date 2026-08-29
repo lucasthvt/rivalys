@@ -1,65 +1,66 @@
-import { Eyebrow } from "@/components/ui/Eyebrow";
-import Link from "next/link";
+import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
+import { LEGAL_IDENTITY, isVatRegistered, legalField, registrationLine } from "@/lib/legal/identity";
 
-const SECTIONS = [
+/**
+ * Mentions légales — obligation de l'article 6-III de la LCEN.
+ *
+ * Les valeurs viennent toutes de src/lib/legal/identity.ts. Tant qu'elles sont vides, le
+ * gabarit affiche un bandeau d'avertissement : mieux vaut un site qui crie qu'il est
+ * incomplet qu'un site qui affiche une identité plausible et fausse.
+ */
+
+const SECTIONS: LegalSection[] = [
   {
     title: "Éditeur du site",
     body: [
-      "Le site Rivalys (rivalys.com) est édité par [Nom / raison sociale à compléter], [statut juridique — ex. entreprise individuelle, SASU], immatriculée sous le numéro SIRET [à compléter], dont le siège est situé [adresse à compléter].",
-      "Responsable de la publication : [Nom du responsable].",
-      "Contact : [email de contact à compléter].",
+      `Le site Rivalys (${LEGAL_IDENTITY.domain}) est édité par ${legalField("companyName")}, ${legalField("legalForm")} — ${registrationLine()} —, dont le siège est situé ${legalField("address")}.`,
+      ...(LEGAL_IDENTITY.shareCapital && LEGAL_IDENTITY.rcsCity
+        ? [`Capital social : ${LEGAL_IDENTITY.shareCapital}. Immatriculée au RCS de ${LEGAL_IDENTITY.rcsCity}.`]
+        : []),
+      isVatRegistered()
+        ? `Numéro de TVA intracommunautaire : ${LEGAL_IDENTITY.vatNumber}.`
+        : "TVA non applicable, article 293 B du code général des impôts (franchise en base de TVA).",
+      `Directeur de la publication : ${legalField("publicationDirector")}.`,
+      `Contact : ${legalField("contactEmail")}.`,
     ],
   },
   {
     title: "Hébergement",
     body: [
-      "Le site est hébergé par Vercel Inc. (https://vercel.com).",
-      "La base de données, l'authentification et le stockage sont hébergés par Supabase (https://supabase.com), dans la région [région du projet Supabase à compléter].",
+      "L'application est hébergée par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis — vercel.com.",
+      "La base de données et l'authentification sont hébergées par Supabase, dans l'Union européenne (région AWS eu-central-1, Francfort, Allemagne) — supabase.com.",
+      "Les paiements sont traités par Stripe Payments Europe Ltd., The One Building, 1 Grand Canal Street Lower, Dublin 2, Irlande — stripe.com.",
     ],
   },
   {
     title: "Propriété intellectuelle",
     body: [
-      "L'ensemble des éléments du site Rivalys (textes, structure, identité visuelle) est protégé au titre du droit d'auteur. Toute reproduction non autorisée est interdite.",
+      "L'ensemble des éléments du site Rivalys — textes, structure, identité visuelle, code — est protégé au titre du droit d'auteur. Toute reproduction, représentation ou adaptation non autorisée est interdite.",
+      "Les marques, logos et contenus de sites tiers affichés dans un comparatif restent la propriété de leurs titulaires respectifs. Ils sont cités à titre d'information factuelle, dans le cadre du droit de citation et de la comparaison licite prévue à l'article L121-8 du code de la consommation.",
     ],
   },
   {
     title: "Données affichées sur le site",
     body: [
-      "Les données comparatives affichées à un utilisateur (pricing, positionnement, présence d'un essai gratuit) sont extraites de pages publiques d'un site tiers, à la demande explicite de l'utilisateur. Rivalys ne garantit pas l'exactitude de ces données, qui peuvent évoluer indépendamment de la volonté de Rivalys.",
+      "Les données comparatives affichées à un utilisateur — tarifs, positionnement, présence d'un essai gratuit, moyens de connexion et de paiement — sont extraites de pages publiques d'un site tiers, à la demande explicite de cet utilisateur et pour son seul usage.",
+      "Rivalys ne garantit pas l'exactitude de ces données, qui peuvent évoluer indépendamment de sa volonté. Lorsqu'une donnée n'a pas pu être récupérée, elle est signalée comme telle et jamais estimée.",
+      "Rivalys ne constitue pas un annuaire de concurrents et ne collecte aucune donnée en dehors des URL fournies par un utilisateur identifié.",
+    ],
+  },
+  {
+    title: "Signalement",
+    body: [
+      `L'éditeur d'un site tiers qui souhaite signaler une donnée inexacte affichée par le comparateur, ou s'opposer à sa lecture automatisée, peut écrire à ${legalField("contactEmail")}.`,
+    ],
+  },
+  {
+    title: "Médiation de la consommation",
+    body: [
+      "Rivalys s'adresse à des professionnels. Le dispositif de médiation de la consommation prévu aux articles L611-1 et suivants du code de la consommation ne s'applique donc pas aux relations avec ses utilisateurs professionnels.",
     ],
   },
 ];
 
 export default function MentionsLegalesPage() {
-  return (
-    <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-20">
-      <Eyebrow>Légal</Eyebrow>
-      <h1 className="mt-3 font-brand text-3xl font-semibold tracking-tight text-paper">
-        Mentions légales
-      </h1>
-      <p className="mt-4 text-sm text-mist">
-        Version provisoire — les champs entre crochets seront complétés avant le lancement public.
-      </p>
-
-      <div className="mt-10 flex flex-col gap-8">
-        {SECTIONS.map((section) => (
-          <div key={section.title}>
-            <h2 className="font-brand text-lg font-semibold text-paper">{section.title}</h2>
-            <div className="mt-2 flex flex-col gap-2">
-              {section.body.map((p, i) => (
-                <p key={i} className="text-sm leading-relaxed text-mist">
-                  {p}
-                </p>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Link href="/" className="mt-10 inline-block text-sm font-medium text-mist transition-colors hover:text-paper">
-        ← Retour à l&rsquo;accueil
-      </Link>
-    </div>
-  );
+  return <LegalPage title="Mentions légales" updatedAt="29 août 2026" sections={SECTIONS} />;
 }

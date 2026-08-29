@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/score", label: "Score", icon: GaugeIcon },
   { href: "/statistiques", label: "Statistiques", icon: ChartIcon },
   { href: "/concurrent", label: "Concurrent", icon: TargetIcon },
+  { href: "/compte", label: "Mon compte", icon: UserIcon },
 ] as const;
 
 /**
@@ -259,6 +260,25 @@ function LogoutIcon({ className }: { className?: string }) {
       />
       <path d="M13 13.5L17 10l-4-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M17 10H7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      className={`h-[18px] w-[18px] shrink-0 ${className ?? ""}`}
+      aria-hidden="true"
+    >
+      <circle cx="10" cy="7" r="3.2" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M3.8 17c0-2.9 2.8-4.7 6.2-4.7s6.2 1.8 6.2 4.7"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

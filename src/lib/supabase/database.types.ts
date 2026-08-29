@@ -63,6 +63,7 @@ export interface Database {
           subscription_status: string | null;
           subscription_current_period_end: string | null;
           onboarding_completed: boolean;
+          terms_accepted_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -82,6 +83,7 @@ export interface Database {
           subscription_status?: string | null;
           subscription_current_period_end?: string | null;
           onboarding_completed?: boolean;
+          terms_accepted_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -101,6 +103,7 @@ export interface Database {
           subscription_status?: string | null;
           subscription_current_period_end?: string | null;
           onboarding_completed?: boolean;
+          terms_accepted_at?: string | null;
           created_at?: string;
         };
         Relationships: [];

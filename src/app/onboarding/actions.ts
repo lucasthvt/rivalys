@@ -94,6 +94,11 @@ export async function completeOnboarding(
     main_goal: input.mainGoal,
     target_customer: targetCustomer,
     onboarding_completed: false,
+    // Trace horodatée de l'acceptation des CGU cochée à l'inscription. La valeur envoyée
+    // ici n'est pas celle qui sera stockée : un déclencheur la remplace par l'horloge de
+    // la base (voir 20260830010000_add_terms_accepted_at.sql), pour qu'une acceptation ne
+    // puisse pas être antidatée par celui qui accepte.
+    terms_accepted_at: new Date().toISOString(),
   });
 
   if (profileError) {

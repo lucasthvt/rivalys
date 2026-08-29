@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { fetchSite, peekRedirect, SiteFetchError, type FetchedSite } from "@/lib/compare/fetch-site";
+import {
+  clickThroughToPayment,
+  fetchSite,
+  peekRedirect,
+  SiteFetchError,
+  type FetchedSite,
+} from "@/lib/compare/fetch-site";
 import { extractSiteData, classifyPositioning, ExtractionError } from "@/lib/compare/extract";
 import {
   isStoredExtractedData,
@@ -27,6 +33,7 @@ import {
   detectPaymentMethods,
   detectPaymentProviders,
   followPurchaseLinks,
+  providerFromLandingUrl,
 } from "@/lib/compare/payment-methods";
 import {
   lookupThirdPartyMentions,
@@ -492,10 +499,7 @@ async function fetchAndExtract(
     links: paymentLinks,
     html: paymentMarkup,
   });
-  data.payment_providers =
-    declaredProviders.length > 0
-      ? declaredProviders
-      : await followPurchaseLinks(raw.pricingLinks, peekRedirect);
+  data.payment_providers = await resolvePaymentProviders(declaredProviders, raw, url);
 
   // Les deux relevés web-groundés sont indépendants l'un de l'autre : enchaînés, leurs
   // deux délais de 30 s s'additionnaient sur chaque site. Lancés ensemble, le pire cas
@@ -615,4 +619,31 @@ function safeHostname(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Qui encaisse, du signal le moins cher au plus cher.
+ *
+ * 1. le prestataire déclaré dans le balisage ou les liens — gratuit, déjà récupéré ;
+ * 2. la redirection d'un lien d'achat — une requête HTTP ;
+ * 3. le clic sur le bouton d'abonnement dans un navigateur — un scrape Firecrawl de plus.
+ *
+ * Le troisième niveau n'existe que parce que beaucoup de tunnels ne laissent aucune trace
+ * ailleurs : le bouton est un gestionnaire JavaScript, et sa destination n'apparaît qu'au
+ * clic. Il ne se déclenche que si les deux premiers n'ont rien donné.
+ */
+async function resolvePaymentProviders(
+  declared: string[],
+  raw: FetchedSite,
+  siteUrl: string,
+): Promise<string[]> {
+  if (declared.length > 0) return declared;
+
+  const followed = await followPurchaseLinks(raw.pricingLinks, peekRedirect);
+  if (followed.length > 0) return followed;
+
+  if (!raw.pricingUrl) return [];
+
+  const landing = await clickThroughToPayment(raw.pricingUrl);
+  return providerFromLandingUrl(landing, safeHostname(siteUrl)?.replace(/^www\./, "") ?? null);
 }

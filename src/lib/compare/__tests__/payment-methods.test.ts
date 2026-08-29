@@ -4,6 +4,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
+  providerFromLandingUrl,
   followPurchaseLinks,
   detectPaymentMethods,
   detectPaymentProviders,
@@ -234,5 +235,42 @@ describe("followPurchaseLinks", () => {
       }),
       [],
     );
+  });
+});
+
+describe("providerFromLandingUrl", () => {
+  test("relève le prestataire sur lequel le clic a atterri", () => {
+    assert.deepEqual(
+      providerFromLandingUrl("https://checkout.stripe.com/c/pay/cs_test_1", "exemple.com"),
+      ["stripe"],
+    );
+    assert.deepEqual(
+      providerFromLandingUrl("https://whop.com/produit/", "exemple.com"),
+      ["whop"],
+    );
+  });
+
+  /**
+   * Le cas mesuré sur un vrai site : le clic mène à `/register?redirect=/pricing`, parce
+   * que le produit exige un compte avant de payer. On est resté chez lui, donc on n'a rien
+   * appris — et rien ne doit être affirmé.
+   */
+  test("un atterrissage sur le site lui-même ne conclut rien", () => {
+    assert.deepEqual(
+      providerFromLandingUrl("https://exemple.com/register?redirect=%2Fpricing", "exemple.com"),
+      [],
+    );
+  });
+
+  test("ignore le www dans la comparaison d'hôte", () => {
+    assert.deepEqual(
+      providerFromLandingUrl("https://www.exemple.com/login", "exemple.com"),
+      [],
+    );
+  });
+
+  test("ne conclut rien sans atterrissage ni sur une URL illisible", () => {
+    assert.deepEqual(providerFromLandingUrl(null, "exemple.com"), []);
+    assert.deepEqual(providerFromLandingUrl("pas-une-url", "exemple.com"), []);
   });
 });

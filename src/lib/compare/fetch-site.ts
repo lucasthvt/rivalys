@@ -13,6 +13,7 @@ import { assertPublicHttpUrl, UnsafeUrlError } from "./url-safety";
 import { canonicalHostname } from "@/lib/url";
 import { extractLinks, stripHtml } from "./html";
 import { FirecrawlError, isFirecrawlConfigured, scrapePage } from "./firecrawl";
+import { PURCHASE_LABEL_RE } from "./payment-methods";
 
 export class SiteFetchError extends Error {
   constructor(
@@ -390,5 +391,43 @@ export async function peekRedirect(url: string): Promise<{ location: string | nu
     return { location: location ? new URL(location, url).toString() : null };
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/**
+ * Clique le bouton d'abonnement de la page de tarifs et renvoie l'URL d'atterrissage.
+ *
+ * Sur une application monopage, ce bouton n'est pas un lien : sa destination n'existe
+ * qu'une fois le gestionnaire JavaScript exécuté. Firecrawl pilote un navigateur, donc le
+ * clic est possible — c'est le seul moyen de voir un tunnel de paiement qui ne laisse
+ * aucune trace dans le balisage.
+ *
+ * Coûte un scrape supplémentaire : réservé au dernier recours, quand aucun prestataire
+ * n'est visible autrement. Renvoie null si Firecrawl n'est pas configuré ou si le clic
+ * échoue — on ne conclut alors rien.
+ */
+export async function clickThroughToPayment(pricingUrl: string): Promise<string | null> {
+  if (!isFirecrawlConfigured()) return null;
+
+  const script = `
+    const motif = ${PURCHASE_LABEL_RE.toString()};
+    const cible = [...document.querySelectorAll('button, a, [role=button]')]
+      .find((el) => motif.test(el.textContent || ''));
+    if (cible) cible.click();
+  `;
+
+  try {
+    guardUrl(pricingUrl);
+    const page = await scrapePage(pricingUrl, {
+      actions: [
+        { type: "executeJavascript", script },
+        // Laisse le temps à la navigation de se produire — une redirection vers un
+        // prestataire passe par le réseau.
+        { type: "wait", milliseconds: 9000 },
+      ],
+    });
+    return page.finalUrl;
+  } catch {
+    return null;
   }
 }

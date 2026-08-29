@@ -63,9 +63,21 @@ interface FirecrawlScrapeResponse {
  * Never fabricates content: any transport, auth, quota, or empty-body failure throws
  * FirecrawlError so the caller can fall back or surface the failure honestly.
  */
+/**
+ * Actions exécutées dans le navigateur avant la capture. Sert à cliquer un bouton
+ * d'abonnement qui n'est pas un lien : sur une application monopage, la destination du
+ * paiement n'existe qu'après ce clic.
+ */
+export type ScrapeAction =
+  | { type: "executeJavascript"; script: string }
+  | { type: "wait"; milliseconds: number };
+
 export async function scrapePage(
   url: string,
-  { includeNavAndFooter = false }: { includeNavAndFooter?: boolean } = {},
+  {
+    includeNavAndFooter = false,
+    actions,
+  }: { includeNavAndFooter?: boolean; actions?: ScrapeAction[] } = {},
 ): Promise<ScrapedPage> {
   const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
   if (!apiKey) {
@@ -88,6 +100,7 @@ export async function scrapePage(
         url,
         formats: ["markdown", "links", "rawHtml"],
         onlyMainContent: !includeNavAndFooter,
+        ...(actions && actions.length > 0 ? { actions } : {}),
       }),
     });
   } catch (err) {

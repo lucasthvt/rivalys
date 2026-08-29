@@ -247,3 +247,32 @@ export async function followPurchaseLinks(
 
   return PAYMENT_PROVIDERS.filter((p) => found.has(p.id)).map((p) => p.id);
 }
+
+/** Libellés de bouton qui mènent au paiement, français et anglais. */
+export const PURCHASE_LABEL_RE =
+  /(d[ée]bloque|s'?abonner|je\s+m'?abonne|souscri|choisir|commencer|essayer|acheter|obtenir|passer\s+[àa]|subscribe|get\s+started|unlock|upgrade|buy|checkout)/i;
+
+/**
+ * Prestataire déduit de l'URL sur laquelle on atterrit après avoir cliqué le bouton
+ * d'abonnement.
+ *
+ * Un atterrissage sur le site lui-même n'apprend rien et ne doit rien affirmer : c'est le
+ * cas le plus fréquent, celui des produits qui exigent un compte avant de payer, où le
+ * clic mène à leur page d'inscription.
+ */
+export function providerFromLandingUrl(
+  landingUrl: string | null,
+  siteHost: string | null,
+): PaymentProviderId[] {
+  if (!landingUrl) return [];
+
+  try {
+    const host = new URL(landingUrl).hostname.toLowerCase().replace(/^www\./, "");
+    if (siteHost && host === siteHost) return [];
+  } catch {
+    return [];
+  }
+
+  const found = PAYMENT_PROVIDERS.filter((provider) => matchesHost(landingUrl, provider.hosts));
+  return found.map((p) => p.id);
+}

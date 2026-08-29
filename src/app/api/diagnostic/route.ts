@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { fetchSite, SiteFetchError } from "@/lib/compare/fetch-site";
+import { clickThroughToPayment, fetchSite, SiteFetchError } from "@/lib/compare/fetch-site";
 import { detectAuthMethods, labelAuthMethods } from "@/lib/compare/auth-methods";
 import {
   detectPaymentMethods,
@@ -8,6 +8,7 @@ import {
   labelPaymentProviders,
 } from "@/lib/compare/payment-methods";
 import { detectSocialPlatforms, labelPlatforms } from "@/lib/compare/social";
+
 
 /**
  * GET /api/diagnostic?url=…  — outil de développement, jamais servi en production.
@@ -93,6 +94,9 @@ export async function GET(request: NextRequest) {
     // Liens de la page de tarifs : c'est là qu'un bouton d'abonnement mène, quand il
     // s'agit d'un vrai lien et non d'un gestionnaire JavaScript.
     liensTarifs: raw.pricingLinks.slice(0, 25),
+
+    // Dernier recours du pipeline : cliquer le bouton d'abonnement pour voir où il mène.
+    apresClic: raw.pricingUrl ? await clickThroughToPayment(raw.pricingUrl) : "pas de page de tarifs",
 
     extraits: {
       connexion: raw.loginText?.slice(0, 600).replace(/\s+/g, " ") ?? null,

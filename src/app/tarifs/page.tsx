@@ -126,6 +126,12 @@ export default async function TarifsPage() {
                     </li>
                   ))}
                 </ul>
+                {/*
+                  Trois cas, et aucun ne doit mentir sur ce qui va se passer :
+                  paiement ouvert → Checkout ; visiteur déconnecté → inscription ;
+                  déjà connecté mais paiement pas encore ouvert → on le dit, plutôt
+                  que de le renvoyer créer un compte qu'il a déjà.
+                */}
                 {tier.checkout && paymentOpen ? (
                   <div className="mt-6">
                     <CheckoutButton
@@ -138,6 +144,24 @@ export default async function TarifsPage() {
                           : "border border-white/10 text-paper hover:border-signal-bright/40"
                       }`}
                     />
+                  </div>
+                ) : user ? (
+                  <div className="mt-6">
+                    <span
+                      className={`inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-full text-sm font-semibold opacity-50 ${
+                        tier.highlighted
+                          ? "bg-signal text-paper"
+                          : "border border-white/10 text-paper"
+                      }`}
+                    >
+                      {tier.checkout ? "Paiement bientôt ouvert" : "Bientôt disponible"}
+                    </span>
+                    <Link
+                      href="/dashboard"
+                      className="mt-3 block text-center text-xs text-mist underline underline-offset-4 transition-colors hover:text-paper"
+                    >
+                      Retour au tableau de bord
+                    </Link>
                   </div>
                 ) : (
                   <Link

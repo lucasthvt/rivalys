@@ -29,6 +29,12 @@ export interface ScrapedPage {
   rawHtml: string | null;
   /** Absolute outbound links found on the page (used for pricing + social discovery). */
   links: string[];
+  /**
+   * URL réellement servie, après redirections. `notion.so` renvoie vers `notion.com` :
+   * sans cette valeur, les liens de la page ne ressemblent plus au domaine demandé et
+   * aucun n'est reconnu comme interne.
+   */
+  finalUrl: string | null;
 }
 
 export function isFirecrawlConfigured(): boolean {
@@ -42,6 +48,10 @@ interface FirecrawlScrapeResponse {
     markdown?: string;
     rawHtml?: string;
     links?: string[];
+    metadata?: {
+      url?: string;
+      sourceURL?: string;
+    };
   };
 }
 
@@ -109,5 +119,8 @@ export async function scrapePage(
     links: Array.isArray(payload.data?.links)
       ? payload.data.links.filter((l): l is string => typeof l === "string")
       : [],
+    // `url` est l'adresse finale, `sourceURL` celle demandée : la première est la bonne
+    // quand elles diffèrent, la seconde sert de repli.
+    finalUrl: payload.data?.metadata?.url ?? payload.data?.metadata?.sourceURL ?? null,
   };
 }

@@ -72,6 +72,12 @@ export interface FetchedSite {
   loginLinks: string[];
 }
 
+/** Hôtes considérés comme « le site » : celui demandé, et celui réellement servi. */
+function acceptedHosts(origin: string, finalUrl: string | null): string[] {
+  const hosts = [canonicalHostname(origin), finalUrl ? canonicalHostname(finalUrl) : null];
+  return [...new Set(hosts.filter((h): h is string => h !== null))];
+}
+
 function guardUrl(url: string): void {
   try {
     assertPublicHttpUrl(url);
@@ -86,25 +92,26 @@ function guardUrl(url: string): void {
 /**
  * Premier lien du même site dont le chemin correspond à `pattern`.
  *
- * La comparaison porte sur le nom d'hôte canonique (www retiré), pas sur l'origine
- * exacte : un site saisi comme `notion.com` renvoie vers `https://www.notion.com/login`,
- * et exiger l'égalité stricte des origines rejetait ce lien — on concluait « pas de page
- * de connexion » sur un site qui l'affiche en haut de sa page d'accueil.
+ * `hosts` contient l'hôte demandé ET celui réellement servi : `notion.so` redirige vers
+ * `notion.com`, et une comparaison au seul domaine saisi ne reconnaissait plus aucun lien
+ * de la page comme interne — on concluait « pas de page de connexion » sur un site qui
+ * l'affiche en haut de sa page d'accueil. La comparaison porte sur le nom d'hôte
+ * canonique, `www` retiré.
  */
 function findSameOriginLink(
   links: readonly string[],
-  origin: string,
+  hosts: readonly string[],
   pattern: RegExp,
 ): string | null {
-  const originHost = canonicalHostname(origin);
-  // Sans hôte de référence lisible, on ne peut comparer à rien : deux `null` seraient
+  // Sans hôte de référence lisible, on ne compare à rien : deux `null` seraient
   // considérés égaux et n'importe quel lien externe passerait pour interne.
-  if (originHost === null) return null;
+  if (hosts.length === 0) return null;
 
   for (const link of links) {
     try {
       const parsed = new URL(link);
-      if (canonicalHostname(parsed.href) !== originHost) continue;
+      const linkHost = canonicalHostname(parsed.href);
+      if (linkHost === null || !hosts.includes(linkHost)) continue;
       if (pattern.test(parsed.pathname)) {
         parsed.hash = "";
         return parsed.toString();
@@ -162,8 +169,12 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
   // live in the footer, which Firecrawl's default main-content filter would strip.
   const homepage = await scrapePage(origin, { includeNavAndFooter: true });
 
+  // Adresse réellement servie : c'est elle qui dit à quoi ressemblent les liens internes
+  // de la page, pas celle saisie par l'utilisateur.
+  const hosts = acceptedHosts(origin, homepage.finalUrl);
+
   const pricingUrl =
-    findSameOriginLink(homepage.links, origin, PRICING_PATH_RE) ??
+    findSameOriginLink(homepage.links, hosts, PRICING_PATH_RE) ??
     // No pricing link advertised on the homepage — try the single most likely canonical
     // route rather than burning a credit on each of the four.
     `${origin}${PRICING_PATHS[0]}`;
@@ -172,7 +183,7 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
   // aveugle. Un crédit Firecrawl brûlé sur un /login inexistant coûte à chaque analyse,
   // alors que l'absence de lien de connexion sur la page d'accueil est déjà une réponse :
   // on n'a rien observé, et readAuthMethods renverra null plutôt qu'un tableau vide.
-  const loginUrl = findSameOriginLink(homepage.links, origin, LOGIN_PATH_RE);
+  const loginUrl = findSameOriginLink(homepage.links, hosts, LOGIN_PATH_RE);
 
   // Les deux pages secondaires sont récupérées EN PARALLÈLE. Enchaînées, elles ajoutaient
   // deux délais de 30 s l'un après l'autre au pire cas, sur chacun des deux sites — de
@@ -219,8 +230,12 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
 /** Direct-fetch path: original behaviour — homepage, then probe the four canonical routes. */
 async function fetchDirectly(origin: string): Promise<FetchedSite> {
   let homepageHtml: string;
+  let homepageFinalUrl: string | null = null;
   try {
     const res = await fetchWithTimeout(origin);
+    // `res.url` porte la dernière adresse suivie : même raison que sur le chemin
+    // Firecrawl, les liens de la page ressemblent à celle-là, pas à l'origine demandée.
+    homepageFinalUrl = res.url || null;
     if (!res.ok) {
       throw new SiteFetchError(
         `La page d'accueil de ${origin} a répondu avec le statut ${res.status}.`,
@@ -274,7 +289,11 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
   // n'est qu'un bonus. Un site qui n'annonce pas sa page de connexion et n'expose pas
   // /login est simplement un site dont on n'a pas observé les moyens de connexion —
   // readAuthMethods renvoie null et aucune comparaison n'est bâtie dessus.
-  const advertisedLogin = findSameOriginLink(homepageLinks, origin, LOGIN_PATH_RE);
+  const advertisedLogin = findSameOriginLink(
+    homepageLinks,
+    acceptedHosts(origin, homepageFinalUrl),
+    LOGIN_PATH_RE,
+  );
   const loginCandidates = advertisedLogin
     ? [advertisedLogin, origin + LOGIN_PATHS[0]]
     : [origin + LOGIN_PATHS[0]];

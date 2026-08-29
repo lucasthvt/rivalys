@@ -87,6 +87,17 @@ describe("detectPaymentProviders", () => {
     );
   });
 
+  test("reconnaît Whop et Gumroad", () => {
+    assert.deepEqual(
+      detectPaymentProviders({ links: ["https://whop.com/mon-produit/"], html: null }),
+      ["whop"],
+    );
+    assert.deepEqual(
+      detectPaymentProviders({ links: [], html: '<a href="https://gumroad.com/l/x">' }),
+      ["gumroad"],
+    );
+  });
+
   test("du balisage sans prestataire ne conclut rien", () => {
     assert.deepEqual(
       detectPaymentProviders({

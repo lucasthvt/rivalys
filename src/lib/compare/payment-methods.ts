@@ -158,6 +158,8 @@ export const PAYMENT_PROVIDERS = [
   { id: "paddle", label: "Paddle", hosts: ["checkout.paddle.com", "paddle.com"] },
   { id: "chargebee", label: "Chargebee", hosts: ["js.chargebee.com", "chargebee.com"] },
   { id: "lemonsqueezy", label: "Lemon Squeezy", hosts: ["lemonsqueezy.com"] },
+  { id: "whop", label: "Whop", hosts: ["whop.com"] },
+  { id: "gumroad", label: "Gumroad", hosts: ["gumroad.com"] },
   { id: "mollie", label: "Mollie", hosts: ["mollie.com"] },
   { id: "gocardless", label: "GoCardless", hosts: ["gocardless.com"] },
   { id: "paypal", label: "PayPal", hosts: ["paypal.com", "paypalobjects.com"] },

@@ -70,6 +70,11 @@ export interface FetchedSite {
    * OAuth (accounts.google.com, appleid.apple.com) n'apparaît que là.
    */
   loginLinks: string[];
+  /**
+   * Liens de la page de tarifs. C'est là que mène un bouton d'abonnement quand il s'agit
+   * d'un vrai lien — un lien de paiement Whop ou Stripe y est directement visible.
+   */
+  pricingLinks: string[];
 }
 
 /** Hôtes considérés comme « le site » : celui demandé, et celui réellement servi. */
@@ -210,6 +215,7 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
   const pricingHtml = pricing?.page.rawHtml ?? null;
   const resolvedPricingUrl = pricing?.url ?? null;
 
+  const pricingLinks = pricing?.page.links ?? [];
   const loginText = login?.page.markdown ?? null;
   const resolvedLoginUrl = login?.url ?? null;
   const loginLinks = login?.page.links ?? [];
@@ -224,6 +230,7 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
     loginText,
     loginUrl: resolvedLoginUrl,
     loginLinks,
+    pricingLinks,
   };
 }
 
@@ -323,6 +330,7 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
     loginText: loginHtml ? stripHtml(loginHtml) : null,
     loginUrl,
     loginLinks: loginHtml ? extractLinks(loginHtml, origin) : [],
+    pricingLinks: pricingHtml ? extractLinks(pricingHtml, origin) : [],
   };
 }
 
@@ -358,4 +366,29 @@ export async function fetchSite(rawUrl: string): Promise<FetchedSite> {
   }
 
   return fetchDirectly(origin);
+}
+
+/**
+ * Première redirection renvoyée par une URL, sans la suivre.
+ *
+ * Sert au relevé du prestataire de paiement : un bouton d'abonnement qui pointe vers
+ * `/checkout` répond souvent par un 302 vers Stripe ou Whop, et cette réponse est
+ * publique. On lit l'en-tête `Location` et on s'arrête là — on ne déroule pas le tunnel.
+ */
+export async function peekRedirect(url: string): Promise<{ location: string | null }> {
+  guardUrl(url);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LOGIN_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      redirect: "manual",
+      headers: { "User-Agent": USER_AGENT, Accept: "text/html,application/xhtml+xml" },
+    });
+    const location = res.headers.get("location");
+    return { location: location ? new URL(location, url).toString() : null };
+  } finally {
+    clearTimeout(timer);
+  }
 }

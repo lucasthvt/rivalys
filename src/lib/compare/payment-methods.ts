@@ -194,3 +194,56 @@ export function detectPaymentProviders(input: {
 export function labelPaymentProviders(ids: readonly string[]): string[] {
   return ids.map((id) => PROVIDER_LABEL_BY_ID.get(id) ?? id);
 }
+
+/** Chemins qui ressemblent à une mise au panier ou à une souscription. */
+const PURCHASE_PATH_RE =
+  /(checkout|subscribe|souscri|abonn|s-abonner|payer|paiement|billing|upgrade|buy|order)/i;
+
+/**
+ * Suit les liens d'achat d'un site pour voir où ils atterrissent.
+ *
+ * Beaucoup de sites font pointer leur bouton d'abonnement vers une route interne
+ * (`/checkout`) qui redirige aussitôt vers le prestataire. La redirection est une réponse
+ * HTTP publique : la lire ne demande ni compte ni interaction, et elle dit qui encaisse.
+ *
+ * Trois limites assumées :
+ *  - deux liens au maximum, en HEAD-like, pour ne pas transformer une analyse en
+ *    parcours de commande ;
+ *  - aucune redirection suivie au-delà de la première : on veut la destination, pas
+ *    dérouler un tunnel ;
+ *  - un bouton qui déclenche du JavaScript n'est pas un lien et reste hors de portée.
+ *    Un site qui exige un compte avant de payer renverra sa page de connexion, ce qui
+ *    n'apprend rien — et n'affirme rien non plus.
+ */
+export async function followPurchaseLinks(
+  links: readonly string[],
+  fetchUrl: (url: string) => Promise<{ location: string | null }>,
+): Promise<PaymentProviderId[]> {
+  const candidates = [...new Set(links)]
+    .filter((link) => {
+      try {
+        return PURCHASE_PATH_RE.test(new URL(link).pathname);
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, 2);
+
+  const found = new Set<PaymentProviderId>();
+
+  for (const candidate of candidates) {
+    let location: string | null = null;
+    try {
+      ({ location } = await fetchUrl(candidate));
+    } catch {
+      continue;
+    }
+    if (!location) continue;
+
+    for (const provider of PAYMENT_PROVIDERS) {
+      if (matchesHost(location, provider.hosts)) found.add(provider.id);
+    }
+  }
+
+  return PAYMENT_PROVIDERS.filter((p) => found.has(p.id)).map((p) => p.id);
+}

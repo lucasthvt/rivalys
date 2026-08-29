@@ -90,6 +90,10 @@ export async function GET(request: NextRequest) {
 
     // La matière brute sur laquelle la décision s'est prise : c'est elle qui dit si un
     // relevé vide vient d'un motif trop strict ou d'une page qui ne contient rien.
+    // Liens de la page de tarifs : c'est là qu'un bouton d'abonnement mène, quand il
+    // s'agit d'un vrai lien et non d'un gestionnaire JavaScript.
+    liensTarifs: raw.pricingLinks.slice(0, 25),
+
     extraits: {
       connexion: raw.loginText?.slice(0, 600).replace(/\s+/g, " ") ?? null,
       tarifs: raw.pricingText?.slice(0, 400).replace(/\s+/g, " ") ?? null,

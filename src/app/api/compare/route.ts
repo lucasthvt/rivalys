@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { fetchSite, SiteFetchError, type FetchedSite } from "@/lib/compare/fetch-site";
+import { fetchSite, peekRedirect, SiteFetchError, type FetchedSite } from "@/lib/compare/fetch-site";
 import { extractSiteData, classifyPositioning, ExtractionError } from "@/lib/compare/extract";
 import {
   isStoredExtractedData,
@@ -23,7 +23,11 @@ import {
 } from "@/lib/compare/detect-gaps";
 import { detectSocialPlatforms, labelPlatforms, missingPlatforms } from "@/lib/compare/social";
 import { detectAuthMethods } from "@/lib/compare/auth-methods";
-import { detectPaymentMethods, detectPaymentProviders } from "@/lib/compare/payment-methods";
+import {
+  detectPaymentMethods,
+  detectPaymentProviders,
+  followPurchaseLinks,
+} from "@/lib/compare/payment-methods";
 import {
   lookupThirdPartyMentions,
   MENTION_PLATFORM_IDS,
@@ -472,7 +476,7 @@ async function fetchAndExtract(
   // Moyens de paiement : la page d'accueil est toujours lue, donc un tableau vide est ici
   // une vraie observation (« rien d'affiché »), pas une absence de mesure.
   const paymentMarkup = [raw.homepageHtml ?? "", raw.pricingHtml ?? ""].join("\n");
-  const paymentLinks = [...raw.homepageLinks, ...raw.loginLinks];
+  const paymentLinks = [...raw.homepageLinks, ...raw.pricingLinks, ...raw.loginLinks];
 
   data.payment_methods = detectPaymentMethods({
     pricingText: raw.pricingText,
@@ -481,11 +485,17 @@ async function fetchAndExtract(
     html: paymentMarkup,
   });
 
-  // Relevé séparé : qui encaisse, à défaut de savoir avec quoi on paie.
-  data.payment_providers = detectPaymentProviders({
+  // Relevé séparé : qui encaisse, à défaut de savoir avec quoi on paie. En second
+  // recours, on regarde où mène un bouton d'abonnement : beaucoup de sites pointent vers
+  // une route interne qui redirige aussitôt vers le prestataire.
+  const declaredProviders = detectPaymentProviders({
     links: paymentLinks,
     html: paymentMarkup,
   });
+  data.payment_providers =
+    declaredProviders.length > 0
+      ? declaredProviders
+      : await followPurchaseLinks(raw.pricingLinks, peekRedirect);
 
   // Les deux relevés web-groundés sont indépendants l'un de l'autre : enchaînés, leurs
   // deux délais de 30 s s'additionnaient sur chaque site. Lancés ensemble, le pire cas

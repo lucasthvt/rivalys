@@ -4,6 +4,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
+  followPurchaseLinks,
   detectPaymentMethods,
   detectPaymentProviders,
   labelPaymentMethods,
@@ -171,5 +172,67 @@ describe("labelPaymentMethods", () => {
       "Carte bancaire",
       "Apple Pay",
     ]);
+  });
+});
+
+describe("followPurchaseLinks", () => {
+  const redirects: Record<string, string | null> = {
+    "https://exemple.com/checkout": "https://checkout.stripe.com/c/pay/cs_test_123",
+    "https://exemple.com/abonnement": "https://whop.com/mon-produit/",
+    "https://exemple.com/blog": "https://exemple.com/blog/2026",
+    "https://exemple.com/souscrire": "https://exemple.com/login",
+  };
+
+  const fetchUrl = async (url: string) => ({ location: redirects[url] ?? null });
+
+  test("relève le prestataire vers lequel un bouton d'abonnement redirige", async () => {
+    assert.deepEqual(
+      await followPurchaseLinks(["https://exemple.com/checkout"], fetchUrl),
+      ["stripe"],
+    );
+  });
+
+  test("suit aussi les libellés français", async () => {
+    assert.deepEqual(
+      await followPurchaseLinks(["https://exemple.com/abonnement"], fetchUrl),
+      ["whop"],
+    );
+  });
+
+  test("ignore les liens qui ne ressemblent pas à un achat", async () => {
+    assert.deepEqual(await followPurchaseLinks(["https://exemple.com/blog"], fetchUrl), []);
+  });
+
+  /**
+   * Le cas le plus fréquent : le site exige un compte avant de payer. La redirection mène
+   * à sa page de connexion, ce qui n'apprend rien — et ne doit donc rien affirmer.
+   */
+  test("une redirection vers la page de connexion ne conclut rien", async () => {
+    assert.deepEqual(await followPurchaseLinks(["https://exemple.com/souscrire"], fetchUrl), []);
+  });
+
+  test("ne suit pas plus de deux liens", async () => {
+    const visited: string[] = [];
+    await followPurchaseLinks(
+      [
+        "https://exemple.com/checkout",
+        "https://exemple.com/abonnement",
+        "https://exemple.com/souscrire",
+      ],
+      async (url) => {
+        visited.push(url);
+        return { location: redirects[url] ?? null };
+      },
+    );
+    assert.equal(visited.length, 2);
+  });
+
+  test("un lien injoignable est ignoré sans faire échouer le relevé", async () => {
+    assert.deepEqual(
+      await followPurchaseLinks(["https://exemple.com/checkout"], async () => {
+        throw new Error("réseau");
+      }),
+      [],
+    );
   });
 });

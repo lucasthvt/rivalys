@@ -407,6 +407,11 @@ export async function peekRedirect(url: string): Promise<{ location: string | nu
  * échoue — on ne conclut alors rien.
  */
 export async function clickThroughToPayment(pricingUrl: string): Promise<string | null> {
+  // Désactivé par défaut. Ce niveau coûte un scrape par site, et l'observation dit qu'il
+  // ne rend rien dans le cas le plus fréquent : un produit qui exige un compte avant de
+  // payer renvoie sa page d'inscription. À activer quand la dépense se justifie, avec
+  // RIVALYS_CLICK_THROUGH=1.
+  if (process.env.RIVALYS_CLICK_THROUGH !== "1") return null;
   if (!isFirecrawlConfigured()) return null;
 
   const script = `

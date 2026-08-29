@@ -67,6 +67,16 @@ rien.
 L'endpoint est fermé en production — il déclenche des récupérations payantes sans
 authentification ni limite de débit.
 
+### Clic sur le bouton d'abonnement (désactivé par défaut)
+
+`RIVALYS_CLICK_THROUGH=1` autorise le dernier niveau de détection du prestataire de
+paiement : cliquer le bouton d'abonnement dans un navigateur pour voir où il mène.
+
+Éteint par défaut parce qu'il coûte un scrape Firecrawl par site analysé et que
+l'observation le dit peu rentable — un produit qui exige un compte avant de payer renvoie
+sa page d'inscription, ce dont on ne conclut rien. Utile surtout sur les sites qui vendent
+sans compte préalable.
+
 ## Base de données Supabase
 
 Le schéma complet (tables `profiles`, `competitors`, `site_snapshots`, `detected_gaps`, `score_history`, avec Row Level Security) est dans `supabase/migrations/`.
@@ -201,6 +211,7 @@ ANTHROPIC_API_KEY=
 FIRECRAWL_API_KEY=
 PERPLEXITY_API_KEY=
 NEXT_PUBLIC_APP_URL=
+RIVALYS_CLICK_THROUGH=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_PRO_MONTHLY=

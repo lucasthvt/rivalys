@@ -49,6 +49,24 @@ Ce qu'ils protègent en priorité, ce n'est pas que les règles détectent : c'e
 résultat à l'écran — c'est la contrainte de fond du projet, et celle qu'une refonte casse
 en silence.
 
+### Vérifier les détecteurs sur un vrai site
+
+Les détecteurs déterministes (connexion, paiement, réseaux) sont calibrés sur les quelques
+sites déjà observés. Chaque site réel qui les prend en défaut est une correction à écrire —
+encore faut-il pouvoir le constater vite :
+
+```bash
+curl -s "http://localhost:3000/api/diagnostic?url=https://exemple.com" | python3 -m json.tool
+```
+
+La réponse montre les pages trouvées, ce qui a été relevé, et **l'extrait de texte sur
+lequel la décision s'est prise**. C'est ce dernier point qui compte : il dit si un relevé
+vide vient d'un motif trop strict de notre côté, ou d'une page qui ne contient réellement
+rien.
+
+L'endpoint est fermé en production — il déclenche des récupérations payantes sans
+authentification ni limite de débit.
+
 ## Base de données Supabase
 
 Le schéma complet (tables `profiles`, `competitors`, `site_snapshots`, `detected_gaps`, `score_history`, avec Row Level Security) est dans `supabase/migrations/`.

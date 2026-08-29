@@ -119,8 +119,9 @@ if (!stripeKey) {
 
   if (stripeKey.startsWith("sk_")) {
     warn(
-      "Clé secrète complète (sk_). Une clé restreinte (rk_) limitée à Checkout, Customers, " +
-        "Subscriptions et Billing Portal donnerait au serveur juste ce qu'il utilise.",
+      "Clé secrète complète (sk_). Une clé restreinte (rk_) limitée aux seules ressources " +
+        "utilisées — Checkout Sessions, Customers, Subscriptions et Customer portal sessions " +
+        "en écriture, Prices en lecture — donnerait au serveur juste ce qu'il lui faut.",
     );
   } else if (stripeKey.startsWith("rk_")) {
     ok("Clé restreinte (rk_)");

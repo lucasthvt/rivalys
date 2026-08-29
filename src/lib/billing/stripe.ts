@@ -9,7 +9,8 @@ import type { SubscriptionTier } from "@/lib/supabase/database.types";
  * un appel réel échoue, et il échoue en le disant.
  *
  * La clé attendue est une clé restreinte (`rk_...`) avec les seules permissions
- * nécessaires — Checkout, Customers, Subscriptions, Billing Portal en écriture. Une clé
+ * nécessaires — Checkout Sessions, Customers, Subscriptions et Customer portal sessions en
+ * écriture, Prices en lecture. Une clé
  * secrète (`sk_...`) marche aussi, mais donne à ce serveur bien plus de pouvoir que ce
  * qu'il utilise. Voir le README.
  */

@@ -10,6 +10,7 @@
 // Both paths produce the same FetchedSite shape.
 
 import { assertPublicHttpUrl, UnsafeUrlError } from "./url-safety";
+import { canonicalHostname } from "@/lib/url";
 import { extractLinks, stripHtml } from "./html";
 import { FirecrawlError, isFirecrawlConfigured, scrapePage } from "./firecrawl";
 
@@ -24,10 +25,10 @@ export class SiteFetchError extends Error {
 }
 
 const FETCH_TIMEOUT_MS = 10_000;
-// Pages secondaires (tarifs, connexion) : leur absence est un résultat acceptable,
-// donc on ne leur accorde pas le même temps d'attente qu'à la page d'accueil, dont
-// l'échec fait échouer toute l'analyse.
-const SECONDARY_FETCH_TIMEOUT_MS = 5_000;
+// Page de connexion uniquement : c'est un bonus, son absence est un résultat acceptable
+// et on n'attend pas 10 s par route sondée pour l'apprendre. Les tarifs, eux, gardent le
+// délai complet — leur absence fausserait tout le comparatif.
+const LOGIN_FETCH_TIMEOUT_MS = 5_000;
 const MAX_REDIRECTS = 5;
 const PRICING_PATHS = ["/pricing", "/plans", "/tarifs", "/prix"] as const;
 const LOGIN_PATHS = ["/login", "/signin", "/sign-in", "/connexion"] as const;
@@ -82,16 +83,28 @@ function guardUrl(url: string): void {
   }
 }
 
-/** Picks the first same-origin link whose path matches `pattern`. */
+/**
+ * Premier lien du même site dont le chemin correspond à `pattern`.
+ *
+ * La comparaison porte sur le nom d'hôte canonique (www retiré), pas sur l'origine
+ * exacte : un site saisi comme `notion.com` renvoie vers `https://www.notion.com/login`,
+ * et exiger l'égalité stricte des origines rejetait ce lien — on concluait « pas de page
+ * de connexion » sur un site qui l'affiche en haut de sa page d'accueil.
+ */
 function findSameOriginLink(
   links: readonly string[],
   origin: string,
   pattern: RegExp,
 ): string | null {
+  const originHost = canonicalHostname(origin);
+  // Sans hôte de référence lisible, on ne peut comparer à rien : deux `null` seraient
+  // considérés égaux et n'importe quel lien externe passerait pour interne.
+  if (originHost === null) return null;
+
   for (const link of links) {
     try {
       const parsed = new URL(link);
-      if (parsed.origin !== origin) continue;
+      if (canonicalHostname(parsed.href) !== originHost) continue;
       if (pattern.test(parsed.pathname)) {
         parsed.hash = "";
         return parsed.toString();
@@ -230,10 +243,11 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
   for (const path of PRICING_PATHS) {
     const candidateUrl = origin + path;
     try {
-      // Même délai court que la page de connexion : quatre routes sondées à 10 s
-      // chacune, c'était 40 s d'attente possible avant de conclure « pas de page de
-      // tarifs » — un constat qu'on sait déjà rendre honnêtement.
-      const res = await fetchWithTimeout(candidateUrl, SECONDARY_FETCH_TIMEOUT_MS);
+      // Délai complet, volontairement : une page de tarifs pèse souvent plusieurs
+      // centaines de kilo-octets (515 Ko chez Notion), et l'écourter revient à conclure
+      // « aucun tarif public » sur une page qui n'a simplement pas fini d'arriver — la
+      // pire erreur possible ici, puisque tout le comparatif en dépend.
+      const res = await fetchWithTimeout(candidateUrl);
       if (!res.ok) continue;
       const text = await res.text();
       if (text.trim()) {
@@ -267,7 +281,7 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
 
   for (const candidateUrl of loginCandidates) {
     try {
-      const res = await fetchWithTimeout(candidateUrl, SECONDARY_FETCH_TIMEOUT_MS);
+      const res = await fetchWithTimeout(candidateUrl, LOGIN_FETCH_TIMEOUT_MS);
       if (!res.ok) continue;
       const text = await res.text();
       if (text.trim()) {

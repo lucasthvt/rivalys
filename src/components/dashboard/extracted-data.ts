@@ -52,6 +52,12 @@ export interface ObservationFlags {
    * est annoncé. Ne dit jamais ce que le tunnel de paiement accepte réellement.
    */
   paymentMethods: string[] | null;
+  /**
+   * Prestataires de paiement repérés (Stripe, Paddle, …). Souvent la seule trace publique
+   * quand le tunnel est derrière un clic : « paiement géré par Stripe » est vrai et utile,
+   * là où « rien d'affiché » est exact mais stérile.
+   */
+  paymentProviders: string[] | null;
 }
 
 /**
@@ -68,6 +74,7 @@ export function parseObservationFlags(json: unknown): ObservationFlags {
       thirdPartyMentions: null,
       authMethods: null,
       paymentMethods: null,
+      paymentProviders: null,
     };
   }
 
@@ -93,6 +100,9 @@ export function parseObservationFlags(json: unknown): ObservationFlags {
       : null,
     paymentMethods: Array.isArray(data.payment_methods)
       ? data.payment_methods.filter((m): m is string => typeof m === "string")
+      : null,
+    paymentProviders: Array.isArray(data.payment_providers)
+      ? data.payment_providers.filter((p): p is string => typeof p === "string")
       : null,
   };
 }

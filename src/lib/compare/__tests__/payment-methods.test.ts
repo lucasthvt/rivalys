@@ -5,7 +5,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   detectPaymentMethods,
+  detectPaymentProviders,
   labelPaymentMethods,
+  labelPaymentProviders,
   missingPaymentMethods,
 } from "../payment-methods";
 
@@ -20,11 +22,14 @@ function input(overrides: Partial<Parameters<typeof detectPaymentMethods>[0]> = 
 }
 
 describe("detectPaymentMethods — via les liens", () => {
-  test("le SDK de paiement chargé sur la page vaut carte bancaire", () => {
-    assert.deepEqual(
-      detectPaymentMethods(input({ links: ["https://js.stripe.com/v3/"] })),
-      ["card"],
-    );
+  /**
+   * Un prestataire n'est pas un moyen de paiement, et les confondre ferait affirmer au
+   * produit ce qu'il ne peut pas voir : un site sous Stripe accepte la carte, ou la carte
+   * ET Apple Pay, ET PayPal — cette configuration vit dans le Dashboard de son
+   * propriétaire. Stripe est donc relevé comme prestataire, jamais comme moyen.
+   */
+  test("le SDK de paiement seul ne prouve aucun moyen précis", () => {
+    assert.deepEqual(detectPaymentMethods(input({ links: ["https://js.stripe.com/v3/"] })), []);
   });
 
   test("reconnaît PayPal et le paiement fractionné à leur domaine", () => {
@@ -48,32 +53,52 @@ describe("detectPaymentMethods — via les liens", () => {
   });
 });
 
-describe("detectPaymentMethods — via le balisage", () => {
+describe("detectPaymentProviders", () => {
   /**
    * Le cas qui a motivé cette lecture : un SDK de paiement se charge par un `<script src>`,
    * pas par un `href`. En ne regardant que les liens, on ratait le signal le plus fiable
-   * sur les sites où le tunnel est derrière un clic.
+   * sur les sites dont le tunnel est derrière un clic — et l'écran affichait « rien
+   * d'affiché publiquement » là où « paiement géré par Stripe » était vrai et utile.
    */
   test("un SDK chargé en <script src> est vu, alors qu'il n'est pas un lien", () => {
-    const found = detectPaymentMethods(
-      input({ html: '<script src="https://js.stripe.com/v3" async></script>' }),
+    assert.deepEqual(
+      detectPaymentProviders({
+        links: [],
+        html: '<script src="https://js.stripe.com/v3" async></script>',
+      }),
+      ["stripe"],
     );
-
-    assert.deepEqual(found, ["card"]);
   });
 
-  test("reconnaît un preconnect ou une iframe du prestataire", () => {
+  test("reconnaît un preconnect vers le prestataire", () => {
     assert.deepEqual(
-      detectPaymentMethods(input({ html: '<link rel="preconnect" href="https://paypal.com">' })),
+      detectPaymentProviders({
+        links: [],
+        html: '<link rel="preconnect" href="https://paypal.com">',
+      }),
       ["paypal"],
+    );
+  });
+
+  test("reconnaît aussi un prestataire présent dans les liens", () => {
+    assert.deepEqual(
+      detectPaymentProviders({ links: ["https://checkout.paddle.com/x"], html: null }),
+      ["paddle"],
     );
   });
 
   test("du balisage sans prestataire ne conclut rien", () => {
     assert.deepEqual(
-      detectPaymentMethods(input({ html: '<script src="https://www.clarity.ms/tag/x"></script>' })),
+      detectPaymentProviders({
+        links: [],
+        html: '<script src="https://www.clarity.ms/tag/x"></script>',
+      }),
       [],
     );
+  });
+
+  test("traduit les identifiants en libellés affichables", () => {
+    assert.deepEqual(labelPaymentProviders(["stripe", "paddle"]), ["Stripe", "Paddle"]);
   });
 });
 

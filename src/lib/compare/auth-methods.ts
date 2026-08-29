@@ -68,6 +68,39 @@ export const AUTH_PROVIDERS = [
     ],
   },
   {
+    id: "openai",
+    label: "ChatGPT",
+    hosts: ["auth.openai.com", "auth0.openai.com"],
+    textPatterns: [
+      /(?:continuer|connecter|connexion|inscrire)\s+(?:\w+\s+){0,2}?avec\s+(?:chatgpt|openai)/i,
+      /(?:continue|sign\s?in|sign\s?up|log\s?in)\s+with\s+(?:chatgpt|openai)/i,
+    ],
+  },
+  {
+    id: "slack",
+    label: "Slack",
+    hosts: ["slack.com/openid", "slack.com/oauth"],
+    textPatterns: [
+      /(?:continuer|connecter|connexion|inscrire)\s+(?:\w+\s+){0,2}?avec\s+slack/i,
+      /(?:continue|sign\s?in|sign\s?up|log\s?in)\s+with\s+slack/i,
+    ],
+  },
+  {
+    id: "passkey",
+    label: "Clé d'accès",
+    hosts: [],
+    textPatterns: [/\bpasskeys?\b/i, /clés?\s+d[e']\s?accès/i],
+  },
+  {
+    id: "email_code",
+    label: "Code par email",
+    hosts: [],
+    textPatterns: [
+      /code\s+(?:de\s+)?(?:connexion|vérification|à\s+usage\s+unique)/i,
+      /(?:one[-\s]?time|login|verification)\s+code/i,
+    ],
+  },
+  {
     id: "sso",
     label: "SSO / SAML",
     hosts: [],

@@ -11,7 +11,10 @@ export const PAYMENT_METHODS = [
   {
     id: "card",
     label: "Carte bancaire",
-    hosts: ["js.stripe.com", "checkout.stripe.com", "checkout.paddle.com", "js.chargebee.com"],
+    // Aucun hôte ici : la présence de Stripe ne prouve pas « carte », elle prouve
+    // « prestataire de paiement ». Les deux sont relevés séparément — voir
+    // PAYMENT_PROVIDERS plus bas.
+    hosts: [],
     textPatterns: [
       /\bvisa\b/i,
       /\bmastercard\b/i,
@@ -136,4 +139,56 @@ export function missingPaymentMethods(
 ): string[] {
   const mine = new Set(own);
   return competitor.filter((id) => !mine.has(id));
+}
+
+/**
+ * Prestataires de paiement repérables sur des pages publiques.
+ *
+ * C'est un relevé DIFFÉRENT des moyens de paiement, et il faut le garder distinct :
+ * voir Stripe chargé sur une page dit qui encaisse, pas avec quoi on peut payer. Un site
+ * sous Stripe peut accepter la carte seule ou la carte plus Apple Pay, PayPal et le
+ * prélèvement — cette configuration vit dans le Dashboard de son propriétaire, hors de
+ * portée de toute observation publique.
+ *
+ * L'intérêt est ailleurs : « paiement géré par Stripe » est une information utile et
+ * vraie, là où « rien d'affiché publiquement » est exact mais inutile.
+ */
+export const PAYMENT_PROVIDERS = [
+  { id: "stripe", label: "Stripe", hosts: ["js.stripe.com", "checkout.stripe.com", "stripe.com"] },
+  { id: "paddle", label: "Paddle", hosts: ["checkout.paddle.com", "paddle.com"] },
+  { id: "chargebee", label: "Chargebee", hosts: ["js.chargebee.com", "chargebee.com"] },
+  { id: "lemonsqueezy", label: "Lemon Squeezy", hosts: ["lemonsqueezy.com"] },
+  { id: "mollie", label: "Mollie", hosts: ["mollie.com"] },
+  { id: "gocardless", label: "GoCardless", hosts: ["gocardless.com"] },
+  { id: "paypal", label: "PayPal", hosts: ["paypal.com", "paypalobjects.com"] },
+] as const;
+
+export type PaymentProviderId = (typeof PAYMENT_PROVIDERS)[number]["id"];
+
+const PROVIDER_LABEL_BY_ID = new Map<string, string>(PAYMENT_PROVIDERS.map((p) => [p.id, p.label]));
+
+/**
+ * Prestataires cités dans le balisage ou les liens des pages publiques.
+ *
+ * Le balisage compte autant que les liens : un SDK s'inclut par `<script src>`, et un
+ * script n'est pas un `href`.
+ */
+export function detectPaymentProviders(input: {
+  links: readonly string[];
+  html?: string | null;
+}): PaymentProviderId[] {
+  const markup = input.html ?? "";
+  const found = new Set<PaymentProviderId>();
+
+  for (const provider of PAYMENT_PROVIDERS) {
+    const inLinks = input.links.some((link) => matchesHost(link, provider.hosts));
+    const inMarkup = provider.hosts.some((host) => markup.includes(host));
+    if (inLinks || inMarkup) found.add(provider.id);
+  }
+
+  return PAYMENT_PROVIDERS.filter((p) => found.has(p.id)).map((p) => p.id);
+}
+
+export function labelPaymentProviders(ids: readonly string[]): string[] {
+  return ids.map((id) => PROVIDER_LABEL_BY_ID.get(id) ?? id);
 }

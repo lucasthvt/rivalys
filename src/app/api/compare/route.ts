@@ -23,7 +23,7 @@ import {
 } from "@/lib/compare/detect-gaps";
 import { detectSocialPlatforms, labelPlatforms, missingPlatforms } from "@/lib/compare/social";
 import { detectAuthMethods } from "@/lib/compare/auth-methods";
-import { detectPaymentMethods } from "@/lib/compare/payment-methods";
+import { detectPaymentMethods, detectPaymentProviders } from "@/lib/compare/payment-methods";
 import {
   lookupThirdPartyMentions,
   MENTION_PLATFORM_IDS,
@@ -471,11 +471,20 @@ async function fetchAndExtract(
 
   // Moyens de paiement : la page d'accueil est toujours lue, donc un tableau vide est ici
   // une vraie observation (« rien d'affiché »), pas une absence de mesure.
+  const paymentMarkup = [raw.homepageHtml ?? "", raw.pricingHtml ?? ""].join("\n");
+  const paymentLinks = [...raw.homepageLinks, ...raw.loginLinks];
+
   data.payment_methods = detectPaymentMethods({
     pricingText: raw.pricingText,
     homepageText: raw.homepageText,
-    links: [...raw.homepageLinks, ...raw.loginLinks],
-    html: [raw.homepageHtml ?? "", raw.pricingHtml ?? ""].join("\n"),
+    links: paymentLinks,
+    html: paymentMarkup,
+  });
+
+  // Relevé séparé : qui encaisse, à défaut de savoir avec quoi on paie.
+  data.payment_providers = detectPaymentProviders({
+    links: paymentLinks,
+    html: paymentMarkup,
   });
 
   // Les deux relevés web-groundés sont indépendants l'un de l'autre : enchaînés, leurs

@@ -48,6 +48,14 @@ export interface StoredExtractedData extends ExtractedSiteData {
    * la liste réelle des moyens acceptés.
    */
   payment_methods?: string[];
+  /**
+   * Prestataires de paiement repérés sur les pages publiques (Stripe, Paddle, …).
+   *
+   * Distinct de payment_methods, et volontairement : voir Stripe chargé dit QUI encaisse,
+   * pas AVEC QUOI on peut payer. C'est pourtant l'information la plus souvent disponible
+   * — sur un site dont le tunnel est derrière un clic, c'est même la seule.
+   */
+  payment_providers?: string[];
 }
 
 function isPricingTier(value: unknown): value is PricingTier {
@@ -146,4 +154,11 @@ export function readPaymentMethods(data: StoredExtractedData): string[] | null {
   const raw = (data as unknown as Record<string, unknown>).payment_methods;
   if (!Array.isArray(raw)) return null;
   return raw.filter((m): m is string => typeof m === "string");
+}
+
+/** Idem pour payment_providers : absence de champ = aucune observation. */
+export function readPaymentProviders(data: StoredExtractedData): string[] | null {
+  const raw = (data as unknown as Record<string, unknown>).payment_providers;
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((p): p is string => typeof p === "string");
 }

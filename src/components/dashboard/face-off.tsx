@@ -1,7 +1,7 @@
 import { EmptyState } from "@/components/tasks/empty-state";
 import type { ExtractedSiteData } from "@/lib/supabase/database.types";
 import { labelAuthMethods } from "@/lib/compare/auth-methods";
-import { labelPaymentMethods } from "@/lib/compare/payment-methods";
+import { labelPaymentMethods, labelPaymentProviders } from "@/lib/compare/payment-methods";
 
 /**
  * Le comparatif public, présenté en face-à-face plutôt qu'en tableau.
@@ -96,6 +96,54 @@ function ListValue({
   );
 }
 
+/**
+ * La valeur « paiement », par ordre de ce qu'on sait réellement.
+ *
+ * Trois états, et le second est celui qui manquait : savoir que le paiement passe par
+ * Stripe est vrai, vérifiable et utile — « rien d'affiché publiquement » était exact mais
+ * ne servait à rien, alors même que le prestataire était visible dans le balisage.
+ */
+function PaymentValue({
+  methods,
+  providers,
+  side,
+}: {
+  methods: string[] | null;
+  providers: string[] | null;
+  side: Side;
+}) {
+  const align = side === "own" ? "text-left" : "text-right";
+
+  if (methods === null && providers === null) {
+    return <span className={`${align} text-sm text-foreground-muted/70`}>Pas de relevé</span>;
+  }
+
+  if (methods && methods.length > 0) {
+    return (
+      <span className={`${align} block text-sm leading-relaxed text-foreground`}>
+        {labelPaymentMethods(methods).join(" · ")}
+      </span>
+    );
+  }
+
+  if (providers && providers.length > 0) {
+    return (
+      <div className={align}>
+        <span className="block text-sm leading-relaxed text-foreground">
+          Paiement via {labelPaymentProviders(providers).join(" · ")}
+        </span>
+        <span className="font-mono mt-1 block text-[10px] uppercase tracking-[0.14em] text-foreground-muted/70">
+          Moyens non listés publiquement
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <span className={`${align} text-sm text-foreground-muted`}>Rien d&rsquo;affiché publiquement</span>
+  );
+}
+
 function Row({
   label,
   own,
@@ -128,8 +176,16 @@ export function FaceOff({
   competitor: ExtractedSiteData | null;
   competitorLabel: string;
   /** Moyens de connexion et de paiement relevés de notre côté (null = non observé). */
-  ownMethods?: { auth: string[] | null; payment: string[] | null };
-  competitorMethods?: { auth: string[] | null; payment: string[] | null };
+  ownMethods?: {
+    auth: string[] | null;
+    payment: string[] | null;
+    paymentProviders: string[] | null;
+  };
+  competitorMethods?: {
+    auth: string[] | null;
+    payment: string[] | null;
+    paymentProviders: string[] | null;
+  };
   loadError?: boolean;
 }) {
   const noData = !own && !competitor;
@@ -236,27 +292,19 @@ export function FaceOff({
             }
           />
           <Row
-            label="Paiement affiché"
+            label="Paiement"
             own={
-              <ListValue
-                values={
-                  ownMethods?.payment
-                    ? labelPaymentMethods(ownMethods.payment)
-                    : ownMethods?.payment ?? null
-                }
+              <PaymentValue
+                methods={ownMethods?.payment ?? null}
+                providers={ownMethods?.paymentProviders ?? null}
                 side="own"
-                emptyLabel="Rien d'affiché publiquement"
               />
             }
             competitor={
-              <ListValue
-                values={
-                  competitorMethods?.payment
-                    ? labelPaymentMethods(competitorMethods.payment)
-                    : competitorMethods?.payment ?? null
-                }
+              <PaymentValue
+                methods={competitorMethods?.payment ?? null}
+                providers={competitorMethods?.paymentProviders ?? null}
                 side="competitor"
-                emptyLabel="Rien d'affiché publiquement"
               />
             }
           />
@@ -265,9 +313,11 @@ export function FaceOff({
 
       {!noData && (
         <p className="border-t border-white/[0.06] px-5 py-3 text-xs leading-relaxed text-foreground-muted/70">
-          « Paiement affiché » ne liste que ce qui est annoncé sur les pages publiques. Le
-          tunnel de paiement est derrière un compte des deux côtés : il n&rsquo;est pas
-          observable, et rien ici ne prétend le décrire.
+          La ligne « Paiement » ne dit que ce qui est visible publiquement : les moyens
+          annoncés, ou à défaut le prestataire chargé sur les pages. Le tunnel lui-même est
+          derrière un compte des deux côtés — un site sous Stripe peut accepter la carte
+          seule ou aussi Apple Pay et PayPal, et cette configuration n&rsquo;est pas
+          observable de l&rsquo;extérieur.
         </p>
       )}
 

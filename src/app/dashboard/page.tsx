@@ -312,10 +312,15 @@ export default async function DashboardPage() {
             own={ownData}
             competitor={competitorData}
             competitorLabel={competitorLabel}
-            ownMethods={{ auth: ownFlags.authMethods, payment: ownFlags.paymentMethods }}
+            ownMethods={{
+              auth: ownFlags.authMethods,
+              payment: ownFlags.paymentMethods,
+              paymentProviders: ownFlags.paymentProviders,
+            }}
             competitorMethods={{
               auth: competitorFlags.authMethods,
               payment: competitorFlags.paymentMethods,
+              paymentProviders: competitorFlags.paymentProviders,
             }}
             loadError={snapshotLoadError}
           />

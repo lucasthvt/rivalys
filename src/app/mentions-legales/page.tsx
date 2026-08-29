@@ -1,6 +1,7 @@
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 import {
   LEGAL_IDENTITY,
+  LEGAL_UPDATED_AT,
   isVatRegistered,
   legalField,
   publicationDirectorName,
@@ -70,5 +71,5 @@ const SECTIONS: LegalSection[] = [
 ];
 
 export default function MentionsLegalesPage() {
-  return <LegalPage title="Mentions légales" updatedAt="29 août 2026" sections={SECTIONS} />;
+  return <LegalPage title="Mentions légales" updatedAt={LEGAL_UPDATED_AT} sections={SECTIONS} />;
 }

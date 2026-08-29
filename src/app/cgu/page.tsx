@@ -1,5 +1,5 @@
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
-import { isVatRegistered, legalField } from "@/lib/legal/identity";
+import { LEGAL_UPDATED_AT, isVatRegistered, legalField } from "@/lib/legal/identity";
 
 /**
  * Conditions générales d'utilisation et de vente.
@@ -101,7 +101,7 @@ export default function CguPage() {
   return (
     <LegalPage
       title="Conditions générales d'utilisation et de vente"
-      updatedAt="29 août 2026"
+      updatedAt={LEGAL_UPDATED_AT}
       sections={SECTIONS}
     />
   );

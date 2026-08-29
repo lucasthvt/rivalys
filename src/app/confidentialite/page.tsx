@@ -1,5 +1,10 @@
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
-import { LEGAL_IDENTITY, legalField, privacyContact } from "@/lib/legal/identity";
+import {
+  LEGAL_IDENTITY,
+  LEGAL_UPDATED_AT,
+  legalField,
+  privacyContact,
+} from "@/lib/legal/identity";
 
 /**
  * Politique de confidentialité.
@@ -119,7 +124,7 @@ export default function ConfidentialitePage() {
   return (
     <LegalPage
       title="Politique de confidentialité"
-      updatedAt="29 août 2026"
+      updatedAt={LEGAL_UPDATED_AT}
       intro="Ce document décrit exactement ce que Rivalys collecte, pourquoi, à qui c'est transmis, combien de temps c'est gardé, et ce que tu peux exiger. Il ne décrit rien que le produit ne fasse réellement."
       sections={SECTIONS}
     />

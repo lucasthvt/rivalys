@@ -20,6 +20,15 @@
  *    données sensibles). Laisser `dpoEmail` à null est un choix valide et assumé.
  */
 
+/**
+ * Date de dernière mise à jour des trois documents légaux.
+ *
+ * Une seule constante plutôt qu'une date recopiée dans chaque page : trois copies, c'est la
+ * garantie qu'un jour l'une des trois annonce une révision qui n'a pas eu lieu. À bumper
+ * quand le CONTENU change — pas à chaque déploiement.
+ */
+export const LEGAL_UPDATED_AT = "30 août 2026";
+
 export type LegalIdentity = {
   /**
    * L'ÉDITEUR au sens juridique.

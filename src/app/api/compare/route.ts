@@ -121,27 +121,17 @@ export async function POST() {
   // needs.
   //
   // The cooldown exists to stop someone re-analysing THE SAME PAIR repeatedly, not to block
-  // work that has never been done. So a competitor with no snapshot of its own is always
-  // allowed through: that is either a first analysis, or one that follows a competitor
-  // change (setCompetitor deletes the previous competitor's snapshots precisely because
-  // they describe a site the user no longer tracks — see app/concurrent/actions.ts).
-  // Without this exemption, adding a competitor within 24 h of a previous run would be
-  // refused, which reads as the product being broken.
-  const { data: competitorSnapshot, error: competitorSnapshotError } = await supabase
-    .from("site_snapshots")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("target_type", "competitor")
-    .eq("competitor_id", competitor.id)
-    .limit(1)
-    .maybeSingle();
-  if (competitorSnapshotError) {
-    return NextResponse.json(
-      { ok: false, error: "Erreur lors de la vérification de la dernière analyse." },
-      { status: 500 },
-    );
-  }
-
+  // work that has never been done. A freshly added or freshly replaced competitor is
+  // therefore let through even if a run happened less than 24 h ago — otherwise the
+  // product reads as broken right after a competitor change.
+  //
+  // That exemption is keyed on WHEN THE PAIR CHANGED, not on "the competitor has no
+  // snapshot yet", which is what it used to test. The old test had a hole wide enough to
+  // void the whole limit: a competitor site that permanently blocks fetching never
+  // produces a snapshot, so the exemption applied on every single run, forever — unbounded
+  // Firecrawl, Claude and Perplexity spend on the one case where the runs also never
+  // succeed. Comparing timestamps closes it: the pair can only be "new" once per change,
+  // and a change is itself limited to once per 30 days (see billing/competitor-slots.ts).
   const now = new Date();
 
   // La limite ne s'applique qu'en production. En développement, elle rend le produit
@@ -158,7 +148,7 @@ export async function POST() {
     );
   }
 
-  if (cooldownEnforced && competitorSnapshot) {
+  if (cooldownEnforced) {
     const { data: lastSnapshot, error: lastSnapshotError } = await supabase
       .from("site_snapshots")
       .select("fetched_at")
@@ -175,19 +165,27 @@ export async function POST() {
       );
     }
 
-    const rateLimit = checkAnalysisRateLimit(parseLastRunAt(lastSnapshot?.fetched_at), now);
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: rateLimitMessage(rateLimit.retryAt, now),
-          retryAfterIso: rateLimit.retryAt.toISOString(),
-        },
-        {
-          status: 429,
-          headers: { "Retry-After": String(retryAfterSeconds(rateLimit.retryAt, now)) },
-        },
-      );
+    const lastRunAt = parseLastRunAt(lastSnapshot?.fetched_at);
+    const pairChangedAt =
+      parseLastRunAt(competitor.url_changed_at) ?? parseLastRunAt(competitor.created_at);
+    const isNewPair =
+      lastRunAt === null || (pairChangedAt !== null && pairChangedAt.getTime() > lastRunAt.getTime());
+
+    if (!isNewPair) {
+      const rateLimit = checkAnalysisRateLimit(lastRunAt, now);
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: rateLimitMessage(rateLimit.retryAt, now),
+            retryAfterIso: rateLimit.retryAt.toISOString(),
+          },
+          {
+            status: 429,
+            headers: { "Retry-After": String(retryAfterSeconds(rateLimit.retryAt, now)) },
+          },
+        );
+      }
     }
   }
 

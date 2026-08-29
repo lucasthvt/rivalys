@@ -8,6 +8,7 @@ import {
   labelPaymentProviders,
 } from "@/lib/compare/payment-methods";
 import { detectSocialPlatforms, labelPlatforms } from "@/lib/compare/social";
+import { createClient } from "@/lib/supabase/server";
 
 
 /**
@@ -27,6 +28,19 @@ import { detectSocialPlatforms, labelPlatforms } from "@/lib/compare/social";
  */
 export async function GET(request: NextRequest) {
   if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Indisponible." }, { status: 404 });
+  }
+
+  // Deuxième verrou, volontairement redondant avec celui du dessus. NODE_ENV est une
+  // variable d'environnement : elle se règle mal, et un déploiement qui la laisserait à
+  // "development" ouvrirait un fetch de site arbitraire, sans limite de débit, à toute
+  // personne connaissant l'URL. Exiger une session ne coûte rien à l'usage local et
+  // supprime la version anonyme de ce risque.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return NextResponse.json({ error: "Indisponible." }, { status: 404 });
   }
 

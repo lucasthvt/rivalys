@@ -36,7 +36,11 @@ async function updateGapStatus(gapId: string, status: GapStatus): Promise<GapAct
     .eq("user_id", user.id);
 
   if (error) {
-    return { ok: false, error: error.message };
+    // Le message brut de Postgres nomme des tables, des colonnes et parfois des
+    // contraintes : c'est une carte de la base offerte à quiconque provoque l'erreur.
+    // Journalisé côté serveur, phrase neutre côté navigateur.
+    console.error("[tasks] mise à jour du statut d'un écart échouée", error);
+    return { ok: false, error: "Impossible de mettre à jour cette tâche. Réessaie." };
   }
 
   revalidatePath("/tasks");

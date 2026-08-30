@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/brand/Logo";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import {
@@ -24,17 +25,37 @@ import type { GapPriority } from "@/lib/supabase/database.types";
  * réserves affichées (présence d'avis sans la note, présence sociale sans le
  * volume) sont celles que le moteur applique réellement.
  */
-export default function Home() {
+/**
+ * Destination du bouton principal.
+ *
+ * Un visiteur déconnecté part s'inscrire. Un utilisateur déjà connecté qui revient sur la
+ * landing et clique « Comparer mon SaaS » doit ouvrir son tableau de bord — l'envoyer créer
+ * un compte qu'il possède déjà était le bug : le parcours s'arrêtait net sur un formulaire
+ * d'inscription refusant son email.
+ */
+function heroCta(authenticated: boolean) {
+  return authenticated
+    ? { href: "/dashboard", label: "Ouvrir mon tableau de bord" }
+    : { href: "/signup", label: "Comparer mon SaaS" };
+}
+
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const authenticated = Boolean(user);
+
   return (
     <div className="bg-void text-paper">
-      <Hero />
+      <Hero authenticated={authenticated} />
       <WhatWeMeasure />
       <HowItWorks />
       <GapToTask />
       <ScoreSection />
       <WhatWeDont />
       <Faq />
-      <ClosingCta />
+      <ClosingCta authenticated={authenticated} />
       <Footer />
     </div>
   );
@@ -86,7 +107,8 @@ function DimensionLine({ measured }: { measured: boolean }) {
    Hero
    -------------------------------------------------------------------------- */
 
-function Hero() {
+function Hero({ authenticated }: { authenticated: boolean }) {
+  const cta = heroCta(authenticated);
   return (
     <section className="relative overflow-hidden border-b border-white/[0.06]">
       <div
@@ -133,17 +155,20 @@ function Hero() {
 
             <div className="mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               <Link
-                href="/signup"
+                href={cta.href}
                 className="inline-flex h-12 items-center justify-center rounded-full bg-signal px-7 text-base font-semibold text-paper shadow-signal-lg transition-colors duration-150 hover:bg-signal-bright hover:text-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-bright"
               >
-                Comparer mon SaaS
+                {cta.label}
               </Link>
-              <Link
-                href="/login"
-                className="text-sm font-medium text-mist transition-colors hover:text-paper"
-              >
-                J&rsquo;ai déjà un compte →
-              </Link>
+              {/* Proposer de se connecter à quelqu'un qui l'est déjà n'a pas de sens. */}
+              {authenticated ? null : (
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-mist transition-colors hover:text-paper"
+                >
+                  J&rsquo;ai déjà un compte →
+                </Link>
+              )}
             </div>
 
             <p className="mt-7 font-mono text-[0.68rem] uppercase leading-relaxed tracking-[0.1em] text-mist/60">
@@ -652,7 +677,8 @@ function Faq() {
    Clôture + pied de page
    -------------------------------------------------------------------------- */
 
-function ClosingCta() {
+function ClosingCta({ authenticated }: { authenticated: boolean }) {
+  const cta = heroCta(authenticated);
   return (
     <section className="relative overflow-hidden border-b border-white/[0.06]">
       <div
@@ -667,10 +693,10 @@ function ClosingCta() {
           Un premier relevé prend quelques minutes et n&rsquo;a besoin que de deux URL.
         </p>
         <Link
-          href="/signup"
+          href={cta.href}
           className="mt-9 inline-flex h-12 items-center justify-center rounded-full bg-signal px-7 text-base font-semibold text-paper shadow-signal-lg transition-colors duration-150 hover:bg-signal-bright hover:text-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-bright"
         >
-          Comparer mon SaaS
+          {cta.label}
         </Link>
       </div>
     </section>

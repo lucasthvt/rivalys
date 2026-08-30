@@ -714,26 +714,55 @@ function Footer() {
           </p>
         </div>
 
-        <div className="sm:text-right">
-          <p className="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-mist/60">Légal</p>
-          <ul className="mt-4 flex flex-col gap-2 sm:items-end">
-            {[
+        {/*
+          Colonne « Produit » : sur mobile, les liens de la barre de navigation sont masqués
+          (voir NavBar), et le pied de page ne listait que le légal. La page Tarifs n'était
+          donc atteignable par AUCUN lien de navigation en dessous de 640 px — sur la page
+          qui est censée vendre. Ces liens la rendent joignable partout, et donnent au
+          passage au moteur de recherche un maillage interne vers les pages qui comptent.
+        */}
+        <div className="flex flex-col gap-10 sm:flex-row sm:gap-16">
+          <FooterColumn
+            title="Produit"
+            links={[
+              { href: "/tarifs", label: "Tarifs" },
+              { href: "/#comment-ca-marche", label: "Comment ça marche" },
+              { href: "/#faq", label: "FAQ" },
+            ]}
+          />
+          <FooterColumn
+            title="Légal"
+            links={[
               { href: "/mentions-legales", label: "Mentions légales" },
               { href: "/cgu", label: "CGU" },
               { href: "/confidentialite", label: "Confidentialité" },
-            ].map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="text-sm text-mist transition-colors hover:text-paper"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+            ]}
+          />
         </div>
       </div>
     </footer>
+  );
+}
+
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: string;
+  links: { href: string; label: string }[];
+}) {
+  return (
+    <div>
+      <p className="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-mist/60">{title}</p>
+      <ul className="mt-4 flex flex-col gap-2">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link href={link.href} className="text-sm text-mist transition-colors hover:text-paper">
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

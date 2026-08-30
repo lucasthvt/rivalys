@@ -36,9 +36,21 @@ export function NavBar({ isAuthenticated }: { isAuthenticated: boolean }) {
     // seule la barre elle-même intercepte les clics, pour que la bande vide de part et
     // d'autre ne bloque pas le contenu qui défile dessous.
     <header className="pointer-events-none sticky top-0 z-40 px-4 pt-4 sm:px-6">
-      <div className="floating-bar pointer-events-auto mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 pl-5 pr-2">
+      {/*
+        max-w-6xl, comme toutes les sections de la page (voir app/page.tsx). En max-w-5xl la
+        barre était 128 px plus étroite que le contenu : sur grand écran elle apparaissait
+        rentrée d'une quarantaine de pixels de chaque côté, sans raison lisible. Une barre
+        flottante doit tomber sur la même colonne que ce qu'elle surplombe.
+      */}
+      <div className="floating-bar pointer-events-auto mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 pl-5 pr-2">
         <Logo />
 
+        {/*
+          Masquée sous 640 px, faute de place : y ajouter ne serait-ce que « Tarifs » fait
+          déborder la barre et sort « S'inscrire » de l'écran (mesuré à 375 px : 396 px de
+          contenu pour 375 disponibles). Ces liens restent joignables par le pied de page,
+          qui porte une colonne « Produit » pour cette raison précise.
+        */}
         <nav
           aria-label="Navigation principale"
           className="hidden items-center gap-7 text-[0.875rem] text-mist sm:flex"

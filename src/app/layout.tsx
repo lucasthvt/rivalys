@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Golos_Text, IBM_Plex_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { Nav } from "@/components/layout/Nav";
 import "./globals.css";
 
@@ -108,6 +109,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           counting it.
         */}
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        {/*
+          Mesure d'audience Vercel. Sans cookie et sans identifiant persistant : elle compte
+          des pages vues agrégées, elle ne suit personne d'un site à l'autre. C'est ce qui la
+          rend déclarable comme simple mesure d'audience dans la politique de
+          confidentialité, et non comme un traceur publicitaire.
+
+          Le script est servi depuis notre propre domaine (/_vercel/insights/…), donc la CSP
+          n'a aucune origine tierce à ouvrir.
+        */}
+        <Analytics />
       </body>
     </html>
   );

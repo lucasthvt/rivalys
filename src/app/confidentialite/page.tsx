@@ -16,7 +16,7 @@ import {
  *
  * Sous-traitants effectivement appelés, à tenir à jour avec le code :
  *  - Supabase       src/lib/supabase/*          base de données + authentification
- *  - Vercel         hébergement de l'application
+ *  - Vercel         hébergement + mesure d'audience (@vercel/analytics, sans cookie)
  *  - Anthropic      src/lib/compare/extract.ts  extraction structurée des pages publiques
  *  - Firecrawl      src/lib/compare/firecrawl.ts récupération des pages publiques
  *  - Perplexity     src/lib/compare/perplexity.ts présence sur les plateformes d'avis
@@ -59,7 +59,7 @@ const SECTIONS: LegalSection[] = [
     title: "4. Sous-traitants et destinataires",
     body: [
       "Supabase — base de données et authentification. Données du compte et du produit. Hébergement dans l'Union européenne (région AWS eu-central-1, Francfort).",
-      "Vercel — hébergement de l'application et journaux techniques associés. Société américaine.",
+      "Vercel — hébergement de l'application, journaux techniques associés, et mesure d'audience (Vercel Web Analytics). Société américaine.",
       "Anthropic — le contenu texte des pages publiques récupérées est envoyé à l'API Claude pour en extraire des données structurées. Aucune donnée de compte (email, mot de passe) ne lui est transmise. Société américaine.",
       "Firecrawl — récupération du contenu des pages publiques dont tu as fourni l'URL. Reçoit ces URL. Société américaine.",
       "Perplexity — vérification de la présence publique des deux produits sur les plateformes d'avis et les réseaux. Reçoit le nom et l'URL des sites comparés. Société américaine.",
@@ -93,8 +93,9 @@ const SECTIONS: LegalSection[] = [
   {
     title: "7. Cookies et traceurs",
     body: [
-      "Rivalys ne dépose que les cookies strictement nécessaires au fonctionnement du service : ceux de session posés par Supabase Auth, qui te maintiennent connecté. Ils sont exemptés de consentement au sens de l'article 82 de la loi Informatique et Libertés, et c'est pour cette raison qu'aucune bannière ne t'est imposée.",
-      "Aucun cookie publicitaire, aucun traceur de mesure d'audience, aucun pixel de réseau social, aucun outil d'analyse comportementale n'est utilisé. Si cela devait changer, un consentement préalable serait recueilli avant tout dépôt.",
+      "Rivalys ne dépose que les cookies strictement nécessaires au fonctionnement du service : ceux de session posés par Supabase Auth, qui te maintiennent connecté. Ils sont exemptés de consentement au sens de l'article 82 de la loi Informatique et Libertés.",
+      "Une mesure d'audience est en place, Vercel Web Analytics. Elle ne dépose aucun cookie, ne crée aucun identifiant persistant et ne permet pas de te suivre d'un site à l'autre : elle produit uniquement des statistiques agrégées de pages vues, de provenance et de type d'appareil. Elle ne sert qu'à savoir quelles pages sont consultées, jamais à profiler qui que ce soit, et ses données ne sont ni recoupées avec ton compte, ni transmises à des tiers à d'autres fins.",
+      "C'est parce qu'elle reste dans ce périmètre strict — celui que la CNIL reconnaît à la mesure d'audience — qu'aucune bannière de consentement ne t'est imposée. Aucun cookie publicitaire, aucun pixel de réseau social, aucun outil d'analyse comportementale n'est utilisé. L'ajout d'un outil sortant de ce périmètre s'accompagnerait d'un recueil de consentement préalable.",
     ],
   },
   {

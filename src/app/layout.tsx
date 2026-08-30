@@ -30,10 +30,62 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
+const SITE_NAME = "Rivalys";
+const TAGLINE = "Vois où tu perds du terrain face à ton concurrent";
+const DESCRIPTION =
+  "Rivalys compare ton SaaS à ton plus gros concurrent sur des données publiques factuelles — tarifs, avis, positionnement — et transforme chaque écart en action concrète à mener.";
+
+/**
+ * `metadataBase` résout les URL relatives des images de partage et des liens canoniques.
+ * Sans elle, Next émet des chemins relatifs qu'aucun réseau social ne sait suivre, et
+ * l'aperçu partagé reste vide. La variable d'environnement fait foi ; le domaine sert de
+ * repli pour que la génération locale ne casse pas.
+ */
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://rivalys.com";
+
 export const metadata: Metadata = {
-  title: "Rivalys — Vois où tu perds du terrain face à ton concurrent",
-  description:
-    "Rivalys compare ton SaaS à ton plus gros concurrent sur des données publiques factuelles — pricing, avis, positionnement — et transforme chaque écart en action concrète à mener.",
+  metadataBase: new URL(APP_URL),
+  title: {
+    default: `${SITE_NAME} — ${TAGLINE}`,
+    // Les pages qui posent leur propre titre héritent du suffixe de marque.
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: { canonical: "/" },
+  keywords: [
+    "veille concurrentielle",
+    "comparateur SaaS",
+    "analyse concurrent",
+    "positionnement tarifaire",
+    "SaaS",
+  ],
+  authors: [{ name: SITE_NAME, url: APP_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  // Aperçu de partage : sans openGraph, un lien collé dans Slack, LinkedIn ou iMessage
+  // n'affiche qu'une URL nue. L'image est générée par src/app/opengraph-image.tsx.
+  openGraph: {
+    type: "website",
+    locale: "fr_FR",
+    url: APP_URL,
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} — ${TAGLINE}`,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — ${TAGLINE}`,
+    description: DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  // Le produit ne s'adresse pas aux moteurs de recherche pour ses écrans applicatifs :
+  // ceux-là sont marqués noindex par le proxy (voir src/proxy.ts).
+  category: "technology",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

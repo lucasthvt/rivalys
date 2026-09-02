@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/brand/Logo";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { FreeAnalysis } from "@/components/landing/free-analysis";
 import {
   computeScore,
   MAX_SCORE,
@@ -36,7 +37,10 @@ import type { GapPriority } from "@/lib/supabase/database.types";
 function heroCta(authenticated: boolean) {
   return authenticated
     ? { href: "/dashboard", label: "Ouvrir mon tableau de bord" }
-    : { href: "/signup", label: "Comparer mon SaaS" };
+    : // Le bouton descend vers l'essai gratuit, pas vers l'inscription. Demander un compte
+      // avant d'avoir rien prouvé, c'est facturer la confiance d'avance ; l'essai la gagne
+      // en trente secondes et l'inscription vient après, une fois l'écart affiché.
+      { href: "#essai", label: "Analyser mon SaaS gratuitement" };
 }
 
 export default async function Home() {
@@ -49,6 +53,16 @@ export default async function Home() {
   return (
     <div className="bg-void text-paper">
       <Hero authenticated={authenticated} />
+      {/*
+        L'essai gratuit juste sous le hero, avant toute explication : un visiteur qui vient
+        de lire la promesse doit pouvoir la vérifier sur son propre site immédiatement.
+        Placé plus bas, il ne serait vu que par ceux qui ont déjà été convaincus par le
+        texte — c'est-à-dire par ceux qui en avaient le moins besoin.
+
+        Masqué pour un utilisateur connecté : il a déjà son relevé complet dans son tableau
+        de bord, et lui proposer une version bridée de ce qu'il paye n'a aucun sens.
+      */}
+      {authenticated ? null : <FreeAnalysis />}
       <WhatWeMeasure />
       <HowItWorks />
       <GapToTask />

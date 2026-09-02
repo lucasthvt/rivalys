@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withBotId } from "botid/next/config";
 
 /**
  * En-têtes de sécurité posés sur toutes les réponses.
@@ -66,4 +67,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * `withBotId` ajoute les réécritures qui font transiter le défi BotID par notre propre
+ * domaine, sous un chemin opaque, au lieu d'un domaine tiers.
+ *
+ * Deux effets, et les deux comptent ici : les bloqueurs de publicité ne coupent pas la
+ * protection en filtrant un domaine connu, et tout reste en même origine — donc la CSP
+ * stricte de src/proxy.ts (`default-src 'self'`, `connect-src 'self'`) laisse passer sans
+ * qu'on ait à y ouvrir une origine tierce.
+ */
+export default withBotId(nextConfig);

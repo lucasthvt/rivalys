@@ -278,6 +278,52 @@ export interface Database {
           },
         ];
       };
+      // Ajoutées à la main faute de pouvoir relancer `supabase gen types` depuis cet
+      // environnement. Elles existent bien dans la migration 20260901000000 ; une
+      // régénération les produira à l'identique et écrasera ces deux blocs sans rien
+      // changer. Aucune relation : ni l'une ni l'autre ne référence un utilisateur.
+      public_teardowns: {
+        Row: {
+          pair_key: string;
+          own_url: string;
+          competitor_url: string;
+          result: Json;
+          hit_count: number;
+          created_at: string;
+        };
+        Insert: {
+          pair_key: string;
+          own_url: string;
+          competitor_url: string;
+          result: Json;
+          hit_count?: number;
+          created_at?: string;
+        };
+        Update: {
+          pair_key?: string;
+          own_url?: string;
+          competitor_url?: string;
+          result?: Json;
+          hit_count?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      public_teardown_quota: {
+        Row: {
+          ip_hash: string;
+          used_at: string;
+        };
+        Insert: {
+          ip_hash: string;
+          used_at?: string;
+        };
+        Update: {
+          ip_hash?: string;
+          used_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

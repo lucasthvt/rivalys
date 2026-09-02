@@ -1,6 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
-  <rect width="24" height="24" rx="5.5" fill="#101319"/>
-  <rect x="14" y="3.5" width="6" height="17" rx="1.8" fill="#6c90ff" opacity="0.42"/>
-  <rect x="4" y="11.5" width="6" height="9" rx="1.8" fill="#6c90ff"/>
-  <rect x="4.75" y="4.25" width="4.5" height="5" rx="1.05" fill="none" stroke="#6c90ff" stroke-width="1.5" stroke-dasharray="2.2 1.8" opacity="0.85"/>
+  <rect width="24" height="24" rx="5.5" fill="#0e0e12"/>
+  <rect x="14" y="3.5" width="6" height="17" rx="1.8" fill="#a394ff" opacity="0.42"/>
+  <rect x="4" y="11.5" width="6" height="9" rx="1.8" fill="#a394ff"/>
+  <!--
+    Contour plein, contrairement au mark de l'interface : rendu a 16-32 px, des
+    tirets de 2,2 unites se referment en trait continu et ne font que salir le
+    glyphe. Meme dessin, meme sens, lisible dans un onglet.
+  -->
+  <rect x="4.75" y="4.25" width="4.5" height="5" rx="1.05" fill="none" stroke="#a394ff" stroke-width="1.6" opacity="0.85"/>
 </svg>

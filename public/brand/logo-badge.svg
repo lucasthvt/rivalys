@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Rivalys">
+  <rect width="32" height="32" rx="7" fill="#0e0e12"/>
+  <!--
+    Le mark, recentre dans une pastille et debarrasse du pointille : a taille
+    d'avatar les tirets se referment en trait continu et salissent le glyphe.
+    Le contour de l'ecart passe donc en trait plein, a 1,0 d'epaisseur — 1,6
+    remplissait la forme et la faisait lire comme un bloc plein des 200 px.
+  -->
+  <g transform="translate(4 4)">
+    <rect x="14" y="3.5" width="6" height="17" rx="1.8" fill="#a394ff" opacity=".45"/>
+    <rect x="4" y="11.5" width="6" height="9" rx="1.8" fill="#a394ff"/>
+    <rect x="4.75" y="4.25" width="4.5" height="5" rx="1.05" fill="none" stroke="#a394ff" stroke-width="1"/>
+  </g>
+</svg>

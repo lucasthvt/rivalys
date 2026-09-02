@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Rivalys">
+  <rect width="32" height="32" fill="#000000"/>
+  <g transform="translate(4 4)">
+    <rect x="14" y="3.5" width="6" height="17" rx="1.8" fill="#a394ff" opacity=".42"/>
+    <rect x="4" y="11.5" width="6" height="9" rx="1.8" fill="#a394ff"/>
+    <rect x="4.75" y="4.25" width="4.5" height="5" rx="1.05" fill="none" stroke="#a394ff"
+          stroke-width="0.9" stroke-dasharray="1.61 1.26" stroke-dashoffset="0.8" opacity=".85"/>
+  </g>
+</svg>

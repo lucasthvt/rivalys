@@ -15,8 +15,8 @@ import { ImageResponse } from "next/og";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-const VOID_RAISED = "#101319";
-const SIGNAL_BRIGHT = "#6c90ff";
+const VOID_RAISED = "#0e0e12";
+const SIGNAL_BRIGHT = "#a394ff";
 
 export default async function AppleIcon() {
   return new ImageResponse(
@@ -41,8 +41,9 @@ export default async function AppleIcon() {
             height="5"
             rx="1.05"
             stroke={SIGNAL_BRIGHT}
-            strokeWidth="1.5"
-            strokeDasharray="2.2 1.8"
+            strokeWidth="0.9"
+            strokeDasharray="1.61 1.26"
+            strokeDashoffset="0.8"
             opacity="0.85"
           />
         </svg>

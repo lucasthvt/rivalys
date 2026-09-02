@@ -50,6 +50,28 @@ function isLocalhostHostname(host: string): boolean {
 }
 
 /**
+ * Complète une adresse saisie à la main.
+ *
+ * Personne ne tape « https:// » : on écrit « brevo.com ». Refuser cette forme reviendrait à
+ * faire échouer le premier geste du visiteur sur une question de syntaxe, alors que
+ * l'intention est parfaitement claire. On préfixe donc en https quand aucun schéma n'est
+ * présent.
+ *
+ * À n'appliquer qu'aux saisies humaines. Les URL rencontrées en cours de route — une
+ * redirection, un lien extrait d'une page — passent directement par assertPublicHttpUrl :
+ * là, un schéma absent ou exotique est un signal, pas une maladresse de frappe, et le
+ * compléter d'office masquerait ce que le contrôle doit justement voir.
+ */
+export function coerceUserUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed === "") return trimmed;
+  // Un schéma déjà écrit est laissé tel quel, y compris s'il n'est pas http(s) :
+  // assertPublicHttpUrl doit pouvoir le rejeter en le nommant.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+/**
  * Throws UnsafeUrlError unless `url` is a plain, public http(s) URL. Intended to be called on
  * every URL the comparator is about to fetch — the initial origin, and again on every
  * redirect Location before it's followed (see fetch-site.ts).

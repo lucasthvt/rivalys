@@ -34,6 +34,8 @@ interface PublicResult {
   categories: GapCategory[];
   featuredGap: Gap | null;
   hiddenCount: number;
+  /** Répartition par priorité des écarts masqués, calculée côté serveur. */
+  hiddenCounts: Record<Gap["priority"], number>;
   hiddenCategories: GapCategory[];
   coverage: { title: string; observations: string[]; consequence: string } | null;
   cached: boolean;
@@ -257,6 +259,11 @@ function Result({ result }: { result: PublicResult }) {
 
       {result.featuredGap ? (
         <>
+          {/*
+            L'intitulé nomme exactement lequel des écarts est montré. Il doit suivre la
+            sélection de toPublicResult : le jour où elle change, cette phrase devient un
+            mensonge silencieux sur la page d'un produit qui vend la justesse d'un relevé.
+          */}
           <p className="mt-12 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist">
             Ton écart le plus prioritaire
           </p>
@@ -308,6 +315,8 @@ function Locked({ count, result }: { count: number; result: PublicResult }) {
     .map((category) => CATEGORY_LABEL[category])
     .filter(Boolean);
 
+  const hiddenHigh = result.hiddenCounts.high;
+
   return (
     <div className="mt-10">
       <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist">
@@ -334,8 +343,24 @@ function Locked({ count, result }: { count: number; result: PublicResult }) {
 
         <div className="absolute inset-0 flex items-center justify-center px-4">
           <div className="panel max-w-md px-6 py-7 text-center backdrop-blur-sm">
+            {/*
+              Le titre nomme ce qui manque au lieu de le suggérer. Le décompte vient de
+              hiddenCounts, calculé côté serveur sur les écarts réellement masqués : c'est
+              la seule information du bloc qui pousse à créer un compte, elle doit donc
+              être exacte. Un « 2 écarts prioritaires » affiché alors qu'il n'y en a qu'un
+              transformerait le levier en approximation vendeuse.
+
+              « Autre » et non « le plus prioritaire » : celui-là est déjà affiché en clair
+              juste au-dessus. Les écarts cachés sont de priorité haute eux aussi, mais
+              aucun n'est LE plus grave — le dire contredirait l'intitulé de la carte
+              précédente à trois centimètres d'écart.
+            */}
             <h3 className="font-brand text-xl text-paper">
-              Le reste de ton relevé t&apos;attend
+              {hiddenHigh === 0
+                ? "Le reste de ton relevé t'attend"
+                : hiddenHigh === 1
+                  ? "Un autre écart prioritaire est ici"
+                  : `${hiddenHigh} autres écarts prioritaires sont ici`}
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-mist">
               {categories.length > 0 &&

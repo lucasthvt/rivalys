@@ -13,10 +13,31 @@ const PROTECTED_PREFIXES = [
   "/compte",
 ];
 
+/**
+ * Jamais indexé, jamais mis en cache partagé.
+ *
+ * Surensemble des chemins protégés : il ajoute les écrans d'opérateur, qui ne peuvent PAS
+ * rejoindre la liste ci-dessus. Celle-ci redirige vers /login, et une redirection confirme
+ * qu'un chemin existe — or ces écrans répondent 404 précisément pour rester indiscernables
+ * du néant. Ils ont malgré tout besoin du `no-store` : /admin/avis affiche les retours de
+ * tout le monde, lus avec la clé de service.
+ *
+ * Volontairement absents de robots.txt : ce fichier est public, y écrire « /admin » revient
+ * à publier la liste de ce qu'on cherche à cacher. L'en-tête ci-dessous est de toute façon
+ * ce qui empêche réellement l'indexation.
+ */
+const NO_INDEX_PREFIXES = [...PROTECTED_PREFIXES, "/admin", "/teardown"];
+
+function matchesPrefix(pathname: string, prefixes: readonly string[]) {
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
 function isProtectedPath(pathname: string) {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  return matchesPrefix(pathname, PROTECTED_PREFIXES);
+}
+
+function isNoIndexPath(pathname: string) {
+  return matchesPrefix(pathname, NO_INDEX_PREFIXES);
 }
 
 export async function proxy(request: NextRequest) {
@@ -88,7 +109,7 @@ export async function proxy(request: NextRequest) {
   // Les écrans authentifiés ne doivent jamais finir dans un index public : ils ne portent
   // que des données appartenant à une personne, et un cache partagé mal réglé suffit à
   // les faire fuir.
-  if (isProtectedPath(request.nextUrl.pathname)) {
+  if (isNoIndexPath(request.nextUrl.pathname)) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
     response.headers.set("Cache-Control", "private, no-store, max-age=0");
   }

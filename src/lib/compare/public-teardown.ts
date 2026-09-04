@@ -57,9 +57,26 @@ export interface PublicResult {
   gapCount: number;
   counts: Record<GapPriority, number>;
   categories: string[];
-  /** L'écart le plus prioritaire, en clair. La preuve que l'analyse est réelle. */
+  /**
+   * L'écart le PLUS prioritaire, en clair. La preuve que l'analyse est réelle.
+   *
+   * Offrir le plus fort plutôt que le plus faible est un pari assumé : le visiteur repart
+   * avec quelque chose qui vaut la peine, et c'est ce qui rend crédible l'idée qu'il en
+   * reste. Un aperçu mineur prouve seulement que le moteur tourne, pas qu'il trouve.
+   *
+   * `hiddenCounts` dit ce qui reste derrière le mur, priorité par priorité.
+   */
   featuredGap: GapCandidate | null;
   hiddenCount: number;
+  /**
+   * Répartition par priorité des écarts MASQUÉS, et d'eux seuls.
+   *
+   * Calculé ici et pas déduit de `counts` côté navigateur : quand tous les écarts sont de
+   * même priorité, celui qu'on montre en fait partie, et « counts.high » surestimerait
+   * alors d'une unité ce qui reste caché. L'écran annoncerait un écart prioritaire qui
+   * n'existe pas.
+   */
+  hiddenCounts: Record<GapPriority, number>;
   /**
    * Les familles auxquelles appartiennent les écarts MASQUÉS, et elles seules.
    *
@@ -76,12 +93,20 @@ export interface PublicResult {
 const PRIORITY_RANK: Record<GapPriority, number> = { high: 0, medium: 1, low: 2 };
 
 export function toPublicResult(full: FullResult, cached: boolean): PublicResult {
+  // Trié du plus prioritaire au moins prioritaire.
   const gaps = [...full.gaps].sort(
     (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority],
   );
 
   const counts: Record<GapPriority, number> = { high: 0, medium: 0, low: 0 };
   for (const gap of gaps) counts[gap.priority] += 1;
+
+  // Le premier du tri : l'écart le PLUS prioritaire. C'est celui qu'on offre.
+  const featuredGap = gaps[0] ?? null;
+  const hidden = gaps.slice(1);
+
+  const hiddenCounts: Record<GapPriority, number> = { high: 0, medium: 0, low: 0 };
+  for (const gap of hidden) hiddenCounts[gap.priority] += 1;
 
   return {
     ownLabel: full.ownLabel,
@@ -90,9 +115,10 @@ export function toPublicResult(full: FullResult, cached: boolean): PublicResult 
     gapCount: gaps.length,
     counts,
     categories: [...new Set(gaps.map((g) => g.category))],
-    featuredGap: gaps[0] ?? null,
-    hiddenCount: Math.max(0, gaps.length - 1),
-    hiddenCategories: [...new Set(gaps.slice(1).map((g) => g.category))],
+    featuredGap,
+    hiddenCount: hidden.length,
+    hiddenCounts,
+    hiddenCategories: [...new Set(hidden.map((g) => g.category))],
     coverage: full.coverage,
     cached,
   };

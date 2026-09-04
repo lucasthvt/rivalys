@@ -270,6 +270,43 @@ body {
   }
 }
 
+/* Fenêtre de la bande défilante.
+   Par défaut elle se fait défiler à la main : c'est l'état de repli quand le
+   système réclame moins de mouvement, sans lequel tout ce qui dépasse du premier
+   écran serait définitivement hors d'atteinte. Dès que l'animation est autorisée,
+   elle reprend la main et le débordement est masqué.
+   Les bords s'effacent en fondu, sinon les cartes sont tranchées net au milieu
+   d'une phrase à chaque extrémité. */
+.marquee-viewport {
+  overflow-x: auto;
+  scrollbar-width: none;
+  --marquee-fade: clamp(1.5rem, 6vw, 4rem);
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black var(--marquee-fade),
+    black calc(100% - var(--marquee-fade)),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black var(--marquee-fade),
+    black calc(100% - var(--marquee-fade)),
+    transparent 100%
+  );
+}
+
+.marquee-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marquee-viewport {
+    overflow-x: hidden;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .reveal-up {
     animation: reveal-up 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) both;

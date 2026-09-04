@@ -23,6 +23,8 @@ import {
 import { assessPricingCoverage } from "@/lib/compare/comparability";
 import { countByPriority } from "@/lib/compare/score";
 import { hasPaidAccess } from "@/lib/billing/access";
+import { TestimonialPrompt } from "@/components/dashboard/testimonial-prompt";
+import { fetchOwnTestimonial } from "@/lib/testimonials/queries";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -207,6 +209,12 @@ export default async function DashboardPage() {
   // concurrent précédent.
   const analysedForCurrentCompetitor = competitorSnapshotRes.data !== null;
 
+  // Le retour n'est demandé qu'à quelqu'un qui a vu tourner le produit sur son propre
+  // concurrent. Avant ça, la question n'a pas de réponse possible.
+  const ownTestimonial = analysedForCurrentCompetitor
+    ? await fetchOwnTestimonial(user.id)
+    : null;
+
   // Ce que le comparateur n'a pas pu mesurer, faute de tarifs publics d'un côté ou de
   // l'autre. Conditionné aux deux relevés : avant une analyse, l'absence de tarifs ne dit
   // rien du site, seulement qu'on ne l'a pas encore lu — et l'écran affiche déjà « — »
@@ -369,6 +377,17 @@ export default async function DashboardPage() {
             </p>
           )}
         </section>
+
+        {/*
+          Placé en dernier, après le relevé : on demande son avis à quelqu'un qui vient de
+          lire ses résultats, pas à quelqu'un qui arrive. Et seulement si une analyse a
+          réellement tourné sur le concurrent actuel.
+        */}
+        {analysedForCurrentCompetitor && (
+          <section className="mt-5">
+            <TestimonialPrompt existing={ownTestimonial} />
+          </section>
+        )}
       </div>
     </AppShell>
   );

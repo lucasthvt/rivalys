@@ -309,6 +309,53 @@ export interface Database {
         };
         Relationships: [];
       };
+      // Ajoutée à la main, comme les deux blocs ci-dessus : voir la migration
+      // 20260904000000. Une régénération la produira à l'identique.
+      testimonials: {
+        Row: {
+          id: string;
+          user_id: string;
+          quote: string;
+          author_label: string;
+          role_label: string | null;
+          consent_public: boolean;
+          published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          quote: string;
+          author_label: string;
+          role_label?: string | null;
+          consent_public?: boolean;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          quote?: string;
+          author_label?: string;
+          role_label?: string | null;
+          consent_public?: boolean;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "testimonials_user_id_fkey";
+            columns: ["user_id"];
+            // Contrainte `unique (user_id)` : un avis par compte.
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       public_teardown_quota: {
         Row: {
           ip_hash: string;

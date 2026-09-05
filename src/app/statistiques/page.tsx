@@ -108,7 +108,8 @@ export default async function StatistiquesPage() {
       <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
         <Header />
 
-        <section className="panel mb-5 overflow-hidden">
+        {/* Point focal : la vue d'ensemble commande les détails qui suivent. */}
+        <section className="panel-focal mb-5 overflow-hidden">
           <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Vue d&rsquo;ensemble

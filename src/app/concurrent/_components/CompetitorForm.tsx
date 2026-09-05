@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
-import { isLikelyUrl } from "@/lib/url";
+import { isLikelyUrl, normalizeUrl } from "@/lib/url";
 import { setCompetitor } from "../actions";
 
 /**
@@ -23,6 +23,27 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
   const [isPending, startTransition] = useTransition();
 
   const isValid = isLikelyUrl(url);
+
+  /**
+   * L'adresse réellement lue, affichée pendant la frappe.
+   *
+   * Taper « concurrent.com » déclenche une analyse de « https://concurrent.com » : la
+   * complétion se faisait en silence, côté serveur, et le champ ne montrait jamais la
+   * cible. Une virgule à la place du point ne se voyait donc qu'après avoir écrasé le
+   * concurrent précédent — un geste destructeur (voir setCompetitor).
+   *
+   * `normalizeUrl` est le même helper que celui de la validation, pour que ce qui est
+   * annoncé ici soit exactement ce qui sera enregistré.
+   */
+  const target = url.trim() === "" ? null : normalizeUrl(url);
+  const host = (() => {
+    if (!target || !isValid) return null;
+    try {
+      return new URL(target).hostname;
+    } catch {
+      return null;
+    }
+  })();
 
   function handleChange(value: string) {
     setUrl(value);
@@ -80,6 +101,25 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
           className="mt-3 w-full border border-surface-border bg-background px-4 py-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-foreground-muted/50 focus:border-accent"
         />
       </label>
+
+      {/*
+        Retour pendant la frappe : ce qui sera lu, ou ce qui cloche. Occupe une hauteur
+        fixe pour que le formulaire ne saute pas d'une ligne à chaque caractère.
+      */}
+      <p
+        aria-live="polite"
+        className="font-mono mt-2.5 min-h-[1.25rem] text-[11px] tracking-[0.02em]"
+      >
+        {url.trim() === "" ? (
+          <span className="text-foreground-muted/40">—</span>
+        ) : isValid ? (
+          <span className="text-signal-bright">On lira {host}</span>
+        ) : (
+          <span className="text-flare">
+            Adresse incomplète — il faut un nom de domaine, par exemple concurrent.com
+          </span>
+        )}
+      </p>
 
       <p id="competitorUrlHint" className="mt-3 text-sm leading-relaxed text-foreground-muted">
         On ne lit que ce qui est déjà public sur son site : pricing affiché, positionnement,

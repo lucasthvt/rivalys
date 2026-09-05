@@ -78,7 +78,8 @@ export default async function ConcurrentPage() {
           </p>
         </header>
 
-        <section className="panel mb-5 overflow-hidden">
+        {/* Point focal : le concurrent actuellement suivi. */}
+        <section className="panel-focal mb-5 overflow-hidden">
           <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Concurrent suivi

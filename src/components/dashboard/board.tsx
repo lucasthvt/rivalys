@@ -178,8 +178,11 @@ function ScorePanel({
   const delta = analysed && score !== null && previous !== null ? score - previous : null;
   const priorities: GapPriority[] = ["high", "medium", "low"];
 
+  // Point focal du tableau de bord — la seule surface de l'écran à porter la lueur.
+  // Le plateau n'en avait aucune : six panneaux au même niveau de lumière ne disent
+  // pas par où commencer, et c'est exactement ce que l'écran doit dire.
   return (
-    <section className="panel flex flex-col items-center px-5 py-6" aria-label="Score">
+    <section className="panel-focal flex flex-col items-center px-5 py-6" aria-label="Score">
       <ScoreRing score={analysed ? score : null} delta={delta} size={150} />
 
       {projectionMoves && (

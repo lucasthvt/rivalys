@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { sortGapsByPriority } from "@/components/tasks/priority";
-import { GapListItem } from "@/components/tasks/gap-list-item";
+import { TaskQueue } from "@/components/tasks/task-queue";
 import { EmptyState } from "@/components/tasks/empty-state";
 import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { AppShell } from "@/components/layout/AppShell";
@@ -101,11 +101,7 @@ export default async function TasksPage() {
             description="Dès qu'une différence factuelle avec ton concurrent est détectée, elle apparaît ici sous forme de tâche concrète."
           />
         ) : (
-          <ul>
-            {gaps.map((gap) => (
-              <GapListItem key={gap.id} gap={gap} />
-            ))}
-          </ul>
+          <TaskQueue gaps={gaps} />
         )}
       </div>
     </AppShell>

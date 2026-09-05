@@ -349,15 +349,21 @@ body {
 .panel {
   border-radius: 1rem;
   border: 1px solid color-mix(in srgb, var(--color-paper) 8%, transparent);
+  /* Le lavis du haut est teinté signal et non blanc pur. Un dégradé neutre donne
+     un gris de studio : correct, mais éclairé par une source que la marque n'a
+     pas. Les panneaux du produit connecté prennent donc la couleur de la même
+     lampe que la landing — 6 %, assez pour que l'ensemble se tienne, trop peu
+     pour qu'on identifie une teinte en regardant un panneau isolé. */
   background:
     linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--color-paper) 4%, transparent),
-      transparent 45%
+      color-mix(in srgb, var(--color-signal-bright) 6%, transparent),
+      transparent 48%
     ),
     var(--color-void-raised);
   box-shadow:
-    inset 0 1px 0 0 color-mix(in srgb, var(--color-paper) 7%, transparent),
+    inset 0 1px 0 0 color-mix(in srgb, var(--color-paper) 8%, transparent),
+    0 1px 0 0 color-mix(in srgb, var(--color-signal-bright) 5%, transparent),
     0 24px 48px -32px rgb(0 0 0 / 0.8);
 }
 
@@ -382,17 +388,32 @@ body {
 
 /* Halo ambiant en haut de page, repris du hero de la landing. Purement
    atmosphérique, sous le contenu, sans interception de pointeur. */
+/* Halo ambiant, repris du hero de la landing.
+   DEUX sources dans un seul pseudo-élément, et c'est structurel : `::before` est
+   le premier enfant, donc le contenu peint par-dessus. Une seconde source posée
+   dans `::after` peindrait au contraire SUR les panneaux, et la sortir de la pile
+   avec `z-index: -1` la fait disparaître derrière le fond opaque de l'ancêtre —
+   vérifié, elle devenait invisible.
+   La source basse existe parce que le halo du haut s'arrêtait à la ligne de
+   flottaison : tout le reste d'une page de tableau de bord retombait sur du noir
+   plat. Elle est trois fois plus faible que celle du haut — elle doit se sentir,
+   pas se voir. */
 .app-ambient::before {
   content: "";
   position: absolute;
-  inset: -8rem 0 auto 0;
-  height: 32rem;
+  inset: -8rem 0 0 0;
   pointer-events: none;
-  background: radial-gradient(
-    46rem 20rem at 30% 0,
-    color-mix(in srgb, var(--color-signal) 38%, transparent),
-    transparent 72%
-  );
+  background:
+    radial-gradient(
+      46rem 20rem at 30% 8rem,
+      color-mix(in srgb, var(--color-signal) 38%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      40rem 18rem at 78% 100%,
+      color-mix(in srgb, var(--color-signal) 12%, transparent),
+      transparent 70%
+    );
 }
 
 .meter-hatch {

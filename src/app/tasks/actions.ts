@@ -56,3 +56,18 @@ export async function markGapDone(gapId: string): Promise<GapActionResult> {
 export async function dismissGap(gapId: string): Promise<GapActionResult> {
   return updateGapStatus(gapId, "dismissed");
 }
+
+/**
+ * Remet un écart en file — l'annulation d'un « fait » ou d'un « ignoré ».
+ *
+ * updateGapStatus efface déjà `resolved_at` quand le statut repasse à « open » :
+ * un écart rouvert ne peut donc pas traîner une date de fermeture périmée, et
+ * les statistiques de délai de résolution ne comptent pas une fermeture annulée.
+ *
+ * Sans cette action, fermer un écart est irréversible depuis l'interface. Un
+ * geste qui se répète des dizaines de fois et qu'on ne peut pas défaire pousse
+ * à hésiter avant chaque clic — c'est ce qui rend une liste pénible à traiter.
+ */
+export async function reopenGap(gapId: string): Promise<GapActionResult> {
+  return updateGapStatus(gapId, "open");
+}

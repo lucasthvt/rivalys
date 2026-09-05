@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { CATEGORY_LABEL } from "@/components/tasks/priority";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -18,7 +21,44 @@ const CATEGORY_ORDER: GapCategory[] = [
   "social_presence",
 ];
 
-function StatTile({ value, label }: { value: string; label: string }) {
+/**
+ * Une tuile de statistique, devenue un filtre.
+ *
+ * Les quatre chiffres décrivent chacun une population d'écarts ; la répartition par
+ * catégorie juste en dessous décrivait toujours la population entière. On ne pouvait
+ * donc pas répondre à « mes écarts comblés, ils venaient d'où ? » — la seule question
+ * intéressante de cet écran. Cliquer une tuile restreint la répartition à sa population.
+ *
+ * `onSelect` absent : la tuile reste un simple affichage, sans affordance trompeuse.
+ */
+function StatTile({
+  value,
+  label,
+  selected = false,
+  onSelect,
+}: {
+  value: string;
+  label: string;
+  selected?: boolean;
+  onSelect?: () => void;
+}) {
+  if (!onSelect) return <StatTileBody value={value} label={label} />;
+
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={`rounded-xl text-left transition-colors ${
+        selected ? "ring-1 ring-signal-bright/45" : "hover:ring-1 hover:ring-white/10"
+      }`}
+    >
+      <StatTileBody value={value} label={label} selected={selected} />
+    </button>
+  );
+}
+
+function StatTileBody({ value, label }: { value: string; label: string; selected?: boolean }) {
   return (
     <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
       <p className="font-mono text-[22px] leading-tight text-foreground">{value}</p>
@@ -35,7 +75,11 @@ function StatTile({ value, label }: { value: string; label: string }) {
  * gaps closed before that column was added have no known closure date, and dating them
  * from created_at (or from now) would fabricate a history that never happened.
  */
+type StatusFilter = "open" | "done" | "dismissed" | null;
+
 export function GapStats({ allGaps }: GapStatsInput) {
+  const [status, setStatus] = useState<StatusFilter>(null);
+
   const open = allGaps.filter((g) => g.status === "open").length;
   const done = allGaps.filter((g) => g.status === "done").length;
   const dismissed = allGaps.filter((g) => g.status === "dismissed").length;
@@ -52,13 +96,24 @@ export function GapStats({ allGaps }: GapStatsInput) {
     (g) => g.status !== "open" && g.resolved_at === null,
   ).length;
 
+  // La répartition suit le filtre. Sans ça, cliquer une tuile ne changeait rien à ce
+  // qui est affiché en dessous et la tuile ne serait qu'une décoration cliquable.
+  const scoped = status === null ? allGaps : allGaps.filter((g) => g.status === status);
+
   const byCategory = CATEGORY_ORDER.map((category) => ({
     category,
-    total: allGaps.filter((g) => g.category === category).length,
-    open: allGaps.filter((g) => g.category === category && g.status === "open").length,
+    total: scoped.filter((g) => g.category === category).length,
+    open: scoped.filter((g) => g.category === category && g.status === "open").length,
   })).filter((row) => row.total > 0);
 
   const totalDetected = allGaps.length;
+  const scopedTotal = scoped.length;
+
+  const STATUS_LABEL: Record<Exclude<StatusFilter, null>, string> = {
+    open: "encore ouverts",
+    done: "comblés",
+    dismissed: "ignorés",
+  };
 
   if (totalDetected === 0) {
     return (
@@ -75,10 +130,32 @@ export function GapStats({ allGaps }: GapStatsInput) {
   return (
     <div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile value={String(totalDetected)} label="Écarts détectés au total" />
-        <StatTile value={String(open)} label="Encore ouverts" />
-        <StatTile value={String(done)} label="Comblés" />
-        <StatTile value={String(dismissed)} label="Ignorés" />
+        <StatTile
+          value={String(totalDetected)}
+          label="Écarts détectés au total"
+          selected={status === null}
+          onSelect={() => setStatus(null)}
+        />
+        <StatTile
+          value={String(open)}
+          label="Encore ouverts"
+          selected={status === "open"}
+          onSelect={open > 0 ? () => setStatus(status === "open" ? null : "open") : undefined}
+        />
+        <StatTile
+          value={String(done)}
+          label="Comblés"
+          selected={status === "done"}
+          onSelect={done > 0 ? () => setStatus(status === "done" ? null : "done") : undefined}
+        />
+        <StatTile
+          value={String(dismissed)}
+          label="Ignorés"
+          selected={status === "dismissed"}
+          onSelect={
+            dismissed > 0 ? () => setStatus(status === "dismissed" ? null : "dismissed") : undefined
+          }
+        />
       </div>
 
       <p className="mt-4 text-sm text-foreground-muted">
@@ -99,14 +176,27 @@ export function GapStats({ allGaps }: GapStatsInput) {
         )}
       </p>
 
+      {byCategory.length === 0 && status !== null && (
+        <p className="mt-6 text-sm text-foreground-muted">
+          Aucun écart {STATUS_LABEL[status]} pour l&rsquo;instant.
+        </p>
+      )}
+
       {byCategory.length > 0 && (
         <div className="mt-6">
           <p className="font-mono mb-3 text-[11px] uppercase tracking-[0.14em] text-foreground-muted/70">
             Par catégorie
+            {status !== null && (
+              <span className="text-signal-bright"> · {STATUS_LABEL[status]}</span>
+            )}
           </p>
           <ul className="flex flex-col gap-2">
             {byCategory.map((row) => {
-              const percent = Math.round((row.total / totalDetected) * 100);
+              // Échelle sur la population affichée : rapporter au total ferait des
+              // barres minuscules dès qu'un filtre réduit l'ensemble, alors que la
+              // question posée est « comment celle-ci se répartit », pas « quelle part
+              // du tout elle représente ».
+              const percent = Math.round((row.total / Math.max(scopedTotal, 1)) * 100);
               return (
                 <li key={row.category} className="flex items-center gap-3">
                   <span className="w-32 shrink-0 text-sm text-foreground-muted">

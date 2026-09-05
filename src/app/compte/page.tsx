@@ -40,7 +40,7 @@ export default async function ComptePage() {
 
   return (
     <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-      <div className="mx-auto w-full max-w-3xl px-6 py-10 sm:px-8">
+      <div className="app-ambient relative mx-auto w-full max-w-3xl px-6 py-10 sm:px-8">
         <h1 className="font-brand text-2xl font-semibold tracking-tight text-foreground">
           Mon compte
         </h1>

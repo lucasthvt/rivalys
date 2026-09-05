@@ -1,19 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { sortGapsByPriority } from "@/components/tasks/priority";
-import { GapListItem } from "@/components/tasks/gap-list-item";
 import { EmptyState } from "@/components/tasks/empty-state";
+import { sortGapsByPriority } from "@/components/tasks/priority";
 import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
-import { MetricCard } from "@/components/dashboard/metric-card";
-import { ScoreMeter } from "@/components/dashboard/score-meter";
-import { FaceOff } from "@/components/dashboard/face-off";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { RefreshButton } from "@/components/dashboard/refresh-button";
 import { GapStats } from "@/components/dashboard/gap-stats";
 import { CategoryBars } from "@/components/dashboard/category-bars";
 import { parseExtractedData, parseObservationFlags } from "@/components/dashboard/extracted-data";
 import { CoverageNoticePanel } from "@/components/dashboard/coverage-notice";
+import { MetricCard } from "@/components/dashboard/metric-card";
 import { AppShell } from "@/components/layout/AppShell";
 import {
   LockedResults,
@@ -21,8 +18,10 @@ import {
   SkeletonPanel,
 } from "@/components/billing/locked-results";
 import { assessPricingCoverage } from "@/lib/compare/comparability";
-import { countByPriority } from "@/lib/compare/score";
 import { hasPaidAccess } from "@/lib/billing/access";
+import { Board } from "@/components/dashboard/board";
+import { buildFaceOffRows } from "@/components/dashboard/face-off-rows";
+import { DimensionLine } from "@/components/ui/DimensionLine";
 import { TestimonialPrompt } from "@/components/dashboard/testimonial-prompt";
 import { fetchOwnTestimonial } from "@/lib/testimonials/queries";
 
@@ -145,9 +144,6 @@ export default async function DashboardPage() {
       ? competitor.name?.trim() || safeHostname(competitor.url)
       : "ton concurrent";
 
-  const priorityActions = gaps.slice(0, 3);
-  const highCount = gaps.filter((g) => g.priority === "high").length;
-
   // Palier gratuit : l'analyse a tourné, ses résultats restent fermés. Seuls
   // les agrégats sans contenu sortent d'ici (analyse effectuée, date, nombre
   // d'écarts) ; ni les écarts eux-mêmes, ni le comparatif, ni le score ne sont
@@ -211,6 +207,21 @@ export default async function DashboardPage() {
 
   // Le retour n'est demandé qu'à quelqu'un qui a vu tourner le produit sur son propre
   // concurrent. Avant ça, la question n'a pas de réponse possible.
+  const faceOffRows = buildFaceOffRows({
+    own: ownData,
+    competitor: competitorData,
+    ownMethods: {
+      auth: ownFlags.authMethods,
+      payment: ownFlags.paymentMethods,
+      paymentProviders: ownFlags.paymentProviders,
+    },
+    competitorMethods: {
+      auth: competitorFlags.authMethods,
+      payment: competitorFlags.paymentMethods,
+      paymentProviders: competitorFlags.paymentProviders,
+    },
+  });
+
   const ownTestimonial = analysedForCurrentCompetitor
     ? await fetchOwnTestimonial(user.id)
     : null;
@@ -237,52 +248,67 @@ export default async function DashboardPage() {
   return (
     <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
       <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
-        <header className="mb-10 flex flex-col gap-6 border-b border-surface-border pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
-              Tableau de bord
-            </p>
-            <h1 className="font-display mt-2 text-2xl sm:text-[28px]">
-              Où tu perds du terrain
-            </h1>
+        {/*
+          Le cartouche, emprunté au dessin technique : ce que la planche compare, et entre
+          les deux le nombre d'écarts relevés. Il remplace un titre suivi de deux cartes de
+          contexte — la même information, mais posée comme une cote plutôt qu'énumérée.
+        */}
+        <header className="mb-8 border-b border-surface-border pb-6">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
+                Tableau de bord
+              </p>
+              <h1 className="font-display mt-2 text-2xl sm:text-[28px]">
+                Où tu perds du terrain
+              </h1>
+            </div>
+            <RefreshButton />
           </div>
-          <RefreshButton />
+
+          <div className="mt-7 grid grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] items-center gap-x-3 sm:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)] sm:gap-x-5">
+            <p className="truncate text-right font-mono text-sm text-signal-bright" title="Ton SaaS">
+              Toi
+            </p>
+            <div className="flex flex-col items-center gap-1.5">
+              <DimensionLine measured={gaps.length > 0} />
+              <span
+                className={`font-mono text-[10px] uppercase tracking-[0.1em] ${
+                  gaps.length > 0 ? "text-signal-bright" : "text-foreground-muted/45"
+                }`}
+              >
+                {!analysedForCurrentCompetitor
+                  ? "Pas encore analysé"
+                  : gaps.length === 0
+                    ? "Aligné"
+                    : `${gaps.length} écart${gaps.length > 1 ? "s" : ""}`}
+              </span>
+            </div>
+            <p className="truncate font-mono text-sm text-foreground-muted" title={competitorLabel}>
+              {competitorLabel}
+            </p>
+          </div>
         </header>
 
         {coverageNotice && <CoverageNoticePanel notice={coverageNotice} />}
 
         {/*
-          Grille asymétrique plutôt qu'une pile de blocs pleine largeur : le score occupe
-          deux colonnes et porte seul la lueur, les deux faits de contexte s'empilent à côté.
-          C'est la composition, pas la matière, qui établit la hiérarchie.
+          Le plateau : score, file d'écarts et relevé coté partagent un même état, donc un
+          même composant. Cocher un écart déplace le score projeté et vide la file sans
+          aller-retour serveur visible ; survoler une ligne du relevé éclaire les écarts de
+          sa famille.
         */}
-        <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ScoreMeter
-              counts={countByPriority(gaps)}
-              analysed={analysedForCurrentCompetitor}
-              scoreFromHistory={latestScore}
-              previousScoreFromHistory={previousScore}
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-1">
-            <MetricCard
-              label="Écarts ouverts"
-              value={String(gaps.length)}
-              sublabel={gaps.length > 0 ? `${highCount} en priorité haute` : "Rien à rattraper"}
-              href="/tasks"
-              linkLabel="Voir les tâches"
-            />
-            <MetricCard
-              label="Concurrent suivi"
-              value={competitorLabel}
-              href="/concurrent"
-              linkLabel="Changer"
-            />
-          </div>
-        </div>
+        <Board
+          gaps={gaps}
+          rows={faceOffRows}
+          competitorLabel={competitorLabel}
+          scoreFromHistory={latestScore}
+          previousScoreFromHistory={previousScore}
+          analysed={analysedForCurrentCompetitor}
+          snapshotLoadError={snapshotLoadError}
+        />
 
-        <section className="panel mb-5 overflow-hidden">
+        <section className="panel mt-5 mb-5 overflow-hidden">
           <div className="border-b border-white/[0.06] px-5 py-4">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
               Où le terrain se perd
@@ -293,46 +319,6 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="panel mb-5 overflow-hidden">
-          <div className="border-b border-white/[0.06] px-5 py-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              À faire maintenant
-            </h2>
-          </div>
-          {priorityActions.length === 0 ? (
-            <div className="px-5 py-10">
-              <EmptyState
-                title="Rien à traiter"
-                description="Aucun écart ouvert. La prochaine analyse en détectera peut-être."
-              />
-            </div>
-          ) : (
-            <ul className="px-5">
-              {priorityActions.map((gap) => (
-                <GapListItem key={gap.id} gap={gap} />
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="mb-8">
-          <FaceOff
-            own={ownData}
-            competitor={competitorData}
-            competitorLabel={competitorLabel}
-            ownMethods={{
-              auth: ownFlags.authMethods,
-              payment: ownFlags.paymentMethods,
-              paymentProviders: ownFlags.paymentProviders,
-            }}
-            competitorMethods={{
-              auth: competitorFlags.authMethods,
-              payment: competitorFlags.paymentMethods,
-              paymentProviders: competitorFlags.paymentProviders,
-            }}
-            loadError={snapshotLoadError}
-          />
-        </section>
 
         <section className="panel mb-5 overflow-hidden">
           <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-4">

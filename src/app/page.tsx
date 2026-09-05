@@ -2,10 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/brand/Logo";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { DimensionLine } from "@/components/ui/DimensionLine";
 import { FreeAnalysis } from "@/components/landing/free-analysis";
 import { ProofBand } from "@/components/landing/ProofBand";
-import { PricingTable } from "@/app/tarifs/_components/PricingTable";
-import { isStripeConfigured } from "@/lib/billing/stripe";
 import { fetchPublishedTestimonials } from "@/lib/testimonials/queries";
 import {
   computeScore,
@@ -53,7 +52,6 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
   const authenticated = Boolean(user);
-  const paymentOpen = isStripeConfigured();
   const testimonials = await fetchPublishedTestimonials();
 
   return (
@@ -75,7 +73,6 @@ export default async function Home() {
       <ProofBand testimonials={testimonials} />
       <ScoreSection />
       <WhatWeDont />
-      <Plans authenticated={authenticated} paymentOpen={paymentOpen} />
       <Faq />
       <ClosingCta authenticated={authenticated} />
       <Footer />
@@ -87,43 +84,6 @@ export default async function Home() {
    Dispositifs structurants — l'amorce de cote et la ligne de cote.
    Ils reviennent à chaque section : c'est ce qui tient la page ensemble.
    -------------------------------------------------------------------------- */
-
-/**
- * La ligne de cote elle-même. `measured` distingue les deux états du relevé :
- * un écart mesuré (ticks aux extrémités, trait plein, valeur en accent) et deux
- * valeurs alignées (trait pointillé effacé, pas de tick). Sans cette
- * distinction, chaque ligne ressemblerait à un problème — or le produit doit
- * pouvoir dire « ici, rien à rattraper ».
- */
-function DimensionLine({ measured }: { measured: boolean }) {
-  const stroke = measured ? "var(--color-signal-bright)" : "var(--color-mist)";
-  return (
-    <svg
-      viewBox="0 0 100 10"
-      preserveAspectRatio="none"
-      className="h-2.5 w-full"
-      aria-hidden="true"
-    >
-      {measured && (
-        <>
-          <line x1="1" y1="1" x2="1" y2="9" stroke={stroke} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          <line x1="99" y1="1" x2="99" y2="9" stroke={stroke} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-        </>
-      )}
-      <line
-        x1="1"
-        y1="5"
-        x2="99"
-        y2="5"
-        stroke={stroke}
-        strokeWidth="1"
-        strokeOpacity={measured ? 0.9 : 0.3}
-        strokeDasharray={measured ? undefined : "3 4"}
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}
 
 /* --------------------------------------------------------------------------
    Hero
@@ -619,75 +579,6 @@ function WhatWeDont() {
 /* --------------------------------------------------------------------------
    FAQ
    -------------------------------------------------------------------------- */
-
-/* --------------------------------------------------------------------------
-   Les paliers
-   --------------------------------------------------------------------------
-   La grille est celle de /tarifs, importée telle quelle plutôt que recopiée.
-   Deux affichages de prix maintenus à la main finissent toujours par diverger,
-   et le premier à mentir est celui qu'on oublie de mettre à jour — ici, la
-   landing, celle que tout le monde voit.
-   -------------------------------------------------------------------------- */
-
-function Plans({
-  authenticated,
-  paymentOpen,
-}: {
-  authenticated: boolean;
-  paymentOpen: boolean;
-}) {
-  return (
-    <section id="paliers" className="relative overflow-hidden border-b border-white/[0.06]">
-      <div
-        className="pointer-events-none absolute left-1/2 top-[-12rem] h-[22rem] w-[34rem] -translate-x-1/2 rounded-full bg-signal/15 blur-[120px]"
-        aria-hidden="true"
-      />
-      <div className="relative mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
-        <div className="mx-auto max-w-xl text-center">
-          <Eyebrow>Les paliers</Eyebrow>
-          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
-            L&rsquo;analyse est gratuite. Ses résultats se paient.
-          </h2>
-          <p className="mt-5 text-base leading-relaxed text-mist">
-            {paymentOpen
-              ? "Sans engagement, résiliable en un clic depuis ton compte. Aucun palier ne se déclenche tout seul, aucun prix ne change en cours de route."
-              : "Les prix sont fixés, la facturation n'est pas encore branchée. Tu peux t'inscrire et utiliser le comparateur dès maintenant."}
-          </p>
-        </div>
-
-        <div className="mt-12">
-          <PricingTable authenticated={authenticated} paymentOpen={paymentOpen} />
-        </div>
-
-        {/*
-          La ligne de réassurance dit ce qui est vrai du produit, pas ce qui rassure le
-          mieux : pas de compte à rebours, pas de « -60 % pour les 10 prochains ».
-          Une remise qui se réinitialise à chaque visite est un mensonge chronométré.
-        */}
-        <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-mist/60">
-          {[
-            "Résiliable en un clic",
-            "Prix affiché = prix débité",
-            "Aucune donnée privée collectée",
-          ].map((item) => (
-            <li key={item} className="inline-flex items-center gap-2">
-              <span className="h-1 w-1 rounded-full bg-signal-bright/60" aria-hidden="true" />
-              {item}
-            </li>
-          ))}
-        </ul>
-
-        <p className="mt-8 text-center text-sm text-mist">
-          Le détail palier par palier est sur la{" "}
-          <Link href="/tarifs" className="font-medium text-paper underline underline-offset-4">
-            page tarifs
-          </Link>
-          .
-        </p>
-      </div>
-    </section>
-  );
-}
 
 const FAQ_ITEMS = [
   {

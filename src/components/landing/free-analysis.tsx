@@ -75,53 +75,51 @@ export function FreeAnalysis() {
   }
 
   return (
-    <section id="essai" className="border-b border-white/[0.06]">
-      <div className="mx-auto w-full max-w-4xl px-6 py-20 lg:py-24">
-        <p className="font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist">
+    <section id="essai" className="mx-auto w-full max-w-6xl px-6 pb-20 lg:pb-24">
+      {/*
+        Le formulaire vit dans son propre panneau, pas à même le fond : c'est le
+        seul endroit de la page où l'on demande quelque chose au visiteur, et un
+        bord visible dit « ici, tu tapes » sans avoir à l'écrire.
+      */}
+      <div className="panel-focal mx-auto max-w-3xl p-7 sm:p-10">
+        <p className="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-signal-bright">
           Essai gratuit · sans compte
         </p>
-        <h2 className="mt-4 font-brand text-[2.1rem] font-bold leading-[1.08] tracking-[-0.02em] text-paper sm:text-[2.6rem]">
+        <h2 className="mt-3.5 font-brand text-[2rem] font-bold leading-[1.06] tracking-[-0.032em] text-paper sm:text-[2.6rem]">
           Relève ton premier écart maintenant.
         </h2>
-        <p className="mt-5 max-w-xl leading-relaxed text-mist">
+        <p className="mt-4 max-w-[60ch] leading-relaxed text-mist">
           Deux adresses, aucune inscription. Rivalys lit les pages publiques des deux côtés
           et te rend ton écart le plus prioritaire.
         </p>
 
-        <form onSubmit={run} className="mt-10">
-          <div className="grid items-end gap-5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-6">
+        <form onSubmit={run} className="mt-8">
+          <div className="grid gap-3.5 sm:grid-cols-2">
             <UrlField
               label="Ton SaaS"
               value={ownUrl}
               onChange={setOwnUrl}
-              placeholder="https://ton-saas.com"
-              align="left"
+              placeholder="tonsaas.com"
             />
-            <div className="hidden pb-3 sm:block">
-              <span className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-mist/60">
-                contre
-              </span>
-            </div>
             <UrlField
-              label="Ton concurrent"
+              label="Son concurrent"
               value={competitorUrl}
               onChange={setCompetitorUrl}
-              placeholder="https://son-site.com"
-              align="right"
+              placeholder="sonconcurrent.com"
             />
           </div>
 
-          <div className="mt-9 flex flex-col items-center gap-3">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+            <span className="font-mono text-[0.68rem] text-mist/60">
+              Données publiques uniquement · une analyse offerte
+            </span>
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex h-12 items-center justify-center rounded-full bg-signal px-8 text-base font-semibold text-paper shadow-signal-lg transition-colors duration-150 hover:bg-signal-bright hover:text-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-bright disabled:pointer-events-none disabled:opacity-50"
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-signal px-7 text-base font-semibold text-paper shadow-signal-lg transition-colors duration-150 hover:bg-signal-bright hover:text-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-bright disabled:pointer-events-none disabled:opacity-50"
             >
               {loading ? "Relevé en cours…" : "Lancer mon analyse gratuite"}
             </button>
-            <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-mist/60">
-              Données publiques uniquement · une analyse offerte
-            </span>
           </div>
         </form>
 
@@ -150,21 +148,15 @@ function UrlField({
   value,
   onChange,
   placeholder,
-  align,
 }: {
   label: string;
   value: string;
   onChange: (next: string) => void;
   placeholder: string;
-  align: "left" | "right";
 }) {
   return (
     <label className="block">
-      <span
-        className={`block font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist ${
-          align === "right" ? "sm:text-right" : ""
-        }`}
-      >
+      <span className="block font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist/70">
         {label}
       </span>
       <input
@@ -180,9 +172,7 @@ function UrlField({
         placeholder={placeholder}
         spellCheck={false}
         autoComplete="off"
-        className={`mt-2 w-full border-0 border-b border-white/[0.12] bg-transparent pb-3 font-mono text-base text-paper outline-none transition-colors placeholder:text-mist/35 focus:border-signal-bright ${
-          align === "right" ? "sm:text-right" : ""
-        }`}
+        className="mt-2 w-full rounded-xl border border-white/[0.14] bg-void/60 px-4 py-3.5 font-mono text-[0.95rem] text-paper outline-none transition-colors placeholder:text-mist/40 focus:border-signal-bright"
       />
     </label>
   );

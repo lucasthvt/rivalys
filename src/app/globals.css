@@ -441,3 +441,88 @@ body {
     animation: meter-fill 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
   }
 }
+
+/* ==========================================================================
+   Fond ambiant de la landing
+   --------------------------------------------------------------------------
+   Trois sources lumineuses très floues qui dérivent lentement, plus une grille
+   qui glisse et une vignette qui referme les bords. Le tout est `fixed` derrière
+   le contenu : c'est une atmosphère, pas un décor de section — si chaque section
+   portait son propre halo, on verrait les coutures au défilement.
+
+   Les trois durées sont volontairement premières entre elles (30/38/46 s) : des
+   durées harmoniques se resynchroniseraient périodiquement et le mouvement
+   deviendrait une pulsation reconnaissable.
+   ========================================================================== */
+
+@keyframes ambient-drift-a {
+  0%,
+  100% {
+    transform: translate3d(-6%, -3%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(9%, 7%, 0) scale(1.18);
+  }
+}
+
+@keyframes ambient-drift-b {
+  0%,
+  100% {
+    transform: translate3d(5%, 4%, 0) scale(1.12);
+  }
+  50% {
+    transform: translate3d(-8%, -6%, 0) scale(1);
+  }
+}
+
+@keyframes ambient-drift-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate3d(-7%, 6%, 0) scale(1.25);
+    opacity: 0.8;
+  }
+}
+
+@keyframes ambient-pan {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 128px 128px;
+  }
+}
+
+/* Sans mouvement autorisé, les halos restent où ils sont : ils portent la
+   couleur de la page, pas l'information, donc les figer ne coûte rien. */
+@media (prefers-reduced-motion: no-preference) {
+  .ambient-a {
+    animation: ambient-drift-a 30s ease-in-out infinite;
+  }
+  .ambient-b {
+    animation: ambient-drift-b 38s ease-in-out infinite;
+  }
+  .ambient-c {
+    animation: ambient-drift-c 46s ease-in-out infinite;
+  }
+  .ambient-grid {
+    animation: ambient-pan 55s linear infinite;
+  }
+}
+
+/* Grille de fond de la landing : deux traits d'un pixel, croisés tous les 64 px.
+   Assez faible pour ne jamais concurrencer le texte, assez présente pour que le
+   noir cesse d'être un vide sans échelle. */
+.ambient-grid {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-paper) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-paper) 4%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 64px 64px;
+}

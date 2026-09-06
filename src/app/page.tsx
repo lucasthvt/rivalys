@@ -2,9 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/brand/Logo";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { DimensionLine } from "@/components/ui/DimensionLine";
+import { AmbientBackdrop } from "@/components/landing/AmbientBackdrop";
 import { FreeAnalysis } from "@/components/landing/free-analysis";
 import { ProofBand } from "@/components/landing/ProofBand";
+import { ScoreCard, type ScoreLine } from "@/components/landing/ScoreCard";
 import { fetchPublishedTestimonials } from "@/lib/testimonials/queries";
 import {
   computeScore,
@@ -17,11 +18,10 @@ import type { GapPriority } from "@/lib/supabase/database.types";
 /**
  * Landing marketing.
  *
- * Direction visuelle : le dessin coté. Le produit mesure un écart entre deux
- * sites ; un dessin technique annote littéralement un écart avec une ligne de
- * cote, deux ticks et une valeur. Ce vocabulaire porte toute la page — les
- * intitulés de section sont des amorces de cote, et l'élément signature du hero
- * est un relevé comparé où chaque écart est coté entre les deux colonnes.
+ * Direction visuelle : une surface unique et sombre, tenue par une lumière
+ * ambiante fixe (voir AmbientBackdrop) plutôt que par des séparateurs. Les
+ * sections ne sont plus des boîtes empilées mais des paliers de lecture sur un
+ * même fond ; ce qui les distingue est le rythme vertical, pas un filet.
  *
  * Contrainte de fond : tout ce que la page annonce doit exister dans le produit.
  * Les quatre familles de la section « Ce qu'on relève » sont exactement les
@@ -29,6 +29,18 @@ import type { GapPriority } from "@/lib/supabase/database.types";
  * réserves affichées (présence d'avis sans la note, présence sociale sans le
  * volume) sont celles que le moteur applique réellement.
  */
+
+/** Largeur de colonne commune à toutes les sections — et à la barre de navigation. */
+const SHELL = "mx-auto w-full max-w-6xl px-6";
+/** Rythme vertical commun. Le seul séparateur entre deux sections. */
+const BLOCK = "py-20 lg:py-24";
+
+const HEADING =
+  "font-brand text-[2rem] font-bold leading-[1.06] tracking-[-0.032em] text-paper sm:text-[2.9rem]";
+
+const PRIMARY_CTA =
+  "inline-flex h-12 items-center justify-center rounded-full bg-signal px-7 text-base font-semibold text-paper shadow-signal-lg transition-colors duration-150 hover:bg-signal-bright hover:text-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-bright";
+
 /**
  * Destination du bouton principal.
  *
@@ -55,7 +67,11 @@ export default async function Home() {
   const testimonials = await fetchPublishedTestimonials();
 
   return (
-    <div className="bg-void text-paper">
+    // Aucun fond opaque ici : le halo ambiant est en `fixed` derrière la page et
+    // un `bg-void` sur ce conteneur le recouvrirait entièrement.
+    <div className="relative text-paper">
+      <AmbientBackdrop />
+
       <Hero authenticated={authenticated} />
       {/*
         L'essai gratuit juste sous le hero, avant toute explication : un visiteur qui vient
@@ -81,85 +97,56 @@ export default async function Home() {
 }
 
 /* --------------------------------------------------------------------------
-   Dispositifs structurants — l'amorce de cote et la ligne de cote.
-   Ils reviennent à chaque section : c'est ce qui tient la page ensemble.
-   -------------------------------------------------------------------------- */
-
-/* --------------------------------------------------------------------------
    Hero
    -------------------------------------------------------------------------- */
 
 function Hero({ authenticated }: { authenticated: boolean }) {
   const cta = heroCta(authenticated);
   return (
-    <section className="relative overflow-hidden border-b border-white/[0.06]">
-      <div
-        className="bg-signal-grid pointer-events-none absolute inset-0 opacity-[0.08]"
-        style={{
-          maskImage: "radial-gradient(ellipse 55% 55% at 22% 12%, black 0%, transparent 72%)",
-          WebkitMaskImage: "radial-gradient(ellipse 55% 55% at 22% 12%, black 0%, transparent 72%)",
-        }}
-        aria-hidden="true"
-      />
-      {/*
-        Halo resserré et discret. Sur un fond noir pur, une lueur large finit par teinter
-        toute la moitié haute de la page en violet : le noir cesse d'être noir, et l'accent
-        n'a plus rien contre quoi ressortir. Il doit se lire comme une source lointaine,
-        pas comme un calque de couleur.
-      */}
-      <div
-        className="pointer-events-none absolute left-[20%] top-[-18rem] h-[26rem] w-[30rem] -translate-x-1/2 rounded-full bg-signal/25 blur-[130px]"
-        aria-hidden="true"
-      />
+    <section id="top" className={`${SHELL} pb-16 pt-14 lg:pb-24 lg:pt-20`}>
+      <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:gap-16">
+        <div className="reveal-up">
+          <span className="pill font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist">
+            <span
+              className="signal-pulse h-1.5 w-1.5 rounded-full bg-signal-bright"
+              aria-hidden="true"
+            />
+            Comparateur de faits publics
+          </span>
 
-      <div className="relative mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
-        <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-14">
-          <div className="reveal-up">
-            <span className="pill font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist">
-              <span
-                className="signal-pulse h-1.5 w-1.5 rounded-full bg-signal-bright"
-                aria-hidden="true"
-              />
-              Comparateur de faits publics
-            </span>
+          <h1 className="mt-6 font-brand text-[2.9rem] font-bold leading-[1] tracking-[-0.045em] text-paper sm:text-[3.9rem] lg:text-[4.6rem]">
+            Vois où tu perds
+            <br />
+            <span className="text-signal-bright text-glow-signal">du terrain.</span>
+          </h1>
 
-            <h1 className="mt-6 font-brand text-[2.9rem] font-bold leading-[1.02] tracking-[-0.03em] text-paper sm:text-[3.9rem] lg:text-[4.4rem]">
-              Vois où tu perds
-              <br />
-              <span className="text-signal-bright text-glow-signal">du terrain.</span>
-            </h1>
+          <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-mist">
+            Donne ton URL et celle de ton plus gros concurrent. Rivalys relève les faits
+            publics des deux côtés, cote chaque écart, et le transforme en tâche précise —
+            jamais en conseil générique.
+          </p>
 
-            <p className="mt-7 max-w-md text-lg leading-relaxed text-mist">
-              Donne ton URL et celle de ton plus gros concurrent. Rivalys relève les faits
-              publics des deux côtés, cote chaque écart, et le transforme en tâche précise —
-              jamais en conseil générique.
-            </p>
-
-            <div className="mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link href={cta.href} className={PRIMARY_CTA}>
+              {cta.label}
+            </Link>
+            {/* Proposer de se connecter à quelqu'un qui l'est déjà n'a pas de sens. */}
+            {authenticated ? null : (
               <Link
-                href={cta.href}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-signal px-7 text-base font-semibold text-paper shadow-signal-lg transition-colors duration-150 hover:bg-signal-bright hover:text-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-bright"
+                href="/login"
+                className="inline-flex h-12 items-center justify-center rounded-full border border-white/[0.16] px-6 text-base text-mist transition-colors hover:border-white/40 hover:text-paper"
               >
-                {cta.label}
+                J&rsquo;ai déjà un compte →
               </Link>
-              {/* Proposer de se connecter à quelqu'un qui l'est déjà n'a pas de sens. */}
-              {authenticated ? null : (
-                <Link
-                  href="/login"
-                  className="text-sm font-medium text-mist transition-colors hover:text-paper"
-                >
-                  J&rsquo;ai déjà un compte →
-                </Link>
-              )}
-            </div>
-
-            <p className="mt-7 font-mono text-[0.68rem] uppercase leading-relaxed tracking-[0.1em] text-mist/60">
-              Deux URL suffisent · aucune donnée privée · aucun crawl autonome
-            </p>
+            )}
           </div>
 
-          <Releve />
+          <p className="mt-6 font-mono text-[0.68rem] uppercase leading-relaxed tracking-[0.1em] text-mist/60">
+            Deux URL suffisent · aucune donnée privée · aucun crawl autonome
+          </p>
         </div>
+
+        <Releve />
       </div>
     </section>
   );
@@ -168,70 +155,101 @@ function Hero({ authenticated }: { authenticated: boolean }) {
 /**
  * Élément signature : le relevé comparé.
  *
- * Chaque ligne oppose une valeur relevée chez toi à la même valeur relevée chez
- * le concurrent, et cote l'écart entre les deux — la colonne centrale est une
- * annotation de dessin technique, pas une décoration. La dernière ligne est
- * volontairement alignée : le produit doit montrer qu'il sait aussi ne rien
- * signaler.
+ * Trois colonnes — ta valeur, le champ relevé, la sienne — et la teinte `flare`
+ * posée sur le fait qui ouvre l'écart : tantôt son chiffre (il est moins cher,
+ * il publie plus de paliers), tantôt le tien (tu n'as pas d'essai, pas de fiche).
+ * Ce n'est donc pas « rouge = lui » ni un feu tricolore, mais un repère unique :
+ * voilà la ligne qui produira une tâche.
  *
- * Les valeurs sont un exemple, pas un relevé réel — la légende le dit.
+ * La dernière ligne est volontairement alignée : le produit doit montrer qu'il
+ * sait aussi ne rien signaler. Les valeurs sont un exemple, la légende le dit.
  */
-const RELEVE_ROWS: { criterion: string; you: string; rival: string; gap: string | null }[] = [
-  { criterion: "Prix d'entrée", you: "29 €/mois", rival: "25 €/mois", gap: "4 €" },
-  { criterion: "Essai gratuit", you: "Aucun", rival: "14 jours", gap: "14 jours" },
-  { criterion: "Paliers publiés", you: "2", rival: "4", gap: "2 paliers" },
-  { criterion: "Fiche G2", you: "Introuvable", rival: "Publiée", gap: "1 fiche" },
-  { criterion: "Cible annoncée", you: "PME", rival: "PME", gap: null },
+interface ReleveRow {
+  field: string;
+  you: string;
+  youUnit?: string;
+  rival: string;
+  rivalUnit?: string;
+  /** Côté qui porte le fait générateur d'écart. `null` = ligne alignée. */
+  flag: "you" | "rival" | null;
+}
+
+const RELEVE_ROWS: ReleveRow[] = [
+  { field: "Prix d'entrée", you: "29 €", youUnit: "/mois", rival: "25 €", rivalUnit: "/mois", flag: "rival" },
+  { field: "Essai gratuit", you: "Aucun", rival: "14 jours", flag: "you" },
+  { field: "Paliers publiés", you: "2 paliers", rival: "4 paliers", flag: "rival" },
+  { field: "Fiche G2", you: "Introuvable", rival: "Publiée", flag: "you" },
+  { field: "Cible annoncée", you: "PME", rival: "PME", flag: null },
 ];
+
+const RELEVE_GRID = "grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)] gap-2";
 
 function Releve() {
   return (
     <figure
-      className="panel-focal reveal-up relative p-5 sm:p-7"
+      className="panel-focal reveal-up overflow-hidden"
       style={{ animationDelay: "0.12s" }}
     >
-      <figcaption className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/[0.07] pb-4 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist">
+      <figcaption className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/[0.09] px-5 py-4 font-mono text-[0.64rem] uppercase tracking-[0.14em] sm:px-6">
         <span className="text-paper">Relevé comparé</span>
         <span className="text-mist/60">Exemple · valeurs illustratives</span>
       </figcaption>
 
-      <div className="mt-1 grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(0,1fr)] items-end gap-x-3 pb-3 pt-4 font-mono text-[0.62rem] uppercase tracking-[0.12em] sm:grid-cols-[minmax(0,1fr)_8rem_minmax(0,1fr)] sm:gap-x-4">
-        <span className="text-right text-signal-bright">Toi</span>
-        <span aria-hidden="true" />
-        <span className="text-mist">Concurrent</span>
+      <div
+        className={`${RELEVE_GRID} border-b border-white/[0.06] px-5 py-3 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-mist/60 sm:px-6`}
+      >
+        <span>Toi</span>
+        <span className="text-center">Champ</span>
+        <span className="text-right">Concurrent</span>
       </div>
 
-      <div className="flex flex-col divide-y divide-white/[0.06] border-t border-white/[0.06]">
+      <div className="flex flex-col divide-y divide-white/[0.06]">
         {RELEVE_ROWS.map((row) => (
           <div
-            key={row.criterion}
-            className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(0,1fr)] items-center gap-x-3 py-4 sm:grid-cols-[minmax(0,1fr)_8rem_minmax(0,1fr)] sm:gap-x-4"
+            key={row.field}
+            className={`${RELEVE_GRID} items-center px-5 py-3.5 transition-colors hover:bg-white/[0.03] sm:px-6`}
           >
-            <span className="text-right text-sm text-paper sm:text-[0.95rem]">{row.you}</span>
+            <Value value={row.you} unit={row.youUnit} flagged={row.flag === "you"} />
 
-            <span className="flex flex-col items-center gap-1.5">
-              <span className="text-center font-mono text-[0.58rem] uppercase leading-tight tracking-[0.1em] text-mist/60">
-                {row.criterion}
-              </span>
-              <DimensionLine measured={row.gap !== null} />
-              <span
-                className={`text-center font-mono text-[0.62rem] uppercase tracking-[0.08em] ${
-                  row.gap ? "text-signal-bright" : "text-mist/45"
-                }`}
-              >
-                {row.gap ?? "Aligné"}
-              </span>
+            <span className="text-center text-xs leading-tight text-mist">{row.field}</span>
+
+            <span className="flex items-center justify-end gap-2 text-right">
+              {/* L'étiquette « aligné » ne vaut que pour la ligne sans écart : elle
+                  dit explicitement qu'aucune tâche n'en sortira. */}
+              {row.flag === null ? (
+                <span className="rounded border border-white/[0.14] px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-mist/60">
+                  aligné
+                </span>
+              ) : null}
+              <Value value={row.rival} unit={row.rivalUnit} flagged={row.flag === "rival"} />
             </span>
-
-            <span className="text-sm text-mist sm:text-[0.95rem]">{row.rival}</span>
           </div>
         ))}
       </div>
 
-      <p className="mt-5 border-t border-white/[0.06] pt-4 text-xs leading-relaxed text-mist/70">
-        Chaque écart coté devient une tâche. Une ligne alignée n&rsquo;en génère aucune.
+      <p className="border-t border-white/[0.08] px-5 py-3.5 text-[0.8rem] leading-relaxed text-mist sm:px-6">
+        4 écarts cotés → 4 tâches. Une ligne alignée n&rsquo;en génère aucune.
       </p>
     </figure>
+  );
+}
+
+function Value({
+  value,
+  unit,
+  flagged,
+}: {
+  value: string;
+  unit?: string;
+  flagged: boolean;
+}) {
+  return (
+    <span
+      className={`text-[0.95rem] font-semibold ${flagged ? "text-flare" : "text-paper"}`}
+    >
+      {value}
+      {unit ? <span className="text-xs font-normal text-mist/60">{unit}</span> : null}
+    </span>
   );
 }
 
@@ -252,7 +270,8 @@ const MEASURE_FAMILIES: MeasureFamily[] = [
     category: "pricing",
     title: "Tarification",
     fields: ["Paliers publiés", "Prix affichés", "Essai gratuit", "Palier gratuit"],
-    limit: "Uniquement ce qui figure sur la page de tarifs publique. Page introuvable : on te le dit, on n'estime pas.",
+    limit:
+      "Uniquement ce qui figure sur la page de tarifs publique. Page introuvable : on te le dit, on n'estime pas.",
   },
   {
     category: "positioning",
@@ -264,69 +283,78 @@ const MEASURE_FAMILIES: MeasureFamily[] = [
     category: "reviews",
     title: "Avis publics",
     fields: ["G2", "Capterra", "Trustpilot", "Product Hunt"],
-    limit: "Présence d'une fiche, pas la note ni le nombre d'avis — ces chiffres bougent trop vite pour être affichés honnêtement entre deux relevés.",
+    limit:
+      "Présence d'une fiche, pas la note ni le nombre d'avis : ces chiffres bougent trop vite pour être affichés honnêtement entre deux relevés.",
   },
   {
     category: "social_presence",
     title: "Présence sociale",
-    fields: ["Réseaux liés depuis le site", "Contenus tiers qui te mentionnent"],
-    limit: "Présence détectée, volume non mesurable : ces plateformes réservent leurs statistiques à des partenaires licenciés.",
+    fields: ["Réseaux liés depuis le site", "Contenus tiers"],
+    limit:
+      "Présence détectée, volume non mesurable : ces plateformes réservent leurs statistiques à des partenaires licenciés.",
   },
 ];
 
+/**
+ * Quatre lignes pleine largeur plutôt que quatre cartes.
+ *
+ * Une carte isole ; ici les familles forment un inventaire qu'on parcourt du
+ * regard, colonne par colonne — numéro et titre, champs relevés, limite. La
+ * limite tient la troisième colonne à hauteur égale des deux autres : elle n'est
+ * pas une note de bas de page, c'est la moitié de l'argument.
+ */
 function WhatWeMeasure() {
   return (
-    <section id="ce-quon-releve" className="border-b border-white/[0.06]">
-      <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
-        <div className="max-w-2xl">
+    <section id="ce-quon-releve" className={`${SHELL} ${BLOCK}`}>
+      <div className="mb-10 grid items-end gap-8 lg:mb-12 lg:grid-cols-2 lg:gap-14">
+        <div>
           <Eyebrow>Ce qu&rsquo;on relève</Eyebrow>
-          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
+          <h2 className={`mt-4 ${HEADING}`}>
             Quatre familles de faits. Et leurs limites, écrites noir sur blanc.
           </h2>
-          <p className="mt-5 text-base leading-relaxed text-mist">
-            Un comparateur qui ne dit pas ce qu&rsquo;il ignore raconte n&rsquo;importe quoi
-            avec assurance. Voilà exactement ce que Rivalys mesure — et là où il
-            s&rsquo;arrête.
-          </p>
         </div>
-
-        <div className="mt-14 grid gap-4 sm:grid-cols-2">
-          {MEASURE_FAMILIES.map((family) => (
-            <div
-              key={family.category}
-              className="panel flex flex-col p-6 transition-colors hover:border-signal-bright/20 sm:p-7"
-            >
-              <code className="pill self-start font-mono text-[0.62rem] tracking-tight text-mist/60">
-                {family.category}
-              </code>
-
-              <h3 className="mt-4 font-brand text-xl font-bold tracking-[-0.015em] text-paper">
-                {family.title}
-              </h3>
-
-              <ul className="mt-4 flex flex-wrap gap-2">
-                {family.fields.map((field) => (
-                  <li
-                    key={field}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-signal-bright/20 bg-signal/10 px-3 py-1 font-mono text-[0.66rem] text-mist"
-                  >
-                    <span className="h-1 w-1 rounded-full bg-signal-bright" aria-hidden="true" />
-                    {field}
-                  </li>
-                ))}
-              </ul>
-
-              <p className="mt-auto flex gap-3 pt-6 text-sm leading-relaxed text-mist/80">
-                <span
-                  aria-hidden="true"
-                  className="mt-[0.45rem] h-px w-6 shrink-0 bg-mist/30"
-                />
-                <span>{family.limit}</span>
-              </p>
-            </div>
-          ))}
-        </div>
+        <p className="text-base leading-relaxed text-mist">
+          Un comparateur qui ne dit pas ce qu&rsquo;il ignore raconte n&rsquo;importe quoi
+          avec assurance. Voilà exactement ce que Rivalys mesure — et là où il
+          s&rsquo;arrête.
+        </p>
       </div>
+
+      <ol className="flex flex-col border-b border-white/[0.12]">
+        {MEASURE_FAMILIES.map((family, index) => (
+          <li
+            key={family.category}
+            className="grid items-baseline gap-5 border-t border-white/[0.12] py-6 transition-colors hover:bg-white/[0.022] lg:grid-cols-3 lg:gap-10 lg:py-7"
+          >
+            <div className="flex items-baseline gap-3">
+              <span className="font-mono text-[0.68rem] text-signal-bright">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <h3 className="font-brand text-xl font-bold tracking-[-0.02em] text-paper sm:text-2xl">
+                  {family.title}
+                </h3>
+                <code className="font-mono text-[0.66rem] text-mist/60">{family.category}</code>
+              </div>
+            </div>
+
+            <ul className="flex flex-wrap gap-1.5">
+              {family.fields.map((field) => (
+                <li
+                  key={field}
+                  className="rounded-md border border-white/[0.14] px-2.5 py-1 text-[0.75rem] text-paper/90"
+                >
+                  {field}
+                </li>
+              ))}
+            </ul>
+
+            <p className="text-[0.85rem] leading-relaxed text-mist/80">
+              <span className="text-flare">Limite —</span> {family.limit}
+            </p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -355,31 +383,23 @@ const STEPS = [
 
 function HowItWorks() {
   return (
-    <section id="comment-ca-marche" className="border-b border-white/[0.06]">
-      <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
-        <div className="max-w-xl">
-          <Eyebrow>Le parcours</Eyebrow>
-          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
-            Trois étapes, aucune supposition.
-          </h2>
-        </div>
+    <section id="comment-ca-marche" className={`${SHELL} ${BLOCK}`}>
+      <Eyebrow>Le parcours</Eyebrow>
+      <h2 className={`mt-4 max-w-xl ${HEADING}`}>Trois étapes, aucune supposition.</h2>
 
-        <ol className="mt-14 grid gap-10 sm:grid-cols-3 sm:gap-8">
-          {STEPS.map((step) => (
-            <li key={step.n} className="relative border-t border-white/10 pt-6">
-              <span
-                aria-hidden="true"
-                className="absolute left-0 top-0 h-2.5 w-px bg-signal-bright"
-              />
-              <span className="font-mono text-[0.7rem] tracking-[0.12em] text-signal-bright">
-                {step.n}
-              </span>
-              <h3 className="mt-3 font-brand text-xl font-bold tracking-[-0.015em] text-paper">{step.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-mist">{step.body}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
+      <ol className="mt-10 grid gap-4 sm:grid-cols-3 lg:mt-12 lg:gap-6">
+        {STEPS.map((step) => (
+          <li key={step.n} className="panel p-6">
+            <span className="font-mono text-[0.72rem] tracking-[0.1em] text-signal-bright">
+              {step.n}
+            </span>
+            <h3 className="mt-3.5 font-brand text-xl font-bold tracking-[-0.02em] text-paper">
+              {step.title}
+            </h3>
+            <p className="mt-2.5 text-[0.9rem] leading-relaxed text-mist">{step.body}</p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -411,14 +431,14 @@ const EXAMPLE_TASKS = [
 
 function GapToTask() {
   return (
-    <section className="border-b border-white/[0.06]">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
+    <section className={`${SHELL} ${BLOCK}`}>
+      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
         <div>
           <Eyebrow>De l&rsquo;écart à la tâche</Eyebrow>
-          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
+          <h2 className={`mt-4 ${HEADING}`}>
             Une tâche ne peut naître que d&rsquo;un écart mesuré.
           </h2>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-mist">
+          <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-mist">
             Chaque tâche cite la règle et le champ qui l&rsquo;ont produite. Aucun conseil
             growth générique, aucun calendrier à remplir. Si le relevé ne trouve aucun écart,
             la liste reste vide — c&rsquo;est une réponse, pas un bug.
@@ -440,7 +460,10 @@ function GapToTask() {
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex items-center gap-2 font-mono text-[0.64rem] uppercase tracking-[0.1em] text-mist">
-                  <span className={`h-1.5 w-1.5 rounded-full ${task.strength}`} aria-hidden="true" />
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${task.strength}`}
+                    aria-hidden="true"
+                  />
                   {task.label}
                 </span>
                 <code className="font-mono text-[0.6rem] tracking-tight text-mist/45">
@@ -469,61 +492,49 @@ function GapToTask() {
 const EXAMPLE_COUNTS: GapPriorityCounts = { high: 1, medium: 2, low: 2 };
 const EXAMPLE_SCORE = computeScore(EXAMPLE_COUNTS);
 
-const EXAMPLE_SCORE_LINES: { priority: GapPriority; singular: string; plural: string }[] = [
-  { priority: "high", singular: "écart prioritaire", plural: "écarts prioritaires" },
-  { priority: "medium", singular: "écart à planifier", plural: "écarts à planifier" },
-  { priority: "low", singular: "écart mineur", plural: "écarts mineurs" },
+const EXAMPLE_SCORE_LINES: {
+  priority: GapPriority;
+  singular: string;
+  plural: string;
+  /* Graduation de l'accent, pas trois teintes : la priorité se lit comme une
+     intensité de signal, exactement comme dans la liste de tâches. */
+  bar: string;
+}[] = [
+  { priority: "high", singular: "écart prioritaire", plural: "écarts prioritaires", bar: "bg-signal-bright" },
+  { priority: "medium", singular: "écart à planifier", plural: "écarts à planifier", bar: "bg-signal-bright/55" },
+  { priority: "low", singular: "écart mineur", plural: "écarts mineurs", bar: "bg-signal-bright/25" },
 ];
 
 function ScoreSection() {
+  const lines: ScoreLine[] = EXAMPLE_SCORE_LINES.map((line) => {
+    const count = EXAMPLE_COUNTS[line.priority];
+    return {
+      label: `${count} ${count > 1 ? line.plural : line.singular}`,
+      lost: count * POINTS_PER_PRIORITY[line.priority],
+      bar: line.bar,
+    };
+  });
+
   return (
-    <section className="border-b border-white/[0.06]">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
-        <div className="panel order-2 p-6 sm:p-8 lg:order-1">
-          <div className="flex items-baseline justify-between font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist">
-            <span>Score global</span>
-            <span className="font-brand text-4xl font-bold tracking-[-0.03em] text-paper">{EXAMPLE_SCORE}</span>
-          </div>
-
-          <div className="mt-6 flex h-3 overflow-hidden rounded-full bg-white/[0.05]">
-            <span
-              className="h-full bg-signal-bright/85"
-              style={{ width: `${(EXAMPLE_SCORE / MAX_SCORE) * 100}%` }}
-            />
-            <span className="meter-hatch h-full flex-1" />
-          </div>
-
-          <dl className="mt-6 flex flex-col gap-2 font-mono text-[0.68rem] text-mist">
-            {EXAMPLE_SCORE_LINES.map((line) => {
-              const count = EXAMPLE_COUNTS[line.priority];
-              return (
-                <div key={line.priority} className="flex items-center justify-between gap-4">
-                  <dt>
-                    {count} {count > 1 ? line.plural : line.singular}
-                  </dt>
-                  <dd className="text-paper">−{count * POINTS_PER_PRIORITY[line.priority]}</dd>
-                </div>
-              );
-            })}
-          </dl>
-        </div>
-
-        <div className="order-1 lg:order-2">
+    <section id="score" className={`${SHELL} ${BLOCK}`}>
+      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <div>
           <Eyebrow>Le score</Eyebrow>
-          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
-            Un chiffre qui s&rsquo;explique ligne par ligne.
-          </h2>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-mist">
+          <h2 className={`mt-4 ${HEADING}`}>Un chiffre qui s&rsquo;explique ligne par ligne.</h2>
+          <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-mist">
             {MAX_SCORE} moins {POINTS_PER_PRIORITY.high} points par écart prioritaire,{" "}
             {POINTS_PER_PRIORITY.medium} par écart à planifier, {POINTS_PER_PRIORITY.low} par
-            écart mineur. Rien d&rsquo;autre. Tu peux ouvrir le détail et retrouver chaque point
-            perdu — un score que tu ne peux pas reconstituer toi-même est une vanity metric.
+            écart mineur. Rien d&rsquo;autre. Tu peux ouvrir le détail et retrouver chaque
+            point perdu — un score que tu ne peux pas reconstituer toi-même est une vanity
+            metric.
           </p>
-          <p className="mt-4 max-w-md text-base leading-relaxed text-mist">
+          <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-mist/80">
             Il baisse quand un écart s&rsquo;ouvre, remonte quand tu le refermes. Il
             n&rsquo;est jamais comparé à celui d&rsquo;un autre utilisateur.
           </p>
         </div>
+
+        <ScoreCard score={EXAMPLE_SCORE} maxScore={MAX_SCORE} lines={lines} />
       </div>
     </section>
   );
@@ -554,24 +565,30 @@ const NOT_DOING = [
 
 function WhatWeDont() {
   return (
-    <section className="border-b border-white/[0.06]">
-      <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:py-24">
-        <div className="max-w-xl">
-          <Eyebrow>Ce qu&rsquo;on ne fait pas</Eyebrow>
-          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
-            Honnête par construction, pas seulement par promesse.
-          </h2>
-        </div>
+    <section className={`${SHELL} ${BLOCK}`}>
+      <Eyebrow>Ce qu&rsquo;on ne fait pas</Eyebrow>
+      <h2 className={`mt-4 max-w-xl ${HEADING}`}>
+        Honnête par construction, pas seulement par promesse.
+      </h2>
 
-        <dl className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-          {NOT_DOING.map((item) => (
-            <div key={item.title} className="border-t border-white/10 pt-5">
-              <dt className="font-brand text-lg font-bold tracking-[-0.015em] text-paper">{item.title}</dt>
-              <dd className="mt-2.5 text-sm leading-relaxed text-mist">{item.body}</dd>
+      <dl className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:mt-12">
+        {NOT_DOING.map((item) => (
+          <div key={item.title} className="flex gap-4">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/[0.14] text-[0.7rem] text-mist"
+            >
+              ✕
+            </span>
+            <div>
+              <dt className="font-brand text-lg font-bold tracking-[-0.015em] text-paper">
+                {item.title}
+              </dt>
+              <dd className="mt-2 text-[0.9rem] leading-relaxed text-mist">{item.body}</dd>
             </div>
-          ))}
-        </dl>
-      </div>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }
@@ -621,35 +638,41 @@ const FAQ_ITEMS = [
 
 function Faq() {
   return (
-    <section id="faq" className="border-b border-white/[0.06]">
-      <div className="mx-auto w-full max-w-3xl px-6 py-20 lg:py-24">
-        <div className="max-w-xl">
-          <Eyebrow>Questions fréquentes</Eyebrow>
-          <h2 className="mt-4 font-brand text-[2rem] font-bold leading-[1.08] tracking-[-0.028em] text-paper sm:text-[2.9rem]">
-            Ce qu&rsquo;on te demande le plus.
-          </h2>
-        </div>
+    <section id="faq" className={`${SHELL} ${BLOCK}`}>
+      <Eyebrow>Questions fréquentes</Eyebrow>
+      <h2 className={`mt-4 max-w-xl ${HEADING}`}>Ce qu&rsquo;on te demande le plus.</h2>
 
-        <div className="mt-12 flex flex-col divide-y divide-white/[0.06] border-t border-white/[0.06]">
-          {FAQ_ITEMS.map((item) => (
-            <details key={item.q} className="group py-5">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-signal-bright [&::-webkit-details-marker]:hidden">
+      <div className="mt-10 flex max-w-3xl flex-col divide-y divide-white/[0.08] border-y border-white/[0.08] lg:mt-12">
+        {FAQ_ITEMS.map((item, index) => (
+          // La première est ouverte : une pile de neuf lignes fermées ne dit pas
+          // ce qu'on y trouve, et la réponse visible sert d'échantillon de ton.
+          <details key={item.q} className="group py-5" open={index === 0}>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-signal-bright [&::-webkit-details-marker]:hidden">
+              <span className="flex items-baseline gap-4">
+                <span className="font-mono text-[0.66rem] text-mist/50">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
                 <span className="font-brand text-base font-medium text-paper sm:text-lg">
                   {item.q}
                 </span>
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  className="h-4 w-4 shrink-0 text-mist transition-transform duration-200 group-open:rotate-45"
-                  aria-hidden="true"
-                >
-                  <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              </summary>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-mist">{item.a}</p>
-            </details>
-          ))}
-        </div>
+              </span>
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                className="h-4 w-4 shrink-0 text-mist transition-transform duration-200 group-open:rotate-45"
+                aria-hidden="true"
+              >
+                <path
+                  d="M10 4v12M4 10h12"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </summary>
+            <p className="mt-3 max-w-xl pl-9 text-sm leading-relaxed text-mist">{item.a}</p>
+          </details>
+        ))}
       </div>
     </section>
   );
@@ -662,33 +685,27 @@ function Faq() {
 function ClosingCta({ authenticated }: { authenticated: boolean }) {
   const cta = heroCta(authenticated);
   return (
-    <section className="relative overflow-hidden border-b border-white/[0.06]">
-      <div
-        className="pointer-events-none absolute bottom-[-16rem] left-1/2 h-[26rem] w-[38rem] -translate-x-1/2 rounded-full bg-signal/20 blur-[120px]"
-        aria-hidden="true"
-      />
-      <div className="relative mx-auto w-full max-w-3xl px-6 py-24 text-center lg:py-28">
-        <h2 className="font-brand text-[2rem] font-bold leading-[1.06] tracking-[-0.028em] text-paper sm:text-[3.1rem]">
-          Sais quoi faire pour le regagner.
-        </h2>
-        <p className="mx-auto mt-5 max-w-md text-base leading-relaxed text-mist">
-          Un premier relevé prend quelques minutes et n&rsquo;a besoin que de deux URL.
-        </p>
-        <Link
-          href={cta.href}
-          className="mt-9 inline-flex h-12 items-center justify-center rounded-full bg-signal px-7 text-base font-semibold text-paper shadow-signal-lg transition-colors duration-150 hover:bg-signal-bright hover:text-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-bright"
-        >
-          {cta.label}
-        </Link>
-      </div>
+    <section className={`${SHELL} py-24 text-center lg:py-28`}>
+      <h2 className="mx-auto max-w-3xl font-brand text-[2rem] font-bold leading-[1.04] tracking-[-0.032em] text-paper sm:text-[3.1rem]">
+        Sais quoi faire{" "}
+        <span className="text-signal-bright text-glow-signal">pour le regagner.</span>
+      </h2>
+      <p className="mx-auto mt-5 max-w-md text-base leading-relaxed text-mist">
+        Un premier relevé prend quelques minutes et n&rsquo;a besoin que de deux URL.
+      </p>
+      <Link href={cta.href} className={`mt-9 ${PRIMARY_CTA}`}>
+        {cta.label}
+      </Link>
     </section>
   );
 }
 
 function Footer() {
   return (
-    <footer>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-14 sm:flex-row sm:items-start sm:justify-between">
+    <footer className="border-t border-white/[0.08]">
+      <div
+        className={`${SHELL} flex flex-col gap-10 py-14 sm:flex-row sm:items-start sm:justify-between`}
+      >
         <div className="flex flex-col items-start gap-4">
           <Logo />
           <p className="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-mist/60">

@@ -639,10 +639,19 @@ const FAQ_ITEMS = [
 function Faq() {
   return (
     <section id="faq" className={`${SHELL} ${BLOCK}`}>
-      <Eyebrow>Questions fréquentes</Eyebrow>
-      <h2 className={`mt-4 max-w-xl ${HEADING}`}>Ce qu&rsquo;on te demande le plus.</h2>
+      {/*
+        La seule section centrée avec le CTA de clôture. La liste est étroite par
+        nécessité — une question doit tenir sur une ligne d'œil — et une colonne
+        étroite calée à gauche laisse la moitié droite de la page vide, ce qui se
+        lit comme un bloc oublié plutôt que comme un choix. L'axe central la
+        rattache au reste.
+      */}
+      <div className="text-center">
+        <Eyebrow>Questions fréquentes</Eyebrow>
+        <h2 className={`mt-4 ${HEADING}`}>Ce qu&rsquo;on te demande le plus.</h2>
+      </div>
 
-      <div className="mt-10 flex max-w-3xl flex-col divide-y divide-white/[0.08] border-y border-white/[0.08] lg:mt-12">
+      <div className="mx-auto mt-10 flex max-w-3xl flex-col divide-y divide-white/[0.08] border-y border-white/[0.08] lg:mt-12">
         {FAQ_ITEMS.map((item, index) => (
           // La première est ouverte : une pile de neuf lignes fermées ne dit pas
           // ce qu'on y trouve, et la réponse visible sert d'échantillon de ton.

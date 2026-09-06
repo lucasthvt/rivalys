@@ -5,6 +5,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
+  canAddCompetitor,
   checkCompetitorChange,
   COMPETITOR_CHANGE_COOLDOWN_DAYS,
   COMPETITOR_SLOTS,
@@ -69,5 +70,30 @@ describe("COMPETITOR_SLOTS", () => {
 describe("formatNextChangeDate", () => {
   test("rend une date lisible en français", () => {
     assert.equal(formatNextChangeDate(new Date("2026-09-27T12:00:00.000Z")), "27 septembre 2026");
+  });
+});
+
+describe("canAddCompetitor", () => {
+  test("laisse ajouter tant qu'une place reste libre", () => {
+    assert.deepEqual(canAddCompetitor("growth", 1), { allowed: true, remaining: 2 });
+  });
+
+  test("refuse un ajout au-delà des places du palier", () => {
+    const result = canAddCompetitor("pro", 1);
+    assert.equal(result.allowed, false);
+    assert.ok(!result.allowed && result.reason.includes("Growth"));
+  });
+
+  // Growth est le palier le plus haut : lui proposer de passer à Growth n'aiderait
+  // personne. Le message dit ce qui reste faisable — remplacer une URL.
+  test("propose le remplacement, pas la montée en gamme, quand Growth est plein", () => {
+    const result = canAddCompetitor("growth", COMPETITOR_SLOTS.growth);
+    assert.equal(result.allowed, false);
+    assert.ok(!result.allowed && result.reason.includes("Remplace"));
+  });
+
+  // Défense en profondeur : une ligne de trop en base ne doit pas rouvrir un ajout.
+  test("refuse aussi au-delà du compte attendu", () => {
+    assert.equal(canAddCompetitor("starter", 4).allowed, false);
   });
 });

@@ -10,6 +10,7 @@ const PROTECTED_PREFIXES = [
   "/concurrent",
   "/score",
   "/statistiques",
+  "/avis",
   "/compte",
 ];
 

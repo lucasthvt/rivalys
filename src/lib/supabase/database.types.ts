@@ -253,18 +253,23 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          // null = relevé antérieur au suivi multi-concurrent chez un utilisateur qui
+          // n'avait alors aucun concurrent. Voir la migration 20260906000000.
+          competitor_id: string | null;
           score: number;
           recorded_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
+          competitor_id?: string | null;
           score: number;
           recorded_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
+          competitor_id?: string | null;
           score?: number;
           recorded_at?: string;
         };
@@ -274,6 +279,13 @@ export interface Database {
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "score_history_competitor_id_fkey";
+            columns: ["competitor_id"];
+            isOneToOne: false;
+            referencedRelation: "competitors";
             referencedColumns: ["id"];
           },
         ];

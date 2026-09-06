@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { TESTIMONIAL_LIMITS } from "@/lib/testimonials/limits";
 
 /**
- * Demande de retour, affichée sur le tableau de bord.
+ * Demande de retour, sur son propre écran (/avis).
+ *
+ * Elle vivait en bas du tableau de bord, après le relevé. C'était le bon moment mais le
+ * mauvais endroit : un écran qui répond « où je perds du terrain » finissait par demander
+ * un service, et le bloc se lisait comme une bannière collée sous le contenu. Sur son
+ * propre onglet, la demande est une page qu'on ouvre, pas une interruption.
  *
  * Placée après une analyse aboutie et non à l'inscription : quelqu'un qui vient de voir
  * son premier écart a quelque chose à dire, quelqu'un qui vient de créer un compte n'a
@@ -186,7 +191,7 @@ export function TestimonialPrompt({ existing }: { existing: ExistingTestimonial 
 
       {feedback && (
         <p
-          className={`text-sm ${feedback.kind === "error" ? "text-clay-100" : "text-mist"}`}
+          className={`text-sm ${feedback.kind === "error" ? "text-flare" : "text-mist"}`}
           role="status"
         >
           {feedback.message}

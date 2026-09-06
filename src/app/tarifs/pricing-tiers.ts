@@ -75,13 +75,15 @@ export const PRICING_TIERS: PricingTier[] = [
     tagline: "Plusieurs fronts à surveiller en même temps.",
     features: [
       "Tout le contenu de Pro",
-      "3 concurrents suivis (en construction)",
-      "Comparatif par concurrent",
+      "3 concurrents suivis en parallèle",
+      "Écarts, tâches et score séparés par concurrent",
+      "Une seule analyse relit ton SaaS pour les trois",
       "Support prioritaire",
     ],
-    cta: "Être prévenu à l'ouverture",
+    cta: "Commencer avec Growth",
+    checkout: "growth",
     plans: {
-      monthly: { price: "79 €", period: "par mois", note: "Ouverture à la livraison du multi-concurrent." },
+      monthly: { price: "79 €", period: "par mois", note: "Sans engagement, résiliable en un clic." },
       yearly: {
         price: "790 €",
         period: "par an",

@@ -86,20 +86,20 @@ export function RefreshButton() {
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="font-mono rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-foreground transition-colors hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex h-11 items-center justify-center rounded-full bg-signal px-6 text-sm font-semibold text-paper shadow-signal-sm transition-colors hover:bg-signal-bright hover:text-void disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? `Analyse en cours… ${elapsed} s` : "Actualiser"}
       </button>
       {isPending && elapsed >= 45 && (
-        <p className="max-w-[220px] text-right text-xs text-foreground-muted">
-          Lecture des deux sites et relevés publics en cours. Compte jusqu&rsquo;à deux
-          minutes — ne recharge pas la page.
+        <p className="max-w-[240px] text-right text-xs text-mist">
+          Lecture de ton site puis de chaque concurrent suivi. Compte jusqu&rsquo;à deux
+          minutes par concurrent — ne recharge pas la page.
         </p>
       )}
       {feedback && (
         <p
-          className={`max-w-[220px] text-right text-xs ${
-            feedback.kind === "info" ? "text-foreground-muted" : "text-flare"
+          className={`max-w-[240px] text-right text-xs ${
+            feedback.kind === "info" ? "text-mist" : "text-flare"
           }`}
         >
           {feedback.message}

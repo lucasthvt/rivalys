@@ -128,6 +128,35 @@ Cette requête ne fonctionne que depuis le SQL editor (rôle `postgres`) ou avec
 service_role. Depuis un client authentifié, elle est refusée : `subscription_tier` n'est plus
 accessible en écriture au rôle `authenticated` (voir la section Sécurité).
 
+## Concurrents suivis (palier Growth)
+
+Le nombre de places de concurrent dépend du palier — `src/lib/billing/competitor-slots.ts` :
+`starter` et `pro` en ouvrent une, `growth` en ouvre trois. Une place = un site relu à chaque
+analyse, donc un coût réel de fetch, d'extraction Claude et d'enrichissement Perplexity.
+
+Ce que le multi-concurrent change dans le pipeline (`src/app/api/compare/route.ts`) :
+
+- ton SaaS n'est relu **qu'une fois** par exécution, quel que soit le nombre de concurrents ;
+- les concurrents sont ensuite traités **en série** — les lancer en parallèle déclencherait les
+  limites de débit de Firecrawl, Claude et Perplexity, et une erreur de limite coûte autant
+  qu'un succès ;
+- un concurrent dont le site bloque la lecture n'emporte pas les autres : son échec est
+  remonté dans la réponse, jamais transformé en « zéro écart » ;
+- **un score par face-à-face**, pas un score global. `score_history.competitor_id` porte cette
+  distinction (migration `20260906000000_multi_competitor.sql`, qui rattache aussi les relevés
+  existants au concurrent principal de chaque utilisateur).
+
+Côté écrans, `/dashboard`, `/tasks`, `/score` et `/statistiques` parlent d'un concurrent à la
+fois. Lequel se lit dans `?concurrent=<id>`, avec repli sur le concurrent principal — la règle
+est dans `src/lib/competitors/selection.ts`, testée dans `src/lib/competitors/__tests__/`.
+
+**Cette migration doit être appliquée avant de déployer** : sans elle, les écrans lisent une
+colonne qui n'existe pas.
+
+```bash
+npx supabase db push
+```
+
 ## Paiement (Stripe)
 
 Les paliers Pro et Growth sont facturés via **Stripe Checkout hébergé** — pas un formulaire

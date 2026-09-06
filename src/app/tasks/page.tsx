@@ -6,10 +6,16 @@ import { EmptyState } from "@/components/tasks/empty-state";
 import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { CompetitorSwitcher } from "@/components/competitor/competitor-switcher";
+import { orderCompetitors, resolveSelectedCompetitor } from "@/lib/competitors/selection";
 import { LockedResults, SkeletonList } from "@/components/billing/locked-results";
 import { hasPaidAccess } from "@/lib/billing/access";
 
-export default async function TasksPage() {
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const supabase = await createClient();
 
   const {
@@ -33,29 +39,37 @@ export default async function TasksPage() {
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
   const unlocked = hasPaidAccess(profile?.subscription_tier);
 
-  const [gapsRes, competitorRes] = await Promise.all([
-    supabase
-      .from("detected_gaps")
-      .select("*")
-      .eq("status", "open")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("competitors")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("is_primary", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  // La file est celle d'UN face-à-face : un écart appartient au concurrent qui l'a produit,
+  // et fermer « pas d'essai gratuit » face à l'un ne le ferme pas face à l'autre. Mélanger
+  // les files afficherait deux fois le même intitulé sans dire lequel vise qui.
+  const { data: trackedCompetitors, error: competitorsError } = await supabase
+    .from("competitors")
+    .select("id, name, url, is_primary, created_at")
+    .eq("user_id", user.id);
 
-  const error = gapsRes.error;
+  const competitors = orderCompetitors(trackedCompetitors ?? []);
+  const requested = (await searchParams).concurrent;
+  const competitor = resolveSelectedCompetitor(
+    competitors,
+    typeof requested === "string" ? requested : null,
+  );
+
+  const gapsRes = competitor
+    ? await supabase
+        .from("detected_gaps")
+        .select("*")
+        .eq("competitor_id", competitor.id)
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+    : { data: [], error: null };
+
+  const error = gapsRes.error ?? competitorsError;
   const gaps = sortGapsByPriority(gapsRes.data ?? []);
   const highCount = gaps.filter((g) => g.priority === "high").length;
 
   // Distinguish "no competitor tracked" from "the query failed": an empty list
   // caused by a read error must never be presented as a completed analysis.
-  const noCompetitor = !competitorRes.data && !competitorRes.error;
+  const noCompetitor = competitor === null && !competitorsError;
 
   return (
     <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
@@ -73,6 +87,17 @@ export default async function TasksPage() {
                   }${highCount > 0 ? ` · ${highCount} en priorité haute` : ""}.`
           }
         />
+
+        {competitor && (
+          <CompetitorSwitcher
+            competitors={competitors.map((tracked) => ({
+              id: tracked.id,
+              label: tracked.name?.trim() || safeHostname(tracked.url),
+            }))}
+            selectedId={competitor.id}
+            basePath="/tasks"
+          />
+        )}
 
         {error ? (
           <EmptyState
@@ -103,4 +128,13 @@ export default async function TasksPage() {
       </div>
     </AppShell>
   );
+}
+
+/** Mirrors the hostname fallback used on /dashboard and by /api/compare. */
+function safeHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
 }

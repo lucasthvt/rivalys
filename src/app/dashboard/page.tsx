@@ -24,10 +24,14 @@ import { hasPaidAccess } from "@/lib/billing/access";
 import { Board } from "@/components/dashboard/board";
 import { buildFaceOffRows } from "@/components/dashboard/face-off-rows";
 import { DimensionLine } from "@/components/ui/DimensionLine";
-import { TestimonialPrompt } from "@/components/dashboard/testimonial-prompt";
-import { fetchOwnTestimonial } from "@/lib/testimonials/queries";
+import { CompetitorSwitcher } from "@/components/competitor/competitor-switcher";
+import { orderCompetitors, resolveSelectedCompetitor } from "@/lib/competitors/selection";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const supabase = await createClient();
 
   const {
@@ -51,23 +55,66 @@ export default async function DashboardPage() {
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
   const unlocked = hasPaidAccess(profile?.subscription_tier);
 
-  const [gapsRes, allGapsRes, scoreRes, competitorRes] = await Promise.all([
+  // Le concurrent affiché vient de l'URL, avec repli sur le principal (voir
+  // lib/competitors/selection.ts). Tout ce qui suit — écarts, relevés, score, historique —
+  // décrit CE face-à-face et lui seul : mélanger trois comparaisons dans un même écran
+  // produirait des chiffres qu'aucune page ne permet de reconstituer.
+  const { data: trackedCompetitors, error: competitorsError } = await supabase
+    .from("competitors")
+    .select("*")
+    .eq("user_id", user.id);
+
+  const competitorLoadError = Boolean(competitorsError);
+  const competitors = orderCompetitors(trackedCompetitors ?? []);
+  const requested = (await searchParams).concurrent;
+  const competitor = resolveSelectedCompetitor(
+    competitors,
+    typeof requested === "string" ? requested : null,
+  );
+
+  // Nothing to compare against yet: every panel below would render its own
+  // empty shell (score "—", 0 écart, comparatif vide) and read like an
+  // analysis that found nothing. Send the user to /concurrent instead — that
+  // is the one action that unblocks the whole product.
+  //
+  // Placé avant les requêtes qui suivent, et non après : elles sont toutes scopées au
+  // concurrent affiché, et sans lui elles n'ont pas de filtre à appliquer.
+  if (!competitor) {
+    return (
+      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
+        <div className="relative mx-auto w-full max-w-5xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader eyebrow="Tableau de bord" title="Où tu perds du terrain" />
+          {competitorLoadError ? (
+            <EmptyState
+              title="Impossible de lire tes concurrents"
+              description={competitorsError?.message}
+            />
+          ) : (
+            <NoCompetitorState description="Le comparateur a besoin d'un second site pour trouver le moindre écart. Ajoute le concurrent que tu veux suivre, puis lance une première analyse." />
+          )}
+        </div>
+      </AppShell>
+    );
+  }
+
+  const [gapsRes, allGapsRes, scoreRes] = await Promise.all([
     supabase
       .from("detected_gaps")
       .select("*")
+      .eq("competitor_id", competitor.id)
       .eq("status", "open")
       .order("created_at", { ascending: false }),
-    // Every status, for the stats section — which is about the whole history, not just
-    // what's currently open.
-    supabase.from("detected_gaps").select("category, status, resolved_at"),
-    supabase.from("score_history").select("*").order("recorded_at", { ascending: true }),
+    // Every status, for the stats section — which is about the whole history of this
+    // face-off, not just what's currently open.
     supabase
-      .from("competitors")
+      .from("detected_gaps")
+      .select("category, status, resolved_at")
+      .eq("competitor_id", competitor.id),
+    supabase
+      .from("score_history")
       .select("*")
-      .eq("is_primary", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .eq("competitor_id", competitor.id)
+      .order("recorded_at", { ascending: true }),
   ]);
 
   // The two primary metrics — open gaps and score — drive the whole
@@ -94,27 +141,10 @@ export default async function DashboardPage() {
   // Avant-dernier point : le delta montré dans l'anneau compare deux analyses
   // réelles, jamais le score recalculé en direct contre l'historique.
   const previousScore = scorePoints.length >= 2 ? scorePoints.at(-2)!.score : null;
-  const competitor = competitorRes.data;
-  const competitorLoadError = Boolean(competitorRes.error);
 
-  // Nothing to compare against yet: every panel below would render its own
-  // empty shell (score "—", 0 écart, comparatif vide) and read like an
-  // analysis that found nothing. Send the user to /concurrent instead — that
-  // is the one action that unblocks the whole product.
-  if (!competitor && !competitorLoadError) {
-    return (
-      <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="relative mx-auto w-full max-w-5xl px-6 py-14 sm:px-8 lg:py-16">
-          <PageHeader eyebrow="Tableau de bord" title="Où tu perds du terrain" />
-          <NoCompetitorState description="Le comparateur a besoin d'un second site pour trouver le moindre écart. Ajoute le concurrent que tu veux suivre, puis lance une première analyse." />
-        </div>
-      </AppShell>
-    );
-  }
-
-  // Latest snapshot for each side. The competitor snapshot is scoped to the
-  // primary competitor's id so this stays correct once a user can follow
-  // more than one competitor.
+  // Latest snapshot for each side. Le relevé de notre côté est unique — le pipeline ne lit
+  // notre SaaS qu'une fois par exécution — tandis que celui d'en face est scopé au
+  // concurrent affiché.
   const [ownSnapshotRes, competitorSnapshotRes] = await Promise.all([
     supabase
       .from("site_snapshots")
@@ -123,16 +153,14 @@ export default async function DashboardPage() {
       .order("fetched_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    competitor
-      ? supabase
-          .from("site_snapshots")
-          .select("*")
-          .eq("target_type", "competitor")
-          .eq("competitor_id", competitor.id)
-          .order("fetched_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null } as const),
+    supabase
+      .from("site_snapshots")
+      .select("*")
+      .eq("target_type", "competitor")
+      .eq("competitor_id", competitor.id)
+      .order("fetched_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const snapshotLoadError = Boolean(ownSnapshotRes.error || competitorSnapshotRes.error);
@@ -140,11 +168,18 @@ export default async function DashboardPage() {
   const competitorData = parseExtractedData(competitorSnapshotRes.data?.extracted_data);
   const ownFlags = parseObservationFlags(ownSnapshotRes.data?.extracted_data);
   const competitorFlags = parseObservationFlags(competitorSnapshotRes.data?.extracted_data);
-  const competitorLabel = competitorLoadError
-    ? "Erreur de chargement"
-    : competitor
-      ? competitor.name?.trim() || safeHostname(competitor.url)
-      : "ton concurrent";
+  const competitorLabel = competitor.name?.trim() || safeHostname(competitor.url);
+
+  const switcher = (
+    <CompetitorSwitcher
+      competitors={competitors.map((tracked) => ({
+        id: tracked.id,
+        label: tracked.name?.trim() || safeHostname(tracked.url),
+      }))}
+      selectedId={competitor.id}
+      basePath="/dashboard"
+    />
+  );
 
   // Palier gratuit : l'analyse a tourné, ses résultats restent fermés. Seuls
   // les agrégats sans contenu sortent d'ici (analyse effectuée, date, nombre
@@ -157,6 +192,7 @@ export default async function DashboardPage() {
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="relative mx-auto w-full max-w-5xl px-6 py-14 sm:px-8 lg:py-16">
           <PageHeader eyebrow="Tableau de bord" title="Où tu perds du terrain" />
+          {switcher}
 
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <MetricCard
@@ -207,8 +243,6 @@ export default async function DashboardPage() {
   // concurrent précédent.
   const analysedForCurrentCompetitor = competitorSnapshotRes.data !== null;
 
-  // Le retour n'est demandé qu'à quelqu'un qui a vu tourner le produit sur son propre
-  // concurrent. Avant ça, la question n'a pas de réponse possible.
   const faceOffRows = buildFaceOffRows({
     own: ownData,
     competitor: competitorData,
@@ -223,10 +257,6 @@ export default async function DashboardPage() {
       paymentProviders: competitorFlags.paymentProviders,
     },
   });
-
-  const ownTestimonial = analysedForCurrentCompetitor
-    ? await fetchOwnTestimonial(user.id)
-    : null;
 
   // Ce que le comparateur n'a pas pu mesurer, faute de tarifs publics d'un côté ou de
   // l'autre. Conditionné aux deux relevés : avant une analyse, l'absence de tarifs ne dit
@@ -255,6 +285,7 @@ export default async function DashboardPage() {
           title="Où tu perds du terrain"
           action={<RefreshButton />}
         />
+        {switcher}
 
         {/*
           Le cartouche, emprunté au dessin technique : ce que la planche compare, et entre
@@ -363,17 +394,6 @@ export default async function DashboardPage() {
           )}
           </div>
         </section>
-
-        {/*
-          Placé en dernier, après le relevé : on demande son avis à quelqu'un qui vient de
-          lire ses résultats, pas à quelqu'un qui arrive. Et seulement si une analyse a
-          réellement tourné sur le concurrent actuel.
-        */}
-        {analysedForCurrentCompetitor && (
-          <section className="mt-6">
-            <TestimonialPrompt existing={ownTestimonial} />
-          </section>
-        )}
       </div>
     </AppShell>
   );

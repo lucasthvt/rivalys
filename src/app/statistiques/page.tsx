@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { CompetitorSwitcher } from "@/components/competitor/competitor-switcher";
+import { orderCompetitors, resolveSelectedCompetitor } from "@/lib/competitors/selection";
 import { PanelHeader } from "@/components/layout/Panel";
 import { LockedResults, SkeletonPanel } from "@/components/billing/locked-results";
 import { hasPaidAccess } from "@/lib/billing/access";
@@ -18,7 +20,11 @@ import { AnalysisStats } from "@/components/dashboard/analysis-stats";
  * aucune projection, aucune estimation, aucun chiffre issu d'une source externe. Le suivi
  * du score dans le temps vient de score_history, alimenté à chaque recalcul.
  */
-export default async function StatistiquesPage() {
+export default async function StatistiquesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const supabase = await createClient();
 
   const {
@@ -41,30 +47,49 @@ export default async function StatistiquesPage() {
 
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
 
-  const [allGapsRes, scoreRes, competitorRes] = await Promise.all([
-    supabase.from("detected_gaps").select("category, status, priority, created_at, resolved_at"),
-    supabase.from("score_history").select("*").order("recorded_at", { ascending: true }),
-    supabase
-      .from("competitors")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("is_primary", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  // Le bilan porte sur UN face-à-face, comme les autres écrans de résultat. Additionner
+  // trois comparaisons donnerait un « total d'écarts » que rien sur la page ne permet de
+  // rattacher à un concurrent — et qui grossirait en achetant une place.
+  const { data: trackedCompetitors, error: competitorsError } = await supabase
+    .from("competitors")
+    .select("id, name, url, is_primary, created_at")
+    .eq("user_id", user.id);
 
-  // score_history ne porte pas de competitor_id : ses points décrivent l'état au moment de
-  // chaque analyse, quel que soit le concurrent suivi alors. Si le concurrent courant n'a
-  // jamais été analysé (cas typique juste après un changement, qui supprime ses relevés),
-  // toute la courbe porte sur le précédent — même règle que sur le tableau de bord.
-  const competitorSnapshotRes = competitorRes.data
+  const competitors = orderCompetitors(trackedCompetitors ?? []);
+  const requested = (await searchParams).concurrent;
+  const competitor = resolveSelectedCompetitor(
+    competitors,
+    typeof requested === "string" ? requested : null,
+  );
+
+  const [allGapsRes, scoreRes] = competitor
+    ? await Promise.all([
+        supabase
+          .from("detected_gaps")
+          .select("category, status, priority, created_at, resolved_at")
+          .eq("competitor_id", competitor.id),
+        supabase
+          .from("score_history")
+          .select("*")
+          .eq("competitor_id", competitor.id)
+          .order("recorded_at", { ascending: true }),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
+
+  // Les points de score portent désormais leur competitor_id (migration 20260906000000),
+  // donc la courbe ne mélange plus deux concurrents. Reste le cas d'un concurrent tout
+  // juste ajouté ou remplacé : ses relevés ont été supprimés, la courbe affichée est vide
+  // et on le dit plutôt que de laisser lire une absence de progrès.
+  const competitorSnapshotRes = competitor
     ? await supabase
         .from("site_snapshots")
         .select("id")
         .eq("user_id", user.id)
         .eq("target_type", "competitor")
-        .eq("competitor_id", competitorRes.data.id)
+        .eq("competitor_id", competitor.id)
         .limit(1)
         .maybeSingle()
     : { data: null, error: null };
@@ -73,7 +98,7 @@ export default async function StatistiquesPage() {
   // Aucun concurrent suivi : il n'existe aucun historique à agréger. Des
   // compteurs à zéro se liraient comme un bilan, alors qu'aucune analyse n'a
   // jamais tourné.
-  if (!competitorRes.data && !competitorRes.error) {
+  if (!competitor && !competitorsError) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
@@ -119,8 +144,19 @@ export default async function StatistiquesPage() {
         <PageHeader
             eyebrow="Statistiques"
             title="Le terrain regagné"
-            lede="L'historique complet de tes écarts détectés, comblés et ignorés."
+            lede="L'historique complet de tes écarts détectés, comblés et ignorés, face au concurrent affiché."
           />
+
+        {competitor && (
+          <CompetitorSwitcher
+            competitors={competitors.map((tracked) => ({
+              id: tracked.id,
+              label: tracked.name?.trim() || safeHostname(tracked.url),
+            }))}
+            selectedId={competitor.id}
+            basePath="/statistiques"
+          />
+        )}
 
         {/* Point focal : la vue d'ensemble commande les détails qui suivent. */}
         <section className="panel-focal mb-6 overflow-hidden">
@@ -178,3 +214,12 @@ export default async function StatistiquesPage() {
   );
 }
 
+
+/** Mirrors the hostname fallback used on /dashboard and by /api/compare. */
+function safeHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}

@@ -4,17 +4,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
 import { isLikelyUrl, normalizeUrl } from "@/lib/url";
-import { setCompetitor } from "../actions";
+import { addCompetitor, replaceCompetitorUrl } from "../actions";
 
 /**
- * Adds or replaces the primary competitor.
+ * Ajoute un concurrent, ou remplace l'URL d'un concurrent existant.
  *
- * Replacing is destructive on purpose (see setCompetitor): the previous
- * competitor's open écarts are closed and its relevés deleted, because they
- * describe another site. So a replacement asks for a confirmation first —
- * a single mistyped domain would otherwise wipe the user's task list.
+ * Le remplacement est destructeur à dessein (voir replaceCompetitorUrl) : les écarts
+ * encore ouverts de l'ancien site sont fermés et ses relevés supprimés, parce qu'ils
+ * décrivent un autre site. D'où la confirmation — un domaine mal tapé viderait sinon la
+ * file de tâches d'un seul geste.
+ *
+ * `competitorId` absent = ajout sur une place libre. Un ajout ne détruit rien, il ne
+ * demande donc pas de confirmation : la seule question est de savoir s'il reste une place,
+ * et l'action serveur y répond.
  */
-export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
+export function CompetitorForm({ competitorId }: { competitorId?: string }) {
+  const hasCompetitor = competitorId !== undefined;
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -66,7 +71,9 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
     }
 
     startTransition(async () => {
-      const result = await setCompetitor(url);
+      const result = competitorId
+        ? await replaceCompetitorUrl(competitorId, url)
+        : await addCompetitor(url);
 
       if (!result.ok) {
         setError(result.error);
@@ -158,7 +165,7 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
             : confirming
               ? "Confirmer le remplacement"
               : hasCompetitor
-                ? "Remplacer le concurrent"
+                ? "Remplacer ce concurrent"
                 : "Ajouter ce concurrent"}
         </button>
 

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { CompetitorSwitcher } from "@/components/competitor/competitor-switcher";
+import { orderCompetitors, resolveSelectedCompetitor } from "@/lib/competitors/selection";
 import { PanelHeader } from "@/components/layout/Panel";
 import { LockedResults, SkeletonPanel } from "@/components/billing/locked-results";
 import { hasPaidAccess } from "@/lib/billing/access";
@@ -24,7 +26,11 @@ import { detectAllAdvantages } from "@/lib/compare/advantages";
  *    never rated; the right-hand column lists factual advantages derived from the same
  *    public data by the mirror of the gap rules (see lib/compare/advantages.ts).
  */
-export default async function ScorePage() {
+export default async function ScorePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const supabase = await createClient();
 
   const {
@@ -47,22 +53,29 @@ export default async function ScorePage() {
 
   const userLabel = profile?.first_name?.trim() || user.email || "Toi";
 
-  const [gapsRes, competitorRes] = await Promise.all([
-    supabase
-      .from("detected_gaps")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "open")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("competitors")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("is_primary", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  // Un score par face-à-face : la page promet « ce qu'il te reste à rattraper face à X ».
+  // Le concurrent affiché vient de l'URL, avec repli sur le principal.
+  const { data: trackedCompetitors, error: competitorsError } = await supabase
+    .from("competitors")
+    .select("*")
+    .eq("user_id", user.id);
+
+  const competitors = orderCompetitors(trackedCompetitors ?? []);
+  const requested = (await searchParams).concurrent;
+  const competitor = resolveSelectedCompetitor(
+    competitors,
+    typeof requested === "string" ? requested : null,
+  );
+
+  const gapsRes = competitor
+    ? await supabase
+        .from("detected_gaps")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("competitor_id", competitor.id)
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+    : { data: [], error: null };
 
   if (gapsRes.error) {
     return (
@@ -86,7 +99,7 @@ export default async function ScorePage() {
   // Sans concurrent suivi, aucun écart n'a pu être détecté : le score partirait
   // de 100 et se lirait comme « rien à rattraper », alors qu'aucune comparaison
   // n'a eu lieu. On le dit au lieu de l'afficher.
-  if (!competitorRes.data && !competitorRes.error) {
+  if (!competitor && !competitorsError) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
@@ -129,7 +142,6 @@ export default async function ScorePage() {
   }
 
   const gaps = sortGapsByPriority(gapsRes.data ?? []);
-  const competitor = competitorRes.data;
   const competitorLabel = competitor
     ? competitor.name?.trim() || safeHostname(competitor.url)
     : "ton concurrent";
@@ -196,6 +208,17 @@ export default async function ScorePage() {
             lede="Le calcul complet, sans boîte noire."
             back={{ href: "/dashboard", label: "Tableau de bord" }}
           />
+
+        {competitor && (
+          <CompetitorSwitcher
+            competitors={competitors.map((tracked) => ({
+              id: tracked.id,
+              label: tracked.name?.trim() || safeHostname(tracked.url),
+            }))}
+            selectedId={competitor.id}
+            basePath="/score"
+          />
+        )}
 
         {/*
           Point focal de l'écran, et désormais le pilote des deux sections qui suivent :

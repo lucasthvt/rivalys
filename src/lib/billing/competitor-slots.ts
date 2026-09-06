@@ -7,10 +7,10 @@ import type { SubscriptionTier } from "@/lib/supabase/database.types";
  * extraction Claude + enrichissement Perplexity). C'est ce coût qui est facturé,
  * pas le fait de figer une URL — d'où un remplacement autorisé, mais espacé.
  *
- * Growth annonce 3 places, mais le pipeline et les écrans ne gèrent aujourd'hui
- * qu'un seul concurrent primaire. Tant que ce chantier n'est pas livré, la page
- * tarifs porte la mention « à venir » sur le multi-concurrent — le produit ne
- * doit pas encaisser une capacité qu'il ne sert pas.
+ * Les trois places de Growth sont servies depuis la livraison du multi-concurrent :
+ * le pipeline analyse chaque concurrent suivi, et les écrans se lisent concurrent
+ * par concurrent. Tant que ce n'était pas le cas, la page tarifs ne vendait pas
+ * Growth — le produit ne doit pas encaisser une capacité qu'il ne sert pas.
  */
 export const COMPETITOR_SLOTS: Record<SubscriptionTier, number> = {
   starter: 1,
@@ -55,4 +55,34 @@ export function formatNextChangeDate(date: Date): string {
     month: "long",
     year: "numeric",
   });
+}
+
+export type SlotAllowance =
+  | { allowed: true; remaining: number }
+  | { allowed: false; reason: string };
+
+/**
+ * Reste-t-il une place pour un concurrent de plus ?
+ *
+ * Le message d'échec nomme le palier atteint et ce qu'ouvre le suivant, parce qu'un
+ * refus qui dit seulement « limite atteinte » oblige à aller chercher ailleurs de
+ * quoi décider. Il ne promet rien au-delà de ce que la grille contient réellement.
+ */
+export function canAddCompetitor(
+  tier: SubscriptionTier,
+  currentCount: number,
+): SlotAllowance {
+  const slots = COMPETITOR_SLOTS[tier];
+  const remaining = slots - currentCount;
+
+  if (remaining > 0) return { allowed: true, remaining };
+
+  const growthSlots = COMPETITOR_SLOTS.growth;
+  return {
+    allowed: false,
+    reason:
+      tier === "growth"
+        ? `Tes ${growthSlots} places de concurrent sont occupées. Remplace l'URL de l'une d'elles pour suivre un autre site.`
+        : `Ton palier ouvre ${slots} place${slots > 1 ? "s" : ""} de concurrent. Growth en ouvre ${growthSlots}.`,
+  };
 }

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAppUrl, getStripe, isStripeConfigured } from "@/lib/billing/stripe";
+import {
+  getAppUrl,
+  getStripe,
+  isMissingCustomerError,
+  isStripeConfigured,
+} from "@/lib/billing/stripe";
+import { forgetStripeCustomer } from "@/lib/billing/stale-customer";
 
 /**
  * POST /api/billing/portal
@@ -63,6 +69,23 @@ export async function POST() {
 
     return NextResponse.json({ ok: true, url: session.url });
   } catch (error) {
+    // Contrairement au paiement, le portail ne peut pas se rattraper : il n'existe pas de
+    // portail « sans client ». On détache l'identifiant mort — ce qui fait retomber
+    // l'écran Mon compte sur « Voir les paliers » au lieu d'un bouton qui échoue à chaque
+    // clic — et on dit ce qui s'est passé plutôt que de renvoyer une panne générique.
+    if (isMissingCustomerError(error)) {
+      console.warn("[billing] client Stripe introuvable, identifiant détaché");
+      await forgetStripeCustomer(user.id);
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Ton lien de facturation pointait un client Stripe qui n'existe plus. Il a été détaché : reprends un abonnement depuis la page Tarifs, ou écris-nous si tu penses payer encore.",
+        },
+        { status: 409 },
+      );
+    }
+
     console.error("[billing] ouverture du portail échouée", error);
     return NextResponse.json(
       { ok: false, error: "Impossible d'ouvrir la gestion de l'abonnement." },

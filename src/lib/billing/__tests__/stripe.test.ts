@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   getAppUrl,
   isBillingPeriod,
+  isMissingCustomerError,
   isPaidTier,
   isStripeConfigured,
   resolvePriceId,
@@ -156,5 +157,54 @@ describe("gardes de type", () => {
     assert.equal(isStripeConfigured(), false);
     process.env.STRIPE_SECRET_KEY = "rk_test_x";
     assert.equal(isStripeConfigured(), true);
+  });
+});
+
+describe("isMissingCustomerError", () => {
+  // La forme réellement reçue en production, relevée dans les logs Vercel :
+  // « No such customer: 'cus_…' », sur /api/billing/checkout comme sur /portal.
+  const missingCustomer = {
+    type: "StripeInvalidRequestError",
+    code: "resource_missing",
+    param: "customer",
+    raw: { code: "resource_missing", param: "customer" },
+  };
+
+  test("reconnaît un client Stripe introuvable", () => {
+    assert.equal(isMissingCustomerError(missingCustomer), true);
+  });
+
+  test("le reconnaît aussi quand seul `raw` porte le détail", () => {
+    assert.equal(
+      isMissingCustomerError({
+        type: "StripeInvalidRequestError",
+        raw: { code: "resource_missing", param: "customer" },
+      }),
+      true,
+    );
+  });
+
+  // Le point qui compte : `resource_missing` sort aussi pour un PRIX inexistant. Détacher
+  // le client dans ce cas effacerait un lien de facturation parfaitement valide pour une
+  // erreur de configuration qui n'a rien à voir.
+  test("ignore un prix introuvable", () => {
+    assert.equal(
+      isMissingCustomerError({
+        type: "StripeInvalidRequestError",
+        code: "resource_missing",
+        param: "line_items[0][price]",
+      }),
+      false,
+    );
+  });
+
+  test("ignore les autres erreurs Stripe et les valeurs vides", () => {
+    assert.equal(
+      isMissingCustomerError({ type: "StripeCardError", code: "card_declined" }),
+      false,
+    );
+    assert.equal(isMissingCustomerError(new Error("réseau")), false);
+    assert.equal(isMissingCustomerError(null), false);
+    assert.equal(isMissingCustomerError(undefined), false);
   });
 });

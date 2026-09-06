@@ -4,10 +4,12 @@ import {
   getAppUrl,
   getStripe,
   isBillingPeriod,
+  isMissingCustomerError,
   isPaidTier,
   isStripeConfigured,
   resolvePriceId,
 } from "@/lib/billing/stripe";
+import { forgetStripeCustomer } from "@/lib/billing/stale-customer";
 
 /**
  * POST /api/billing/checkout
@@ -86,16 +88,18 @@ export async function POST(request: NextRequest) {
 
   const stripe = getStripe();
 
-  try {
-    const session = await stripe.checkout.sessions.create({
+  /**
+   * La session, avec ou sans client existant.
+   *
+   * Client existant réutilisé s'il y en a un : sans ça, un même utilisateur qui repasse
+   * par Checkout se retrouve avec deux clients Stripe, deux abonnements, et un webhook qui
+   * ne sait plus lequel décrit son accès.
+   */
+  const openSession = (customerId: string | null) =>
+    stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      // Client existant réutilisé s'il y en a un : sans ça, un même utilisateur qui
-      // repasse par Checkout se retrouve avec deux clients Stripe, deux abonnements, et
-      // un webhook qui ne sait plus lequel décrit son accès.
-      ...(profile?.stripe_customer_id
-        ? { customer: profile.stripe_customer_id }
-        : { customer_email: user.email ?? undefined }),
+      ...(customerId ? { customer: customerId } : { customer_email: user.email ?? undefined }),
       client_reference_id: user.id,
       // Portés jusque sur l'abonnement : le webhook reçoit des événements
       // `customer.subscription.*` qui ne connaissent pas la session de Checkout.
@@ -107,6 +111,25 @@ export async function POST(request: NextRequest) {
       success_url: `${appUrl}/dashboard?paiement=ok`,
       cancel_url: `${appUrl}/tarifs?paiement=annule`,
     });
+
+  try {
+    let session;
+    try {
+      session = await openSession(profile?.stripe_customer_id ?? null);
+    } catch (error) {
+      // Le client enregistré n'existe plus chez Stripe — identifiant d'un autre compte ou
+      // d'un autre mode (voir isMissingCustomerError). Sans ce rattrapage, la personne ne
+      // peut PLUS JAMAIS payer : chaque tentative rejoue le même identifiant mort.
+      // On le détache et on rouvre la session comme pour un nouveau client ; le webhook
+      // réécrira l'identifiant du compte courant à la fin du paiement.
+      if (!isMissingCustomerError(error)) throw error;
+
+      console.warn(
+        "[billing] client Stripe introuvable, détaché puis paiement rouvert sans lui",
+      );
+      await forgetStripeCustomer(user.id);
+      session = await openSession(null);
+    }
 
     if (!session.url) {
       return NextResponse.json(

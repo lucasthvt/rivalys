@@ -88,6 +88,37 @@ export function isBillingPeriod(value: string): value is BillingPeriod {
 }
 
 /**
+ * Stripe dit-il que le client enregistré n'existe pas chez lui ?
+ *
+ * Ça arrive pour une raison précise et fréquente : les identifiants `cus_…` appartiennent
+ * à UN compte Stripe et à UN mode. Basculer de test à live, ou changer de compte, laisse
+ * en base des identifiants qui ne désignent plus rien — et les deux routes de facturation
+ * échouent alors définitivement, pour un client qui n'a rien fait de mal.
+ *
+ * Le champ `param` est vérifié en plus du code : `resource_missing` sort aussi quand c'est
+ * le PRIX qui est introuvable, et là il ne faut surtout pas détacher le client.
+ */
+export function isMissingCustomerError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+
+  const candidate = error as {
+    type?: unknown;
+    code?: unknown;
+    param?: unknown;
+    raw?: { code?: unknown; param?: unknown };
+  };
+
+  const code = candidate.code ?? candidate.raw?.code;
+  const param = candidate.param ?? candidate.raw?.param;
+
+  return (
+    candidate.type === "StripeInvalidRequestError" &&
+    code === "resource_missing" &&
+    param === "customer"
+  );
+}
+
+/**
  * Statuts Stripe qui ouvrent l'accès.
  *
  * `past_due` en fait partie volontairement : le paiement a échoué mais Stripe relance

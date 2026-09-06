@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PanelHeader } from "@/components/layout/Panel";
 import { LockedResults, SkeletonPanel } from "@/components/billing/locked-results";
 import { hasPaidAccess } from "@/lib/billing/access";
 import { EmptyState } from "@/components/tasks/empty-state";
@@ -74,8 +76,12 @@ export default async function StatistiquesPage() {
   if (!competitorRes.data && !competitorRes.error) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
-          <Header />
+        <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader
+            eyebrow="Statistiques"
+            title="Le terrain regagné"
+            lede="L'historique complet de tes écarts détectés, comblés et ignorés."
+          />
           <NoCompetitorState description="L'historique se remplit à chaque analyse. Ajoute un concurrent pour lancer la première." />
         </div>
       </AppShell>
@@ -87,8 +93,12 @@ export default async function StatistiquesPage() {
   if (!hasPaidAccess(profile?.subscription_tier)) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
-          <Header />
+        <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader
+            eyebrow="Statistiques"
+            title="Le terrain regagné"
+            lede="L'historique complet de tes écarts détectés, comblés et ignorés."
+          />
           <LockedResults
             title="Statistiques réservées aux offres payantes"
             description="Le bilan de tes écarts et l'évolution de ton score dans le temps s'ouvrent avec une offre payante."
@@ -105,17 +115,17 @@ export default async function StatistiquesPage() {
 
   return (
     <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-      <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
-        <Header />
+      <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
+        <PageHeader
+            eyebrow="Statistiques"
+            title="Le terrain regagné"
+            lede="L'historique complet de tes écarts détectés, comblés et ignorés."
+          />
 
         {/* Point focal : la vue d'ensemble commande les détails qui suivent. */}
-        <section className="panel-focal mb-5 overflow-hidden">
-          <div className="border-b border-white/[0.06] px-5 py-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              Vue d&rsquo;ensemble
-            </h2>
-          </div>
-          <div className="px-5 py-5">
+        <section className="panel-focal mb-6 overflow-hidden">
+          <PanelHeader title="Vue d'ensemble" />
+          <div className="px-6 py-6">
             {allGapsRes.error ? (
               <EmptyState
                 title="Impossible de charger les statistiques"
@@ -127,13 +137,9 @@ export default async function StatistiquesPage() {
           </div>
         </section>
 
-        <section className="panel mb-5 overflow-hidden">
-          <div className="border-b border-white/[0.06] px-5 py-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              Ton rythme
-            </h2>
-          </div>
-          <div className="px-5 py-5">
+        <section className="panel mb-6 overflow-hidden">
+          <PanelHeader title="Ton rythme" />
+          <div className="px-6 py-6">
             {allGapsRes.error || scoreRes.error ? (
               <EmptyState
                 title="Impossible de charger ces chiffres"
@@ -148,10 +154,9 @@ export default async function StatistiquesPage() {
           </div>
         </section>
 
-        <section className="panel px-5 py-4">
-          <h2 className="font-mono mb-4 text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-            Évolution du score
-          </h2>
+        <section className="panel overflow-hidden">
+          <PanelHeader title="Évolution du score" />
+          <div className="px-6 py-6">
           {scoreRes.error ? (
             <EmptyState
               title="Impossible de charger l'historique du score"
@@ -161,27 +166,15 @@ export default async function StatistiquesPage() {
             <ScoreChart points={scoreRes.data ?? []} />
           )}
           {!analysedForCurrentCompetitor && (scoreRes.data ?? []).length > 0 && (
-            <p className="mt-3 border-t border-white/[0.06] pt-3 text-xs leading-relaxed text-foreground-muted/70">
+            <p className="mt-4 border-t border-white/[0.08] pt-4 text-xs leading-relaxed text-mist/70">
               Ces relevés portent sur le concurrent suivi précédemment. La courbe repartira à
               la première analyse du concurrent actuel.
             </p>
           )}
+          </div>
         </section>
       </div>
     </AppShell>
   );
 }
 
-function Header() {
-  return (
-    <header className="mb-10 border-b border-surface-border pb-6">
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
-        Statistiques
-      </p>
-      <h1 className="font-display mt-2 text-2xl sm:text-[28px]">Le terrain regagné</h1>
-      <p className="mt-2 max-w-xl text-sm text-foreground-muted">
-        L&rsquo;historique complet de tes écarts détectés, comblés et ignorés.
-      </p>
-    </header>
-  );
-}

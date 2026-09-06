@@ -14,16 +14,20 @@ function CardBody({
 }) {
   return (
     <>
-      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-        {label}
-      </p>
+      <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist/60">{label}</p>
+      {/*
+        Le chiffre passe en Golos, comme la carte de score de la landing : en mono
+        il se lisait comme une sortie de terminal, alors que c'est la valeur que
+        l'écran met en avant. tabular-nums garde la chasse fixe d'un chiffre à
+        l'autre, ce que le mono assurait gratuitement.
+      */}
       <p
-        className="font-mono mt-2 truncate text-[28px] leading-tight tracking-tight text-foreground"
+        className="mt-2.5 truncate font-brand text-[1.9rem] font-bold leading-[1] tracking-[-0.035em] tabular-nums text-paper"
         title={value}
       >
         {value}
       </p>
-      {sublabel && <p className="mt-1.5 text-xs text-foreground-muted">{sublabel}</p>}
+      {sublabel && <p className="mt-2 text-xs text-mist">{sublabel}</p>}
       {action}
     </>
   );
@@ -47,7 +51,7 @@ export function MetricCard({
   /** Visible affordance for the link, so the card doesn't rely on hover alone. */
   linkLabel?: string;
 }) {
-  const base = "panel flex h-full flex-col justify-center px-5 py-4";
+  const base = "panel flex h-full flex-col justify-center px-5 py-5";
 
   if (!href) {
     return (
@@ -60,14 +64,14 @@ export function MetricCard({
   return (
     <Link
       href={href}
-      className={`${base} transition-colors hover:border-accent-strong/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+      className={`${base} transition-colors hover:border-signal-bright/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
     >
       <CardBody
         label={label}
         value={value}
         sublabel={sublabel}
         action={
-          <span className="mt-2 inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong">
+          <span className="mt-3 inline-flex items-center gap-1.5 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-signal-bright">
             {linkLabel ?? "Détail"}
             <span aria-hidden="true">→</span>
           </span>

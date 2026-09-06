@@ -5,6 +5,7 @@ import { TaskQueue } from "@/components/tasks/task-queue";
 import { EmptyState } from "@/components/tasks/empty-state";
 import { NoCompetitorState } from "@/components/competitor/no-competitor-state";
 import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { LockedResults, SkeletonList } from "@/components/billing/locked-results";
 import { hasPaidAccess } from "@/lib/billing/access";
 
@@ -58,24 +59,20 @@ export default async function TasksPage() {
 
   return (
     <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-      <div className="app-ambient relative mx-auto max-w-3xl px-6 py-16 sm:px-8">
-        <header className="mb-10 border-b border-surface-border pb-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
-            Tâches
-          </p>
-          <h1 className="font-display mt-2 text-2xl sm:text-[28px]">
-            Écarts à combler
-          </h1>
-          <p className="mt-2 text-sm text-foreground-muted">
-            {noCompetitor
+      <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
+        <PageHeader
+          eyebrow="Tâches"
+          title="Écarts à combler"
+          lede={
+            noCompetitor
               ? "Aucun concurrent suivi pour l'instant."
               : gaps.length === 0
                 ? "Aucun écart ouvert pour l'instant."
                 : `${gaps.length} écart${gaps.length > 1 ? "s" : ""} ouvert${
                     gaps.length > 1 ? "s" : ""
-                  }${highCount > 0 ? ` · ${highCount} en priorité haute` : ""}.`}
-          </p>
-        </header>
+                  }${highCount > 0 ? ` · ${highCount} en priorité haute` : ""}.`
+          }
+        />
 
         {error ? (
           <EmptyState

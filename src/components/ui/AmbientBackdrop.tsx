@@ -1,5 +1,11 @@
 /**
- * Le fond ambiant de la landing.
+ * Le fond ambiant du site — landing et écrans connectés.
+ *
+ * Partagé plutôt que dupliqué : c'est ce qui fait que passer de la page
+ * d'accueil au tableau de bord ne ressemble pas à changer de produit. Il a
+ * remplacé `.app-ambient`, un halo `absolute` posé par chaque conteneur de
+ * page : deux atmosphères différentes de part et d'autre de la connexion, et
+ * un halo qui repartait du haut à chaque écran au lieu de tenir la fenêtre.
  *
  * Trois halos très flous qui dérivent, une grille qui glisse, une vignette qui
  * referme les bords. `fixed` et non `absolute` : le fond ne défile pas avec le

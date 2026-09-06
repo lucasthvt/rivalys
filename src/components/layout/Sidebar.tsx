@@ -69,7 +69,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col overflow-y-auto border-r border-surface-border bg-surface transition-transform duration-200 ease-out motion-reduce:transition-none md:sticky md:top-0 md:bottom-auto md:z-auto md:h-screen md:visible md:translate-x-0 ${
+      className={`fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col overflow-y-auto border-r border-white/[0.08] bg-void-raised/70 backdrop-blur-xl transition-transform duration-200 ease-out motion-reduce:transition-none md:sticky md:top-0 md:bottom-auto md:z-auto md:h-screen md:visible md:translate-x-0 ${
         drawerOpen ? "visible translate-x-0" : "invisible -translate-x-full"
       }`}
     >
@@ -79,7 +79,7 @@ export function Sidebar({
           type="button"
           onClick={onClose}
           aria-label="Fermer le menu"
-          className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg text-mist transition-colors hover:bg-surface-hover hover:text-paper md:hidden"
+          className="-mr-1 flex h-8 w-8 items-center justify-center rounded-xl text-mist transition-colors hover:bg-white/[0.04] hover:text-paper md:hidden"
         >
           <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
             <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -97,10 +97,10 @@ export function Sidebar({
               href={item.href}
               onClick={onClose}
               aria-current={isActive ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-surface-hover text-paper"
-                  : "text-mist hover:bg-surface-hover hover:text-paper"
+                  ? "bg-white/[0.055] text-paper"
+                  : "text-mist hover:bg-white/[0.03] hover:text-paper"
               }`}
             >
               <Icon className={isActive ? "text-signal-bright" : "text-mist"} />
@@ -110,7 +110,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-surface-border px-3 py-4">
+      <div className="border-t border-white/[0.08] px-3 py-4">
         <div className="flex items-center justify-between gap-2 px-3">
           <p className="truncate text-sm text-paper" title={userLabel}>
             {userLabel}
@@ -124,7 +124,7 @@ export function Sidebar({
             <span
               className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] ${
                 tier === "starter"
-                  ? "border-surface-border text-mist"
+                  ? "border-white/[0.14] text-mist"
                   : "border-signal-bright/40 text-signal-bright"
               }`}
             >
@@ -138,7 +138,7 @@ export function Sidebar({
         */}
         {tier && tier !== "starter" ? (
           <div className="mt-2">
-            <ManageBillingButton className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-surface-hover hover:text-paper disabled:opacity-50" />
+            <ManageBillingButton className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-white/[0.03] hover:text-paper disabled:opacity-50" />
           </div>
         ) : null}
 
@@ -146,7 +146,7 @@ export function Sidebar({
           type="button"
           onClick={handleSignOut}
           disabled={signingOut}
-          className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-surface-hover hover:text-paper disabled:opacity-50"
+          className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-white/[0.03] hover:text-paper disabled:opacity-50"
         >
           <LogoutIcon className="text-mist" />
           {signingOut ? "Déconnexion..." : "Se déconnecter"}

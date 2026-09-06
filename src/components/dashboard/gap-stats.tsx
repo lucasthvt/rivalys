@@ -60,9 +60,11 @@ function StatTile({
 
 function StatTileBody({ value, label }: { value: string; label: string; selected?: boolean }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
-      <p className="font-mono text-[22px] leading-tight text-foreground">{value}</p>
-      <p className="mt-1 text-xs text-foreground-muted">{label}</p>
+    <div className="rounded-xl border border-white/[0.1] bg-white/[0.02] px-4 py-3.5">
+      <p className="font-brand text-[1.75rem] font-bold leading-[1] tracking-[-0.035em] tabular-nums text-paper">
+        {value}
+      </p>
+      <p className="mt-2 text-xs text-mist">{label}</p>
     </div>
   );
 }
@@ -117,9 +119,9 @@ export function GapStats({ allGaps }: GapStatsInput) {
 
   if (totalDetected === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-white/10 px-5 py-10 text-center">
-        <p className="text-sm font-medium text-foreground">Pas encore de statistiques</p>
-        <p className="mx-auto mt-1 max-w-sm text-sm text-foreground-muted">
+      <div className="rounded-xl border border-dashed border-white/10 px-5 py-12 text-center">
+        <p className="text-sm font-medium text-paper">Pas encore de statistiques</p>
+        <p className="mx-auto mt-1.5 max-w-sm text-sm text-mist">
           Elles apparaîtront dès qu&rsquo;une analyse aura détecté des écarts. Lance
           «&nbsp;Actualiser&nbsp;» pour lancer une comparaison.
         </p>
@@ -158,7 +160,7 @@ export function GapStats({ allGaps }: GapStatsInput) {
         />
       </div>
 
-      <p className="mt-4 text-sm text-foreground-muted">
+      <p className="mt-5 text-sm text-mist">
         {closedThisMonth > 0
           ? `${closedThisMonth} écart${closedThisMonth > 1 ? "s" : ""} fermé${
               closedThisMonth > 1 ? "s" : ""
@@ -167,7 +169,7 @@ export function GapStats({ allGaps }: GapStatsInput) {
         {closedWithoutDate > 0 && (
           <>
             {" "}
-            <span className="text-foreground-muted/70">
+            <span className="text-mist/70">
               ({closedWithoutDate} écart{closedWithoutDate > 1 ? "s" : ""} fermé
               {closedWithoutDate > 1 ? "s" : ""} avant le suivi des dates, non compté
               {closedWithoutDate > 1 ? "s" : ""} ici.)
@@ -177,14 +179,14 @@ export function GapStats({ allGaps }: GapStatsInput) {
       </p>
 
       {byCategory.length === 0 && status !== null && (
-        <p className="mt-6 text-sm text-foreground-muted">
+        <p className="mt-6 text-sm text-mist">
           Aucun écart {STATUS_LABEL[status]} pour l&rsquo;instant.
         </p>
       )}
 
       {byCategory.length > 0 && (
         <div className="mt-6">
-          <p className="font-mono mb-3 text-[11px] uppercase tracking-[0.14em] text-foreground-muted/70">
+          <p className="font-mono mb-4 text-[0.62rem] uppercase tracking-[0.14em] text-mist/60">
             Par catégorie
             {status !== null && (
               <span className="text-signal-bright"> · {STATUS_LABEL[status]}</span>
@@ -199,15 +201,15 @@ export function GapStats({ allGaps }: GapStatsInput) {
               const percent = Math.round((row.total / Math.max(scopedTotal, 1)) * 100);
               return (
                 <li key={row.category} className="flex items-center gap-3">
-                  <span className="w-32 shrink-0 text-sm text-foreground-muted">
+                  <span className="w-32 shrink-0 text-sm text-mist">
                     {CATEGORY_LABEL[row.category]}
                   </span>
                   <span
-                    className="h-1.5 min-w-[2px] rounded-full bg-accent-strong"
+                    className="meter-fill h-1.5 min-w-[2px] rounded-full bg-signal-bright"
                     style={{ width: `${percent}%` }}
                     aria-hidden="true"
                   />
-                  <span className="font-mono text-xs text-foreground-muted">
+                  <span className="font-mono text-xs tabular-nums text-mist">
                     {row.total} · {row.open} ouvert{row.open > 1 ? "s" : ""}
                   </span>
                 </li>

@@ -113,7 +113,7 @@ export function TaskQueue({ gaps }: { gaps: DetectedGap[] }) {
       />
 
       {error && (
-        <p role="status" className="panel mt-5 px-5 py-3 text-sm text-flare">
+        <p role="status" className="panel mt-6 px-6 py-4 text-sm text-flare">
           {error}
         </p>
       )}
@@ -121,10 +121,10 @@ export function TaskQueue({ gaps }: { gaps: DetectedGap[] }) {
       {closure && (
         <div
           role="status"
-          className="panel mt-5 flex flex-wrap items-center justify-between gap-3 px-5 py-3"
+          className="panel mt-6 flex flex-wrap items-center justify-between gap-3 px-6 py-4"
         >
-          <p className="text-sm text-foreground-muted">
-            <span className="text-foreground">
+          <p className="text-sm text-mist">
+            <span className="text-paper">
               {closure.action === "done" ? "Marqué comme fait" : "Ignoré"}
             </span>{" "}
             — « {closure.gap.title} »
@@ -133,7 +133,7 @@ export function TaskQueue({ gaps }: { gaps: DetectedGap[] }) {
             type="button"
             onClick={undo}
             disabled={isPending}
-            className="rounded-full border border-surface-border px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground transition-colors hover:border-accent-strong hover:text-signal-bright disabled:opacity-40"
+            className="rounded-full border border-white/[0.14] px-4 py-1.5 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-paper transition-colors hover:border-signal-bright/50 hover:text-signal-bright disabled:opacity-40"
           >
             Annuler
           </button>
@@ -141,23 +141,34 @@ export function TaskQueue({ gaps }: { gaps: DetectedGap[] }) {
       )}
 
       {visible.length === 0 ? (
-        <p className="panel mt-5 px-5 py-10 text-center text-sm text-foreground-muted">
+        <p className="panel mt-6 px-6 py-12 text-center text-sm text-mist">
           {filtered
             ? "Aucun écart ne correspond à ce filtre."
             : "Plus rien dans la file. Tout ce qui était ouvert a été traité."}
         </p>
       ) : (
-        <div className="mt-5">
-          <GapListItem gap={visible[0]} focal onDone={close} busy={isPending} />
+        <div className="mt-6">
+          <GapListItem gap={visible[0]} focal index={0} onDone={close} busy={isPending} />
 
+          {/*
+            Le reste de la file n'est plus enfermé dans un panneau : des rangs
+            séparés par un filet, comme les listes de la landing. Un panneau
+            autour d'une liste déjà bordée ajoutait un cadre sans rien distinguer,
+            et il mettait le premier écart — celui qui a sa propre lueur — au même
+            niveau visuel que le bloc qui le suit.
+          */}
           {visible.length > 1 && (
-            <div className="panel px-5">
-              <ul>
-                {visible.slice(1).map((gap) => (
-                  <GapListItem key={gap.id} gap={gap} onDone={close} busy={isPending} />
-                ))}
-              </ul>
-            </div>
+            <ul className="border-b border-white/[0.1]">
+              {visible.slice(1).map((gap, position) => (
+                <GapListItem
+                  key={gap.id}
+                  gap={gap}
+                  index={position + 1}
+                  onDone={close}
+                  busy={isPending}
+                />
+              ))}
+            </ul>
           )}
         </div>
       )}
@@ -214,7 +225,7 @@ function Filters({
           <button
             type="button"
             onClick={onClear}
-            className="ml-1 font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong transition-colors hover:text-foreground"
+            className="ml-1 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-signal-bright transition-colors hover:text-paper"
           >
             Tout voir
           </button>
@@ -259,17 +270,21 @@ function Chip({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={selected}
-      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors disabled:cursor-default disabled:opacity-30 ${
+      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 font-mono text-[0.66rem] uppercase tracking-[0.1em] transition-colors disabled:cursor-default disabled:opacity-30 ${
         selected
-          ? "border-signal-bright/45 bg-signal/15 text-foreground"
-          : "border-surface-border text-foreground-muted hover:border-accent-strong/40 hover:text-foreground"
+          ? "border-signal-bright/45 bg-signal/15 text-paper"
+          : "border-white/[0.14] text-mist hover:border-signal-bright/40 hover:text-paper"
       }`}
     >
       {dot && (
-        <span aria-hidden className="h-2.5 w-1 shrink-0 rounded-full" style={{ backgroundColor: dot }} />
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: dot }}
+        />
       )}
       {label}
-      <span className="tabular-nums text-foreground-muted/60">{count}</span>
+      <span className="tabular-nums text-mist/60">{count}</span>
     </button>
   );
 }

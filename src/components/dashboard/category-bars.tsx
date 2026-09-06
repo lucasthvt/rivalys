@@ -46,7 +46,7 @@ export function CategoryBars({
 
   if (!analysed) {
     return (
-      <p className="text-sm text-foreground-muted">
+      <p className="text-sm text-mist">
         Rien à répartir tant qu&rsquo;aucune analyse n&rsquo;a tourné sur ce concurrent.
       </p>
     );
@@ -57,8 +57,8 @@ export function CategoryBars({
       {rows.map((row) => (
         <li key={row.category}>
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-sm text-foreground">{CATEGORY_LABEL[row.category]}</span>
-            <span className="font-mono text-sm text-foreground-muted">
+            <span className="text-sm text-paper">{CATEGORY_LABEL[row.category]}</span>
+            <span className="font-mono text-sm tabular-nums text-mist">
               {row.pointsLost === 0 ? "0" : `−${row.pointsLost}`} pt
               {row.pointsLost > 1 ? "s" : ""}
             </span>
@@ -73,7 +73,7 @@ export function CategoryBars({
             )}
           </div>
 
-          <p className="mt-1.5 text-xs text-foreground-muted/70">
+          <p className="mt-2 text-xs text-mist/70">
             {row.count === 0
               ? "Aucun écart ouvert"
               : `${row.count} écart${row.count > 1 ? "s" : ""} ouvert${row.count > 1 ? "s" : ""}`}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Logo } from "@/components/brand/Logo";
+import { AmbientBackdrop } from "@/components/ui/AmbientBackdrop";
 import { Sidebar } from "./Sidebar";
 import type { SubscriptionTier } from "@/lib/supabase/database.types";
 
@@ -52,7 +53,15 @@ export function AppShell({
   // déduit sa hauteur.
   return (
     <div className="flex min-h-screen flex-1 flex-col md:flex-row">
-      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-surface-border bg-surface px-4 md:hidden">
+      {/*
+        La même atmosphère que la landing, posée une fois pour tout le produit
+        connecté plutôt qu'une par écran. Fixe : elle ne défile pas, donc les six
+        écrans passent devant une lumière stable au lieu d'en rallumer une à
+        chaque navigation.
+      */}
+      <AmbientBackdrop />
+
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.08] bg-void-raised/70 px-4 backdrop-blur-xl md:hidden">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}

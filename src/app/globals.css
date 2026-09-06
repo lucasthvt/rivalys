@@ -386,36 +386,6 @@ body {
     0 28px 64px -36px color-mix(in srgb, var(--color-signal) 70%, transparent);
 }
 
-/* Halo ambiant en haut de page, repris du hero de la landing. Purement
-   atmosphérique, sous le contenu, sans interception de pointeur. */
-/* Halo ambiant, repris du hero de la landing.
-   DEUX sources dans un seul pseudo-élément, et c'est structurel : `::before` est
-   le premier enfant, donc le contenu peint par-dessus. Une seconde source posée
-   dans `::after` peindrait au contraire SUR les panneaux, et la sortir de la pile
-   avec `z-index: -1` la fait disparaître derrière le fond opaque de l'ancêtre —
-   vérifié, elle devenait invisible.
-   La source basse existe parce que le halo du haut s'arrêtait à la ligne de
-   flottaison : tout le reste d'une page de tableau de bord retombait sur du noir
-   plat. Elle est trois fois plus faible que celle du haut — elle doit se sentir,
-   pas se voir. */
-.app-ambient::before {
-  content: "";
-  position: absolute;
-  inset: -8rem 0 0 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      46rem 20rem at 30% 8rem,
-      color-mix(in srgb, var(--color-signal) 38%, transparent),
-      transparent 72%
-    ),
-    radial-gradient(
-      40rem 18rem at 78% 100%,
-      color-mix(in srgb, var(--color-signal) 12%, transparent),
-      transparent 70%
-    );
-}
-
 .meter-hatch {
   background-image: repeating-linear-gradient(
     -45deg,

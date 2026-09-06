@@ -16,15 +16,23 @@ import { GapDescription } from "./gap-description";
  * premier écart de la liste, celui par lequel commencer : une liste où chaque
  * ligne a le même poids ne dit pas par où attaquer, alors que le tri, lui, le
  * sait déjà.
+ *
+ * `index` affiche le rang dans la file, comme les rangs numérotés de la landing
+ * (les quatre familles, les neuf questions). Ce n'est pas un ornement : la file
+ * est triée par priorité, et un numéro rend cet ordre visible au lieu de le
+ * laisser deviner à la couleur des pastilles.
  */
 export function GapListItem({
   gap,
   focal = false,
+  index,
   onDone,
   busy = false,
 }: {
   gap: DetectedGap;
   focal?: boolean;
+  /** Rang dans la file, 0-indexé. Absent : aucun numéro n'est affiché. */
+  index?: number;
   /**
    * Fermeture pilotée par le parent, qui gère alors le retrait optimiste et
    * l'annulation. Absent, la ligne retombe sur GapActions, qui agit seule et
@@ -38,43 +46,55 @@ export function GapListItem({
     <li
       className={
         focal
-          ? "panel-focal mb-5 list-none px-5 py-6"
-          : "border-b border-surface-border py-5 last:border-b-0"
+          ? "panel-focal mb-6 list-none p-6 sm:p-7"
+          : "border-t border-white/[0.1] py-6 transition-colors hover:bg-white/[0.022]"
       }
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <PriorityBadge priority={gap.priority} />
-        <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-foreground-muted/70">
-          {CATEGORY_LABEL[gap.category]}
-        </span>
-      </div>
-
-      <h3 className="mt-3 text-[15px] font-medium leading-snug text-foreground">{gap.title}</h3>
-      <GapDescription text={gap.description} />
-
-      <div className="mt-4">
-        {onDone ? (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onDone(gap, "done")}
-              className="rounded-full border border-surface-border px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground transition-colors hover:border-accent-strong hover:bg-accent/10 hover:text-signal-bright disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Fait
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onDone(gap, "dismiss")}
-              className="rounded-full px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-foreground-muted/70 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Ignorer
-            </button>
-          </div>
-        ) : (
-          <GapActions gapId={gap.id} />
+      <div className="flex items-baseline gap-4">
+        {index === undefined ? null : (
+          <span aria-hidden="true" className="font-mono text-[0.68rem] text-signal-bright">
+            {String(index + 1).padStart(2, "0")}
+          </span>
         )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <PriorityBadge priority={gap.priority} />
+            <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-mist/60">
+              {CATEGORY_LABEL[gap.category]}
+            </span>
+          </div>
+
+          <h3 className="mt-3 font-brand text-[1.05rem] font-medium leading-snug tracking-[-0.01em] text-paper">
+            {gap.title}
+          </h3>
+          <GapDescription text={gap.description} />
+
+          <div className="mt-5">
+            {onDone ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onDone(gap, "done")}
+                  className="rounded-full border border-white/[0.14] px-4 py-1.5 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-paper transition-colors hover:border-signal-bright/50 hover:bg-signal/15 hover:text-signal-bright disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Fait
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onDone(gap, "dismiss")}
+                  className="rounded-full px-4 py-1.5 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-mist/70 transition-colors hover:text-paper disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Ignorer
+                </button>
+              </div>
+            ) : (
+              <GapActions gapId={gap.id} />
+            )}
+          </div>
+        </div>
       </div>
     </li>
   );

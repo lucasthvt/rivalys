@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PanelHeader } from "@/components/layout/Panel";
 import { LockedResults, SkeletonPanel } from "@/components/billing/locked-results";
 import { hasPaidAccess } from "@/lib/billing/access";
 import { EmptyState } from "@/components/tasks/empty-state";
@@ -66,8 +67,13 @@ export default async function ScorePage() {
   if (gapsRes.error) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
-          <Header />
+        <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader
+            eyebrow="Score"
+            title="Pourquoi ce score"
+            lede="Le calcul complet, sans boîte noire."
+            back={{ href: "/dashboard", label: "Tableau de bord" }}
+          />
           <EmptyState
             title="Impossible de calculer le détail du score"
             description={gapsRes.error.message}
@@ -83,8 +89,13 @@ export default async function ScorePage() {
   if (!competitorRes.data && !competitorRes.error) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
-          <Header />
+        <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader
+            eyebrow="Score"
+            title="Pourquoi ce score"
+            lede="Le calcul complet, sans boîte noire."
+            back={{ href: "/dashboard", label: "Tableau de bord" }}
+          />
           <NoCompetitorState description="Le score mesure ce qu'il te reste à rattraper face à un concurrent. Tant qu'aucun n'est suivi, il n'y a rien à calculer." />
         </div>
       </AppShell>
@@ -96,8 +107,13 @@ export default async function ScorePage() {
   if (!hasPaidAccess(profile?.subscription_tier)) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
-          <Header />
+        <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader
+            eyebrow="Score"
+            title="Pourquoi ce score"
+            lede="Le calcul complet, sans boîte noire."
+            back={{ href: "/dashboard", label: "Tableau de bord" }}
+          />
           <LockedResults
             title="Détail du score réservé aux offres payantes"
             description="Le calcul complet — chaque écart, son poids, et ce que le concurrent fait mieux — s'ouvre avec une offre payante."
@@ -173,8 +189,13 @@ export default async function ScorePage() {
 
   return (
     <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-      <div className="app-ambient relative mx-auto max-w-4xl px-6 py-16 sm:px-8">
-        <Header />
+      <div className="relative mx-auto w-full max-w-4xl px-6 py-14 sm:px-8 lg:py-16">
+        <PageHeader
+            eyebrow="Score"
+            title="Pourquoi ce score"
+            lede="Le calcul complet, sans boîte noire."
+            back={{ href: "/dashboard", label: "Tableau de bord" }}
+          />
 
         {/*
           Point focal de l'écran, et désormais le pilote des deux sections qui suivent :
@@ -187,12 +208,14 @@ export default async function ScorePage() {
         {analysedForCurrentCompetitor ? (
           <ScoreExplorer gaps={gaps} competitorLabel={competitorLabel} />
         ) : (
-          <section className="panel-focal mb-5 px-5 py-6">
-            <div className="flex flex-wrap items-baseline gap-3">
-              <span className="font-mono text-[44px] leading-none text-foreground">—</span>
-              <span className="font-mono text-sm text-foreground-muted">/ {MAX_SCORE}</span>
+          <section className="panel-focal mb-6 p-6 sm:p-8">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="font-brand text-[3.2rem] font-bold leading-[0.9] tracking-[-0.05em] tabular-nums text-mist/50 sm:text-[4rem]">
+                —
+              </span>
+              <span className="font-mono text-sm text-mist/60">/{MAX_SCORE}</span>
             </div>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-foreground-muted">
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-mist">
               {competitorLabel} n&rsquo;a pas encore été analysé, il n&rsquo;y a donc rien à
               calculer. Lance une analyse depuis le tableau de bord pour obtenir un score.
             </p>
@@ -200,13 +223,9 @@ export default async function ScorePage() {
         )}
 
         <section className="panel overflow-hidden">
-          <div className="border-b border-white/[0.06] px-5 py-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              Ce que tu as et qu&rsquo;il n&rsquo;a pas
-            </h2>
-          </div>
+          <PanelHeader title="Ce que tu as et qu'il n'a pas" />
 
-          <p className="border-b border-white/[0.06] px-5 py-4 text-sm leading-relaxed text-foreground-muted">
+          <p className="border-b border-white/[0.08] px-6 py-5 text-sm leading-relaxed text-mist">
             {competitorLabel} n&rsquo;a pas de score. On observe uniquement ses pages publiques, ce
             qui ne permet pas de noter son produit sans inventer. En revanche, les mêmes règles
             appliquées dans l&rsquo;autre sens montrent où tu es devant — sans que cela n&rsquo;entre
@@ -214,7 +233,7 @@ export default async function ScorePage() {
           </p>
 
           {advantages.length === 0 ? (
-            <div className="px-5 py-8">
+            <div className="px-6 py-10">
               <EmptyState
                 title="Aucun avantage détecté pour l'instant"
                 description={`Sur les critères publics comparés (pricing, essai gratuit, palier gratuit, réseaux sociaux), rien ne te place devant ${competitorLabel} aujourd'hui.`}
@@ -225,18 +244,21 @@ export default async function ScorePage() {
               {advantages.map((advantage) => (
                 <li
                   key={advantage.title}
-                  className="border-b border-white/[0.06] px-5 py-4 last:border-b-0"
+                  className="border-b border-white/[0.08] px-6 py-5 transition-colors last:border-b-0 hover:bg-white/[0.022]"
                 >
-                  <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 border border-surface-border bg-mint/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-mint">
+                  <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <span className="inline-flex items-center gap-2 font-mono text-[0.64rem] uppercase tracking-[0.1em] text-mint">
+                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-mint" />
                       Avantage
                     </span>
-                    <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-foreground-muted/70">
+                    <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-mist/60">
                       {CATEGORY_LABEL[advantage.category]}
                     </span>
                   </div>
-                  <p className="text-[15px] text-foreground">{advantage.title}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-foreground-muted">
+                  <p className="font-brand text-[1.05rem] font-medium leading-snug tracking-[-0.01em] text-paper">
+                    {advantage.title}
+                  </p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-mist">
                     {advantage.description}
                   </p>
                 </li>
@@ -246,23 +268,6 @@ export default async function ScorePage() {
         </section>
       </div>
     </AppShell>
-  );
-}
-
-function Header() {
-  return (
-    <header className="mb-10 border-b border-surface-border pb-6">
-      <Link
-        href="/dashboard"
-        className="font-mono text-[11px] uppercase tracking-[0.14em] text-foreground-muted transition-colors hover:text-foreground"
-      >
-        ← Tableau de bord
-      </Link>
-      <h1 className="font-display mt-3 text-2xl sm:text-[28px]">Pourquoi ce score</h1>
-      <p className="mt-2 text-sm text-foreground-muted">
-        Le calcul complet, sans boîte noire.
-      </p>
-    </header>
   );
 }
 

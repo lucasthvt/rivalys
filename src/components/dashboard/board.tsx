@@ -100,7 +100,7 @@ export function Board({
   return (
     <div className="flex flex-col gap-5">
       {error && (
-        <p role="status" className="panel px-5 py-3 text-sm text-flare">
+        <p role="status" className="panel px-6 py-4 text-sm text-flare">
           {error}
         </p>
       )}
@@ -182,14 +182,14 @@ function ScorePanel({
   // Le plateau n'en avait aucune : six panneaux au même niveau de lumière ne disent
   // pas par où commencer, et c'est exactement ce que l'écran doit dire.
   return (
-    <section className="panel-focal flex flex-col items-center px-5 py-6" aria-label="Score">
+    <section className="panel-focal flex flex-col items-center px-6 py-7" aria-label="Score">
       <ScoreRing score={analysed ? score : null} delta={delta} size={150} />
 
       {projectionMoves && (
-        <p className="mt-4 text-center text-xs leading-relaxed text-foreground-muted">
+        <p className="mt-5 text-center text-xs leading-relaxed text-mist">
           Prochaine analyse :{" "}
-          <span className="font-mono text-signal-bright tabular-nums">{projected}</span>
-          <span className="block text-foreground-muted/60">si ces fermetures tiennent</span>
+          <span className="font-mono tabular-nums text-signal-bright">{projected}</span>
+          <span className="block text-mist/60">si ces fermetures tiennent</span>
         </p>
       )}
 
@@ -198,8 +198,8 @@ function ScorePanel({
         exactement la population qu'il filtre, donc cliquer dessus pour n'en voir que
         celle-là est le geste que le chiffre appelle déjà.
       */}
-      <div className="mt-6 w-full border-t border-white/[0.06] pt-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-foreground-muted/60">
+      <div className="mt-7 w-full border-t border-white/[0.08] pt-5">
+        <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist/60">
           {filter ? "Filtre actif" : "Filtrer la file"}
         </p>
 
@@ -216,20 +216,20 @@ function ScorePanel({
                   aria-pressed={selected}
                   disabled={count === 0}
                   onClick={() => onFilter(selected ? null : priority)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors disabled:cursor-default disabled:opacity-35 ${
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors disabled:cursor-default disabled:opacity-35 ${
                     selected
                       ? "bg-signal/15 ring-1 ring-signal-bright/40"
-                      : "hover:bg-white/[0.04] disabled:hover:bg-transparent"
+                      : "hover:bg-white/[0.035] disabled:hover:bg-transparent"
                   }`}
                 >
                   <span
                     aria-hidden
-                    className="h-3 w-1 shrink-0 rounded-full"
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
                     style={{ backgroundColor: PRIORITY_COLOR[priority] }}
                   />
-                  <span className="flex-1 text-sm text-foreground">{PRIORITY_LABEL[priority]}</span>
-                  <span className="font-mono text-sm tabular-nums text-foreground">{count}</span>
-                  <span className="font-mono w-12 text-right text-[11px] tabular-nums text-foreground-muted/60">
+                  <span className="flex-1 text-sm text-paper">{PRIORITY_LABEL[priority]}</span>
+                  <span className="font-mono text-sm tabular-nums text-paper">{count}</span>
+                  <span className="font-mono w-12 text-right text-[0.7rem] tabular-nums text-mist/60">
                     {lost === 0 ? "—" : `−${lost}`}
                   </span>
                 </button>
@@ -269,15 +269,15 @@ function GapQueue({
 }) {
   return (
     <section className="panel flex flex-col overflow-hidden" aria-label="Écarts ouverts">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-4">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] px-6 py-4">
+        <h2 className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist/60">
           {filter ? `${PRIORITY_LABEL[filter]} · ${gaps.length} sur ${total}` : `À traiter · ${total}`}
         </h2>
         {filter && (
           <button
             type="button"
             onClick={onClearFilter}
-            className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong transition-colors hover:text-foreground"
+            className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-signal-bright transition-colors hover:text-paper"
           >
             Tout voir
           </button>
@@ -285,8 +285,8 @@ function GapQueue({
       </header>
 
       {gaps.length === 0 ? (
-        <div className="px-5 py-12 text-center">
-          <p className="text-sm text-foreground-muted">
+        <div className="px-6 py-14 text-center">
+          <p className="text-sm text-mist">
             {!analysed
               ? "Lance une première analyse pour voir apparaître tes écarts."
               : filter
@@ -295,7 +295,7 @@ function GapQueue({
           </p>
         </div>
       ) : (
-        <ul className="flex flex-col divide-y divide-white/[0.06]">
+        <ul className="flex flex-col divide-y divide-white/[0.08]">
           {gaps.map((gap) => {
             const highlighted = linked !== null && gap.category === linked;
 
@@ -304,8 +304,8 @@ function GapQueue({
                 key={gap.id}
                 onMouseEnter={() => onLink(gap.category)}
                 onMouseLeave={() => onLink(null)}
-                className={`px-5 py-4 transition-colors ${
-                  highlighted ? "bg-signal/[0.09]" : ""
+                className={`px-6 py-5 transition-colors ${
+                  highlighted ? "bg-signal/[0.09]" : "hover:bg-white/[0.022]"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -313,17 +313,19 @@ function GapQueue({
                     <p className="flex flex-wrap items-center gap-2">
                       <span
                         aria-hidden
-                        className="h-3 w-1 shrink-0 rounded-full"
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
                         style={{ backgroundColor: PRIORITY_COLOR[gap.priority] }}
                       />
-                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground-muted/70">
+                      <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-mist">
                         {PRIORITY_LABEL[gap.priority]}
                       </span>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground-muted/45">
+                      <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-mist/45">
                         {CATEGORY_LABEL[gap.category]}
                       </span>
                     </p>
-                    <p className="mt-2 text-[0.95rem] leading-snug text-foreground">{gap.title}</p>
+                    <p className="mt-2.5 font-brand text-[1.02rem] font-medium leading-snug tracking-[-0.01em] text-paper">
+                      {gap.title}
+                    </p>
                   </div>
 
                   {/*
@@ -335,7 +337,7 @@ function GapQueue({
                       type="button"
                       disabled={busy}
                       onClick={() => onResolve(gap.id, "done")}
-                      className="rounded-full border border-surface-border px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-foreground transition-colors hover:border-accent-strong hover:bg-accent/10 hover:text-signal-bright disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full border border-white/[0.14] px-3.5 py-1.5 font-mono text-[0.64rem] uppercase tracking-[0.1em] text-paper transition-colors hover:border-signal-bright/50 hover:bg-signal/15 hover:text-signal-bright disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Fait
                     </button>
@@ -343,7 +345,7 @@ function GapQueue({
                       type="button"
                       disabled={busy}
                       onClick={() => onResolve(gap.id, "dismiss")}
-                      className="rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-foreground-muted/70 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full px-3 py-1.5 font-mono text-[0.64rem] uppercase tracking-[0.1em] text-mist/70 transition-colors hover:text-paper disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Ignorer
                     </button>
@@ -355,10 +357,10 @@ function GapQueue({
         </ul>
       )}
 
-      <footer className="mt-auto border-t border-white/[0.06] px-5 py-3">
+      <footer className="mt-auto border-t border-white/[0.08] px-6 py-4">
         <Link
           href="/tasks"
-          className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong transition-colors hover:text-foreground"
+          className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-signal-bright transition-colors hover:text-paper"
         >
           Toutes les tâches, description comprise →
         </Link>
@@ -386,25 +388,25 @@ function CotedFaceOff({
 }) {
   return (
     <section className="panel overflow-hidden" aria-labelledby="releve-title">
-      <div className="grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,1fr)] items-baseline gap-x-3 border-b border-white/[0.06] px-5 py-4 sm:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)] sm:gap-x-5">
-        <p className="text-right font-mono text-[11px] uppercase tracking-[0.16em] text-signal-bright">
+      <div className="grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,1fr)] items-baseline gap-x-3 border-b border-white/[0.08] px-6 py-4 sm:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)] sm:gap-x-5">
+        <p className="text-right font-mono text-[0.62rem] uppercase tracking-[0.14em] text-signal-bright">
           Toi
         </p>
         <h2
           id="releve-title"
-          className="text-center font-mono text-[10px] uppercase tracking-[0.16em] text-foreground-muted/60"
+          className="text-center font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist/60"
         >
           Relevé coté
         </h2>
         <p
-          className="truncate font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted"
+          className="truncate font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist"
           title={competitorLabel}
         >
           {competitorLabel}
         </p>
       </div>
 
-      <ul className="flex flex-col divide-y divide-white/[0.06]">
+      <ul className="flex flex-col divide-y divide-white/[0.08]">
         {rows.map((row) => {
           const highlighted = linked !== null && row.category === linked;
 
@@ -413,24 +415,36 @@ function CotedFaceOff({
               key={row.key}
               onMouseEnter={() => onLink(row.category)}
               onMouseLeave={() => onLink(null)}
-              className={`grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,1fr)] items-center gap-x-3 px-5 py-4 transition-colors sm:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)] sm:gap-x-5 ${
-                highlighted ? "bg-signal/[0.09]" : ""
+              className={`grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,1fr)] items-center gap-x-3 px-6 py-5 transition-colors sm:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)] sm:gap-x-5 ${
+                highlighted ? "bg-signal/[0.09]" : "hover:bg-white/[0.022]"
               }`}
             >
-              <Cell value={row.own.value} detail={row.own.detail} align="right" />
+              {/*
+                La valeur qui ouvre l'écart est teintée, comme dans la carte de relevé
+                du hero de la landing : sans ça, les deux colonnes se lisent à poids
+                égal et il faut relire l'annotation centrale pour savoir de quel côté
+                penche la ligne. Le flare ne sort que quand c'est toi qui es derrière —
+                c'est le seul emploi que le projet lui accorde.
+              */}
+              <Cell
+                value={row.own.value}
+                detail={row.own.detail}
+                align="right"
+                tone={row.state === "gap" && row.behind ? "flare" : "default"}
+              />
 
               <div className="flex flex-col items-center gap-1.5">
-                <span className="text-center font-mono text-[9px] uppercase leading-tight tracking-[0.1em] text-foreground-muted/60">
+                <span className="text-center font-mono text-[0.56rem] uppercase leading-tight tracking-[0.1em] text-mist/60">
                   {row.label}
                 </span>
                 <DimensionLine measured={row.state === "gap"} />
                 <span
-                  className={`text-center font-mono text-[10px] uppercase leading-tight tracking-[0.06em] ${
+                  className={`text-center font-mono text-[0.62rem] uppercase leading-tight tracking-[0.06em] ${
                     row.state === "gap"
                       ? row.behind
-                        ? "text-signal-bright"
+                        ? "text-flare"
                         : "text-mint"
-                      : "text-foreground-muted/45"
+                      : "text-mist/45"
                   }`}
                 >
                   {row.state === "gap"
@@ -441,13 +455,18 @@ function CotedFaceOff({
                 </span>
               </div>
 
-              <Cell value={row.competitor.value} detail={row.competitor.detail} align="left" />
+              <Cell
+                value={row.competitor.value}
+                detail={row.competitor.detail}
+                align="left"
+                tone={row.state === "gap" && !row.behind ? "mint" : "default"}
+              />
             </li>
           );
         })}
       </ul>
 
-      <p className="border-t border-white/[0.06] px-5 py-3 text-xs leading-relaxed text-foreground-muted/70">
+      <p className="border-t border-white/[0.08] px-6 py-4 text-xs leading-relaxed text-mist/70">
         Une ligne cotée annonce un écart mesuré ; un trait pointillé, deux valeurs égales.
         « Non relevé » veut dire qu&rsquo;un des deux côtés n&rsquo;a pas pu être lu — ce
         n&rsquo;est pas un alignement.
@@ -462,7 +481,7 @@ function CotedFaceOff({
       </p>
 
       {loadError && (
-        <p className="border-t border-white/[0.06] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.12em] text-flare">
+        <p className="border-t border-white/[0.08] px-6 py-4 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-flare">
           Erreur de chargement — relevé possiblement incomplet
         </p>
       )}
@@ -474,19 +493,23 @@ function Cell({
   value,
   detail,
   align,
+  tone = "default",
 }: {
   value: string;
   detail?: string;
   align: "left" | "right";
+  /** Teinte le fait qui ouvre l'écart : `flare` de ton côté, `mint` du sien. */
+  tone?: "default" | "flare" | "mint";
 }) {
   const alignment = align === "right" ? "text-right" : "text-left";
+  const color = tone === "flare" ? "text-flare" : tone === "mint" ? "text-mint" : "text-paper";
   return (
     <div className={`min-w-0 ${alignment}`}>
-      <p className="truncate text-sm text-foreground sm:text-[0.95rem]" title={value}>
+      <p className={`truncate text-sm font-medium sm:text-[0.95rem] ${color}`} title={value}>
         {value}
       </p>
       {detail && (
-        <p className="mt-1 truncate text-[11px] text-foreground-muted/60" title={detail}>
+        <p className="mt-1 truncate text-[0.7rem] text-mist/60" title={detail}>
           {detail}
         </p>
       )}

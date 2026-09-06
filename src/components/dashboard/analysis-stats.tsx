@@ -1,4 +1,4 @@
-import { PRIORITY_LABEL } from "@/components/tasks/priority";
+import { PRIORITY_COLOR, PRIORITY_LABEL } from "@/components/tasks/priority";
 import type { GapPriority, GapStatus } from "@/lib/supabase/database.types";
 
 export type StatGap = {
@@ -14,13 +14,16 @@ const PRIORITY_ORDER: GapPriority[] = ["high", "medium", "low"];
 
 function Tile({ value, label, hint }: { value: string; label: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
+    <div className="rounded-xl border border-white/[0.1] bg-white/[0.02] px-4 py-3.5">
       {/* truncate : une valeur inattendue doit être coupée, jamais déborder de la carte. */}
-      <p className="font-mono truncate text-[22px] leading-tight text-foreground" title={value}>
+      <p
+        className="truncate font-brand text-[1.75rem] font-bold leading-[1] tracking-[-0.035em] tabular-nums text-paper"
+        title={value}
+      >
         {value}
       </p>
-      <p className="mt-1 text-xs text-foreground-muted">{label}</p>
-      {hint && <p className="mt-1 text-[11px] text-foreground-muted/60">{hint}</p>}
+      <p className="mt-2 text-xs text-mist">{label}</p>
+      {hint && <p className="mt-1 text-[0.7rem] text-mist/60">{hint}</p>}
     </div>
   );
 }
@@ -129,7 +132,7 @@ export function AnalysisStats({
 
       {total > 0 && (
         <div>
-          <p className="font-mono mb-3 text-[11px] uppercase tracking-[0.14em] text-foreground-muted/70">
+          <p className="font-mono mb-4 text-[0.62rem] uppercase tracking-[0.14em] text-mist/60">
             Ce que tu en as fait
           </p>
           {/*
@@ -147,17 +150,17 @@ export function AnalysisStats({
               style={{ width: `${(dismissed / total) * 100}%` }}
             />
           </div>
-          <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-            <li className="text-foreground-muted">
-              <span className="font-mono text-foreground">{done}</span> comblé
+          <ul className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            <li className="text-mist">
+              <span className="font-mono tabular-nums text-paper">{done}</span> comblé
               {done > 1 ? "s" : ""}
             </li>
-            <li className="text-foreground-muted">
-              <span className="font-mono text-foreground">{dismissed}</span> ignoré
+            <li className="text-mist">
+              <span className="font-mono tabular-nums text-paper">{dismissed}</span> ignoré
               {dismissed > 1 ? "s" : ""}
             </li>
-            <li className="text-foreground-muted">
-              <span className="font-mono text-foreground">{open.length}</span> encore ouvert
+            <li className="text-mist">
+              <span className="font-mono tabular-nums text-paper">{open.length}</span> encore ouvert
               {open.length > 1 ? "s" : ""}
             </li>
           </ul>
@@ -166,22 +169,30 @@ export function AnalysisStats({
 
       {open.length > 0 && (
         <div>
-          <p className="font-mono mb-3 text-[11px] uppercase tracking-[0.14em] text-foreground-muted/70">
+          <p className="font-mono mb-4 text-[0.62rem] uppercase tracking-[0.14em] text-mist/60">
             Écarts ouverts par priorité
           </p>
           <ul className="flex flex-col gap-2">
             {openByPriority.map((row) => (
               <li key={row.priority} className="flex items-center gap-3">
-                <span className="w-24 shrink-0 text-sm text-foreground-muted">
+                <span className="w-24 shrink-0 text-sm text-mist">
                   {PRIORITY_LABEL[row.priority]}
                 </span>
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-void">
+                  {/*
+                    La barre prend l'intensité de sa priorité, la même que la pastille
+                    de PriorityBadge. Une teinte unique pour les trois lignes obligeait
+                    à lire le libellé pour savoir laquelle pèse le plus.
+                  */}
                   <span
-                    className="block h-full rounded-full bg-accent-strong"
-                    style={{ width: `${worstOpen === 0 ? 0 : (row.count / worstOpen) * 100}%` }}
+                    className="meter-fill block h-full rounded-full"
+                    style={{
+                      width: `${worstOpen === 0 ? 0 : (row.count / worstOpen) * 100}%`,
+                      backgroundColor: PRIORITY_COLOR[row.priority],
+                    }}
                   />
                 </span>
-                <span className="font-mono w-6 shrink-0 text-right text-xs text-foreground-muted">
+                <span className="font-mono w-6 shrink-0 text-right text-xs tabular-nums text-mist">
                   {row.count}
                 </span>
               </li>

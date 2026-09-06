@@ -82,9 +82,9 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="px-5 py-5">
+    <form onSubmit={handleSubmit} noValidate className="px-6 py-6">
       <label htmlFor="competitorUrl" className="block">
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
+        <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist/70">
           URL du concurrent
         </span>
         <input
@@ -98,7 +98,7 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
           onChange={(e) => handleChange(e.target.value)}
           placeholder="concurrent.com"
           aria-describedby="competitorUrlHint"
-          className="mt-3 w-full border border-surface-border bg-background px-4 py-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-foreground-muted/50 focus:border-accent"
+          className="mt-2.5 w-full rounded-xl border border-white/[0.14] bg-void/60 px-4 py-3.5 font-mono text-[0.95rem] text-paper outline-none transition-colors placeholder:text-mist/40 focus:border-signal-bright"
         />
       </label>
 
@@ -108,10 +108,10 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
       */}
       <p
         aria-live="polite"
-        className="font-mono mt-2.5 min-h-[1.25rem] text-[11px] tracking-[0.02em]"
+        className="font-mono mt-2.5 min-h-[1.25rem] text-[0.7rem] tracking-[0.02em]"
       >
         {url.trim() === "" ? (
-          <span className="text-foreground-muted/40">—</span>
+          <span className="text-mist/40">—</span>
         ) : isValid ? (
           <span className="text-signal-bright">On lira {host}</span>
         ) : (
@@ -121,19 +121,19 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
         )}
       </p>
 
-      <p id="competitorUrlHint" className="mt-3 text-sm leading-relaxed text-foreground-muted">
+      <p id="competitorUrlHint" className="mt-3 text-sm leading-relaxed text-mist">
         On ne lit que ce qui est déjà public sur son site : pricing affiché, positionnement,
         liens vers ses réseaux. Rien de privé, et uniquement l&rsquo;adresse que tu renseignes
         ici.
       </p>
 
       {confirming && (
-        <div className="mt-5 border-l-2 border-flare bg-flare/10 px-4 py-3">
-          <p className="text-sm font-medium text-foreground">Remplacer ton concurrent actuel ?</p>
-          <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-sm leading-relaxed text-foreground-muted">
+        <div className="mt-6 rounded-xl border-l-2 border-flare bg-flare/10 px-4 py-3.5">
+          <p className="text-sm font-medium text-paper">Remplacer ton concurrent actuel ?</p>
+          <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-sm leading-relaxed text-mist">
             <li>
               Les écarts encore ouverts pour l&rsquo;ancien concurrent passent en{" "}
-              <span className="text-foreground">ignoré</span> : ils décrivaient son site, pas
+              <span className="text-paper">ignoré</span> : ils décrivaient son site, pas
               celui-ci. Ils restent comptés dans tes statistiques.
             </li>
             <li>
@@ -151,7 +151,7 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
         <button
           type="submit"
           disabled={!isValid || isPending}
-          className="font-mono border border-accent bg-accent px-5 py-2.5 text-[11px] uppercase tracking-[0.14em] text-accent-foreground transition-colors hover:border-accent-strong hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-11 items-center justify-center rounded-full bg-signal px-6 text-sm font-semibold text-paper shadow-signal-sm transition-colors hover:bg-signal-bright hover:text-void disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isPending
             ? "Enregistrement…"
@@ -166,7 +166,7 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="font-mono border border-surface-border px-5 py-2.5 text-[11px] uppercase tracking-[0.14em] text-foreground-muted transition-colors hover:border-foreground hover:text-foreground"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-white/[0.14] px-6 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-mist transition-colors hover:border-paper/40 hover:text-paper"
           >
             Annuler
           </button>
@@ -174,15 +174,15 @@ export function CompetitorForm({ hasCompetitor }: { hasCompetitor: boolean }) {
       </div>
 
       {error && (
-        <p role="alert" className="mt-4 border-l-2 border-flare bg-flare/10 px-4 py-3 text-sm text-flare">
+        <p role="alert" className="mt-5 rounded-xl border-l-2 border-flare bg-flare/10 px-4 py-3.5 text-sm text-flare">
           {error}
         </p>
       )}
 
       {saved && (
-        <p className="mt-4 border-l-2 border-mint bg-mint/10 px-4 py-3 text-sm leading-relaxed text-foreground">
+        <p className="mt-5 rounded-xl border-l-2 border-mint bg-mint/10 px-4 py-3.5 text-sm leading-relaxed text-paper">
           Concurrent enregistré. Rien n&rsquo;a encore été relevé sur son site —{" "}
-          <Link href="/dashboard" className="text-accent-strong underline underline-offset-2">
+          <Link href="/dashboard" className="text-signal-bright underline underline-offset-2">
             lance une analyse depuis le tableau de bord
           </Link>{" "}
           pour comparer les deux.

@@ -30,12 +30,17 @@ export const PRIORITY_LABEL: Record<GapPriority, string> = {
   low: "Basse",
 };
 
-// Flare colors: distinct hue per urgency level, used consistently for the
-// priority tick, badge, and any other priority-coded element.
+// La priorité s'exprime en intensité d'un seul accent, jamais en trois teintes.
+// Trois couleurs distinctes forment un feu tricolore, et un feu tricolore dit
+// qu'une priorité basse est un état sain — or un écart de priorité basse reste
+// un écart. C'est la règle que la landing applique déjà (voir la bande des
+// règles et les barres du score) ; ces valeurs sont exactement ses trois
+// intensités de --color-signal-bright, en rgba parce qu'elles sont posées en
+// style en ligne, où color-mix() sur une variable de thème ne s'évalue pas.
 export const PRIORITY_COLOR: Record<GapPriority, string> = {
-  high: "#FF6B47",
-  medium: "#F0B840",
-  low: "#5C86A8",
+  high: "rgb(163 148 255)",
+  medium: "rgb(163 148 255 / 0.55)",
+  low: "rgb(163 148 255 / 0.25)",
 };
 
 export const CATEGORY_LABEL: Record<DetectedGap["category"], string> = {

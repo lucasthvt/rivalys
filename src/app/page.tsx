@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/brand/Logo";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { AmbientBackdrop } from "@/components/landing/AmbientBackdrop";
+import { AmbientBackdrop } from "@/components/ui/AmbientBackdrop";
 import { FreeAnalysis } from "@/components/landing/free-analysis";
 import { ProofBand } from "@/components/landing/ProofBand";
 import { ScoreCard, type ScoreLine } from "@/components/landing/ScoreCard";

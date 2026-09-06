@@ -12,6 +12,8 @@ import { parseExtractedData, parseObservationFlags } from "@/components/dashboar
 import { CoverageNoticePanel } from "@/components/dashboard/coverage-notice";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PANEL_ACTION_LINK, PanelHeader } from "@/components/layout/Panel";
 import {
   LockedResults,
   SkeletonList,
@@ -75,8 +77,8 @@ export default async function DashboardPage() {
   if (gapsRes.error || scoreRes.error) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
-          <DashboardHeader />
+        <div className="relative mx-auto w-full max-w-5xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader eyebrow="Tableau de bord" title="Où tu perds du terrain" />
           <EmptyState
             title="Impossible de charger le tableau de bord"
             description={(gapsRes.error ?? scoreRes.error)?.message}
@@ -102,8 +104,8 @@ export default async function DashboardPage() {
   if (!competitor && !competitorLoadError) {
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
-          <DashboardHeader />
+        <div className="relative mx-auto w-full max-w-5xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader eyebrow="Tableau de bord" title="Où tu perds du terrain" />
           <NoCompetitorState description="Le comparateur a besoin d'un second site pour trouver le moindre écart. Ajoute le concurrent que tu veux suivre, puis lance une première analyse." />
         </div>
       </AppShell>
@@ -153,8 +155,8 @@ export default async function DashboardPage() {
 
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-        <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
-          <DashboardHeader />
+        <div className="relative mx-auto w-full max-w-5xl px-6 py-14 sm:px-8 lg:py-16">
+          <PageHeader eyebrow="Tableau de bord" title="Où tu perds du terrain" />
 
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <MetricCard
@@ -247,34 +249,39 @@ export default async function DashboardPage() {
 
   return (
     <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-      <div className="app-ambient relative mx-auto max-w-5xl px-6 py-16 sm:px-8">
+      <div className="relative mx-auto w-full max-w-5xl px-6 py-14 sm:px-8 lg:py-16">
+        <PageHeader
+          eyebrow="Tableau de bord"
+          title="Où tu perds du terrain"
+          action={<RefreshButton />}
+        />
+
         {/*
           Le cartouche, emprunté au dessin technique : ce que la planche compare, et entre
-          les deux le nombre d'écarts relevés. Il remplace un titre suivi de deux cartes de
-          contexte — la même information, mais posée comme une cote plutôt qu'énumérée.
+          les deux le nombre d'écarts relevés. Il vit maintenant dans son propre panneau,
+          comme la carte de relevé du hero de la landing — posé sous le titre plutôt que
+          cousu dedans, il se lit comme la mesure qu'il est.
         */}
-        <header className="mb-8 border-b border-surface-border pb-6">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
-                Tableau de bord
-              </p>
-              <h1 className="font-display mt-2 text-2xl sm:text-[28px]">
-                Où tu perds du terrain
-              </h1>
-            </div>
-            <RefreshButton />
-          </div>
-
-          <div className="mt-7 grid grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] items-center gap-x-3 sm:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)] sm:gap-x-5">
+        <div className="panel mb-6 overflow-hidden">
+          <PanelHeader
+            title="Relevé comparé"
+            action={
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-mist/50">
+                {competitorSnapshotRes.data?.fetched_at
+                  ? formatAnalysisDate(competitorSnapshotRes.data.fetched_at)
+                  : "Pas encore analysé"}
+              </span>
+            }
+          />
+          <div className="grid grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] items-center gap-x-3 px-6 py-6 sm:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)] sm:gap-x-5">
             <p className="truncate text-right font-mono text-sm text-signal-bright" title="Ton SaaS">
               Toi
             </p>
             <div className="flex flex-col items-center gap-1.5">
               <DimensionLine measured={gaps.length > 0} />
               <span
-                className={`font-mono text-[10px] uppercase tracking-[0.1em] ${
-                  gaps.length > 0 ? "text-signal-bright" : "text-foreground-muted/45"
+                className={`font-mono text-[0.62rem] uppercase tracking-[0.12em] ${
+                  gaps.length > 0 ? "text-signal-bright" : "text-mist/45"
                 }`}
               >
                 {!analysedForCurrentCompetitor
@@ -284,11 +291,11 @@ export default async function DashboardPage() {
                     : `${gaps.length} écart${gaps.length > 1 ? "s" : ""}`}
               </span>
             </div>
-            <p className="truncate font-mono text-sm text-foreground-muted" title={competitorLabel}>
+            <p className="truncate font-mono text-sm text-mist" title={competitorLabel}>
               {competitorLabel}
             </p>
           </div>
-        </header>
+        </div>
 
         {coverageNotice && <CoverageNoticePanel notice={coverageNotice} />}
 
@@ -308,31 +315,24 @@ export default async function DashboardPage() {
           snapshotLoadError={snapshotLoadError}
         />
 
-        <section className="panel mt-5 mb-5 overflow-hidden">
-          <div className="border-b border-white/[0.06] px-5 py-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              Où le terrain se perd
-            </h2>
-          </div>
-          <div className="px-5 py-5">
+        <section className="panel mt-6 mb-6 overflow-hidden">
+          <PanelHeader title="Où le terrain se perd" />
+          <div className="px-6 py-6">
             <CategoryBars gaps={gaps} analysed={analysedForCurrentCompetitor} />
           </div>
         </section>
 
 
-        <section className="panel mb-5 overflow-hidden">
-          <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              Statistiques
-            </h2>
-            <Link
-              href="/statistiques"
-              className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong transition-colors hover:text-foreground"
-            >
-              Tout voir →
-            </Link>
-          </div>
-          <div className="px-5 py-5">
+        <section className="panel mb-6 overflow-hidden">
+          <PanelHeader
+            title="Statistiques"
+            action={
+              <Link href="/statistiques" className={PANEL_ACTION_LINK}>
+                Tout voir →
+              </Link>
+            }
+          />
+          <div className="px-6 py-6">
             {allGapsRes.error ? (
               <EmptyState
                 title="Impossible de charger les statistiques"
@@ -344,10 +344,9 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="panel px-5 py-4">
-          <h2 className="font-mono mb-4 text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-            Évolution du score
-          </h2>
+        <section className="panel overflow-hidden">
+          <PanelHeader title="Évolution du score" />
+          <div className="px-6 py-6">
           <ScoreChart points={scorePoints} />
           {/*
             score_history ne porte pas de competitor_id : ses points décrivent l'état au
@@ -357,11 +356,12 @@ export default async function DashboardPage() {
             continuité qui n'existe pas.
           */}
           {!analysedForCurrentCompetitor && scorePoints.length > 0 && (
-            <p className="mt-3 border-t border-white/[0.06] pt-3 text-xs leading-relaxed text-foreground-muted/70">
+            <p className="mt-4 border-t border-white/[0.08] pt-4 text-xs leading-relaxed text-mist/70">
               Ces relevés portent sur le concurrent suivi précédemment. La courbe repartira à
               la première analyse de {competitorLabel}.
             </p>
           )}
+          </div>
         </section>
 
         {/*
@@ -370,23 +370,12 @@ export default async function DashboardPage() {
           réellement tourné sur le concurrent actuel.
         */}
         {analysedForCurrentCompetitor && (
-          <section className="mt-5">
+          <section className="mt-6">
             <TestimonialPrompt existing={ownTestimonial} />
           </section>
         )}
       </div>
     </AppShell>
-  );
-}
-
-function DashboardHeader() {
-  return (
-    <header className="mb-10 border-b border-surface-border pb-6">
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
-        Tableau de bord
-      </p>
-      <h1 className="font-display mt-2 text-2xl sm:text-[28px]">Où tu perds du terrain</h1>
-    </header>
   );
 }
 

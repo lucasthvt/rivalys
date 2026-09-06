@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PanelHeader } from "@/components/layout/Panel";
 import { EmptyState } from "@/components/tasks/empty-state";
 import { CompetitorForm } from "./_components/CompetitorForm";
 import {
@@ -65,66 +67,62 @@ export default async function ConcurrentPage() {
 
   return (
     <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
-      <div className="app-ambient relative mx-auto max-w-3xl px-6 py-16 sm:px-8">
-        <header className="mb-10 border-b border-surface-border pb-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-foreground-muted/70">
-            Concurrent
-          </p>
-          <h1 className="font-display mt-2 text-2xl sm:text-[28px]">Le terrain d&rsquo;en face</h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-foreground-muted">
-            Tout le comparateur repose sur ce seul site. Ton palier ouvre{" "}
-            {slots} place{slots > 1 ? "s" : ""} de concurrent, remplaçable une fois tous les{" "}
-            {COMPETITOR_CHANGE_COOLDOWN_DAYS} jours.
-          </p>
-        </header>
+      <div className="relative mx-auto w-full max-w-3xl px-6 py-14 sm:px-8 lg:py-16">
+        <PageHeader
+          eyebrow="Concurrent"
+          title="Le terrain d'en face"
+          lede={
+            <>
+              Tout le comparateur repose sur ce seul site. Ton palier ouvre {slots} place
+              {slots > 1 ? "s" : ""} de concurrent, remplaçable une fois tous les{" "}
+              {COMPETITOR_CHANGE_COOLDOWN_DAYS} jours.
+            </>
+          }
+        />
 
         {/* Point focal : le concurrent actuellement suivi. */}
-        <section className="panel-focal mb-5 overflow-hidden">
-          <div className="border-b border-white/[0.06] px-5 py-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              Concurrent suivi
-            </h2>
-          </div>
+        <section className="panel-focal mb-6 overflow-hidden">
+          <PanelHeader title="Concurrent suivi" />
 
           {error ? (
-            <div className="px-5 py-8">
+            <div className="px-6 py-10">
               <EmptyState
                 title="Impossible de lire ton concurrent"
                 description={error.message}
               />
             </div>
           ) : competitor ? (
-            <div className="px-5 py-5">
-              <p className="text-[15px] font-medium text-foreground">
+            <div className="px-6 py-6">
+              <p className="font-brand text-xl font-bold tracking-[-0.02em] text-paper">
                 {competitor.name?.trim() || safeHostname(competitor.url)}
               </p>
               <a
                 href={competitor.url}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="mt-1 inline-block break-all font-mono text-sm text-accent-strong transition-colors hover:text-foreground"
+                className="mt-1.5 inline-block break-all font-mono text-sm text-signal-bright transition-colors hover:text-paper"
               >
                 {competitor.url}
               </a>
-              <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 border-t border-surface-border pt-4">
+              <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/[0.08] pt-5">
                 <div>
-                  <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-foreground-muted/70">
+                  <dt className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist/60">
                     Ajouté le
                   </dt>
-                  <dd className="mt-1 font-mono text-sm text-foreground">
+                  <dd className="mt-1.5 font-mono text-sm text-paper">
                     {formatDate(competitor.created_at)}
                   </dd>
                 </div>
               </dl>
               {!competitor.name?.trim() && (
-                <p className="mt-4 text-sm leading-relaxed text-foreground-muted">
+                <p className="mt-5 text-sm leading-relaxed text-mist">
                   Aucun nom enregistré pour ce concurrent — on affiche son domaine plutôt que
                   d&rsquo;en inventer un.
                 </p>
               )}
             </div>
           ) : (
-            <div className="px-5 py-8">
+            <div className="px-6 py-10">
               <EmptyState
                 title="Aucun concurrent suivi"
                 description="Renseigne le site de ton plus gros concurrent ci-dessous pour que le comparateur ait un point de comparaison."
@@ -134,22 +132,22 @@ export default async function ConcurrentPage() {
         </section>
 
         <section className="panel overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-foreground-muted/70">
-              {competitor ? "Changer de concurrent" : "Ajouter un concurrent"}
-            </h2>
-            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-foreground-muted/70">
-              {usedSlots} / {slots} place{slots > 1 ? "s" : ""} utilisée
-              {usedSlots > 1 ? "s" : ""}
-            </span>
-          </div>
+          <PanelHeader
+            title={competitor ? "Changer de concurrent" : "Ajouter un concurrent"}
+            action={
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-mist/50">
+                {usedSlots} / {slots} place{slots > 1 ? "s" : ""} utilisée
+                {usedSlots > 1 ? "s" : ""}
+              </span>
+            }
+          />
 
           {changeLocked ? (
-            <div className="px-5 py-6">
-              <p className="text-sm font-medium text-foreground">
+            <div className="px-6 py-6">
+              <p className="text-sm font-medium text-paper">
                 Changement possible le {formatNextChangeDate(allowance.nextChangeAt)}
               </p>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-foreground-muted">
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-mist">
                 Ton concurrent a été remplacé il y a moins de{" "}
                 {COMPETITOR_CHANGE_COOLDOWN_DAYS} jours. Chaque remplacement efface les relevés
                 du site précédent et relance une analyse complète — le délai évite qu&rsquo;une
@@ -162,7 +160,7 @@ export default async function ConcurrentPage() {
         </section>
 
         {slots < COMPETITOR_SLOTS.growth && (
-          <p className="mt-5 text-sm leading-relaxed text-foreground-muted">
+          <p className="mt-6 text-sm leading-relaxed text-mist">
             Le palier Growth ouvrira {COMPETITOR_SLOTS.growth} places de concurrent. Le suivi
             de plusieurs concurrents en parallèle est encore en construction — il n&rsquo;est
             pas vendu tant qu&rsquo;il ne tourne pas.

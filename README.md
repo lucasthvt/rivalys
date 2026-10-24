@@ -84,6 +84,34 @@ l'observation le dit peu rentable — un produit qui exige un compte avant de pa
 sa page d'inscription, ce dont on ne conclut rien. Utile surtout sur les sites qui vendent
 sans compte préalable.
 
+### Budget de temps d'une analyse
+
+Une analyse enchaîne une dizaine d'appels réseau vers trois prestataires. Chacun avait son
+propre délai d'attente, généreux et indépendant des autres : additionnés, ils autorisaient
+plus de deux minutes d'attente. Un délai par appel ne peut pas borner un total — seule une
+horloge partagée le peut.
+
+`src/lib/compare/deadline.ts` démarre cette horloge une fois par **comparaison** — ton site
+contre un concurrent — (`ANALYSIS_BUDGET_MS`, 26 s) et la fait traverser tout le pipeline.
+Chaque appel reçoit le plus court entre son propre délai et ce qui reste ; chaque étage
+**optionnel** se saute quand il ne reste plus de quoi l'exécuter (page de connexion, relevés
+Perplexity, classificateur de positionnement, sondes de redirection, clic d'abonnement). Les
+étages obligatoires — page d'accueil, page de tarifs, extraction — ne se sautent jamais : ils
+se raccourcissent, parce qu'une sonde non effectuée se lirait comme « ce site n'a pas de page
+de tarifs ».
+
+Un compte Growth suit jusqu'à trois concurrents, traités l'un après l'autre et chacun avec
+son horloge : ce sont les 30 s d'UNE comparaison qui sont tenues, pas celles de la requête
+entière, dont la durée maximale est déclarée dans `src/app/api/compare/route.ts`.
+
+Sauter un étage ne fabrique jamais de donnée : le contrat null-vs-`[]` de
+`src/lib/compare/site-data.ts` distingue déjà « on n'a pas mesuré » de « on a mesuré et il n'y
+a rien ». Une analyse plus rapide est parfois moins complète, jamais moins honnête.
+
+Pour mesurer, instrumente `fetch` autour de `fetchAndExtract` / `buildGapCandidates` : sur la
+paire notion.so / clickup.com, l'analyse est passée de 20,7 s à 13,1 s, les deux postes
+dominants étant les tokens PRODUITS par l'extraction Claude et les relevés Perplexity.
+
 ## Base de données Supabase
 
 Le schéma complet (tables `profiles`, `competitors`, `site_snapshots`, `detected_gaps`, `score_history`, avec Row Level Security) est dans `supabase/migrations/`.
@@ -110,10 +138,19 @@ npx supabase gen types typescript --linked > src/lib/supabase/database.types.ts
 ## Accès payant (verrou des résultats)
 
 L'analyse tourne pour tout le monde, dès la fin de l'onboarding. Ce qu'elle a trouvé — score,
-écarts, comparatif, statistiques — n'est affiché qu'aux paliers payants ; un compte au palier
-gratuit voit que l'analyse a eu lieu, sa date et le nombre d'écarts détectés, mais pas leur
-contenu (les données ne sont pas envoyées au navigateur, voir
-`src/components/billing/locked-results.tsx`).
+écarts, comparatif, statistiques — n'est affiché qu'aux paliers payants, à une exception
+près : **l'aperçu gratuit du tableau de bord**.
+
+Un compte au palier gratuit y voit son score, la répartition des écarts par priorité, et son
+écart le plus prioritaire EN CLAIR ; tout le reste est fermé. C'est ce que faisait l'analyse
+sans compte de la page d'accueil, appliqué au vrai relevé du compte — un score et un décompte
+seuls se lisent comme des chiffres inventés, et un écart en clair est la preuve que le relevé
+porte bien sur son site. La sélection est dans `src/lib/billing/free-preview.ts`, l'écran dans
+`src/components/billing/free-preview.tsx`.
+
+Les écarts masqués ne sont pas floutés : ils ne sont **pas envoyés** au navigateur. Un flou
+CSS reste lisible dans le HTML — même règle que `src/components/billing/locked-results.tsx`,
+qui tient toujours sur `/tasks`, `/score` et `/statistiques`.
 
 La règle est dans `src/lib/billing/access.ts` : `starter` = gratuit, `pro` et `growth` = ouvert.
 

@@ -18,6 +18,7 @@ import {
   rateLimitMessage,
   retryAfterSeconds,
 } from "@/lib/compare/rate-limit";
+import { startDeadline, type Deadline } from "@/lib/compare/deadline";
 import type { Json } from "@/lib/supabase/database.types";
 
 /**
@@ -45,6 +46,14 @@ import type { Json } from "@/lib/supabase/database.types";
  *         | { ok: false, error: string }
  *         | { ok: false, error: string, retryAfterIso: string }   (429, + Retry-After header)
  */
+/**
+ * Un budget de 26 s borne CHAQUE face-à-face (voir deadline.ts), pas la requête entière :
+ * un compte Growth suit jusqu'à trois concurrents, traités l'un après l'autre. La durée
+ * maximale est donc déclarée ici, et elle couvre le pire cas de la boucle — sans elle, la
+ * valeur dépendrait d'un défaut de plateforme qui a déjà changé une fois.
+ */
+export const maxDuration = 300;
+
 export async function POST() {
   const supabase = await createClient();
 
@@ -169,15 +178,62 @@ export async function POST() {
 
   const failureNotes: string[] = [];
 
-  // --- Notre côté, lu une seule fois pour toute l'exécution. ---
-  const ownFetch = await fetchAndExtract(
-    profile.saas_url,
-    safeHostname(profile.saas_url) ?? profile.saas_url,
-    false,
-  ).then(
-    (value) => ({ ok: true as const, value }),
-    (reason: unknown) => ({ ok: false as const, reason }),
+  /*
+    Le budget de temps, UN PAR FACE-À-FACE et non un pour toute l'exécution.
+
+    L'horloge borne l'attente que vit l'utilisateur devant une comparaison : notre site
+    contre un concurrent. Partagée par toute la boucle, elle serait déjà épuisée au deuxième
+    concurrent d'un compte Growth, et ses relevés échoueraient tous faute de temps — on
+    aurait troqué des analyses lentes contre des analyses absentes.
+
+    Celle-ci couvre notre côté et le premier concurrent, qui courent ensemble. Les suivants
+    repartent d'une horloge neuve (voir la boucle).
+  */
+  const deadline = startDeadline();
+
+  /*
+    Notre côté et le PREMIER concurrent sont lus en parallèle.
+
+    Les concurrents suivants restent en série, pour la raison donnée en tête de fichier :
+    les limites de débit de Firecrawl, Claude et Perplexity. Mais notre côté et le premier
+    d'en face, c'est exactement la paire que /api/teardown lançait déjà ensemble — deux
+    relevés concurrents, pas dix. Enchaînés, ils doublaient l'attente du seul cas qui compte
+    pour quelqu'un devant un écran de chargement : la toute première analyse, juste après
+    l'onboarding, où il n'y a qu'un concurrent.
+
+    Contrepartie assumée : le relevé du premier concurrent part avant qu'on sache si le
+    nôtre a abouti. Quand notre côté échoue, cette exécution aura donc payé un relevé dont
+    cette comparaison ne fera rien — il est alors ENREGISTRÉ plutôt que jeté (voir le 422
+    plus bas), ce qui le rend utile au prochain passage et, surtout, arme la limite de 24 h.
+  */
+  const settle = <T,>(promise: Promise<T>) =>
+    promise.then(
+      (value) => ({ ok: true as const, value }),
+      (reason: unknown) => ({ ok: false as const, reason }),
+    );
+
+  const ownFetchPromise = settle(
+    fetchAndExtract(
+      profile.saas_url,
+      safeHostname(profile.saas_url) ?? profile.saas_url,
+      false,
+      deadline,
+    ),
   );
+
+  const firstCompetitor = competitors[0];
+  const firstCompetitorPromise = firstCompetitor
+    ? settle(
+        fetchAndExtract(
+          firstCompetitor.url,
+          firstCompetitor.name?.trim() || safeHostname(firstCompetitor.url) || "ton concurrent",
+          true,
+          deadline,
+        ),
+      )
+    : null;
+
+  const ownFetch = await ownFetchPromise;
 
   if (ownFetch.ok) {
     const { error: insertError } = await supabase.from("site_snapshots").insert({
@@ -215,6 +271,38 @@ export async function POST() {
       : null;
 
   if (!ownData) {
+    /*
+      Notre côté n'a rien donné, et rien d'antérieur ne le remplace : il n'y a pas de
+      comparaison possible. Mais le relevé du premier concurrent, lancé en parallèle, a
+      peut-être abouti — et il a coûté de vrais crédits. On l'ENREGISTRE avant de renoncer.
+
+      Ce n'est pas de l'économie de bouts de chandelle, c'est ce qui arme le garde-fou. La
+      limite de 24 h se lit sur le relevé le plus récent de l'utilisateur ; sans aucune
+      ligne en base, `lastRunAt` reste null, la paire est jugée « nouvelle » à chaque fois,
+      et la limite ne se déclenche jamais. Un compte dont le site bloque durablement le
+      fetch pouvait alors relancer le pipeline complet autant de fois qu'il cliquait, en
+      payant un concurrent à chaque clic. Écrire la ligne ferme la boucle.
+    */
+    if (firstCompetitorPromise && firstCompetitor) {
+      const salvaged = await firstCompetitorPromise;
+      if (salvaged.ok) {
+        const { error: salvageError } = await supabase.from("site_snapshots").insert({
+          user_id: user.id,
+          target_type: "competitor",
+          competitor_id: firstCompetitor.id,
+          raw_homepage_html: salvaged.value.raw.homepageHtml,
+          raw_pricing_html: salvaged.value.raw.pricingHtml,
+          extracted_data: salvaged.value.data as unknown as Json,
+        });
+        if (salvageError) {
+          console.error(
+            "[compare] relevé concurrent payé mais non enregistré :",
+            salvageError.message,
+          );
+        }
+      }
+    }
+
     return NextResponse.json(
       {
         ok: false,
@@ -230,12 +318,17 @@ export async function POST() {
   // --- Un passage par concurrent suivi. ---
   const results: CompetitorRunResult[] = [];
 
-  for (const competitor of competitors) {
+  for (const [index, competitor] of competitors.entries()) {
     const outcome = await runForCompetitor({
       supabase,
       userId: user.id,
       ownData,
       competitor,
+      // Le premier partage l'horloge de notre côté, avec lequel il a couru en parallèle.
+      // Chacun des suivants repart à zéro : son attente à lui commence maintenant.
+      deadline: index === 0 ? deadline : startDeadline(),
+      // Le relevé du premier concurrent est déjà en vol depuis le début de l'exécution.
+      prefetched: index === 0 ? firstCompetitorPromise : null,
     });
 
     if (outcome.note) failureNotes.push(outcome.note);
@@ -280,6 +373,17 @@ interface CompetitorRunResult {
 }
 
 /**
+ * Un relevé de site, réussi ou non, sous une forme qui ne rejette pas.
+ *
+ * Nécessaire parce qu'un relevé peut être lancé bien avant d'être attendu (voir
+ * `prefetched`) : une promesse en vol qui rejette sans personne pour l'attendre fait tomber
+ * le processus. On la neutralise au lancement, et l'échec est lu plus tard comme une valeur.
+ */
+type FetchOutcome =
+  | { ok: true; value: Awaited<ReturnType<typeof fetchAndExtract>> }
+  | { ok: false; reason: unknown };
+
+/**
  * Une comparaison, du fetch du concurrent au score enregistré.
  *
  * Renvoie `note` plutôt que de lever : un concurrent dont le site bloque la lecture ne doit
@@ -291,11 +395,20 @@ async function runForCompetitor({
   userId,
   ownData,
   competitor,
+  deadline,
+  prefetched,
 }: {
   supabase: Awaited<ReturnType<typeof createClient>>;
   userId: string;
   ownData: StoredExtractedData;
   competitor: { id: string; url: string; name: string | null };
+  deadline: Deadline;
+  /**
+   * Relevé déjà lancé par l'appelant, pour le premier concurrent seulement : il court en
+   * parallèle de notre propre côté depuis le début de l'exécution. null pour les suivants,
+   * qui sont relevés ici, en série.
+   */
+  prefetched: Promise<FetchOutcome> | null;
 }): Promise<{ result: CompetitorRunResult | null; note: string | null }> {
   const label = competitor.name?.trim() || safeHostname(competitor.url) || "ton concurrent";
 
@@ -303,10 +416,11 @@ async function runForCompetitor({
 
   // Third-party content is looked up on the competitor side only — see
   // observeThirdPartyMentions for why there is no symmetric lookup on ours.
-  const fetched = await fetchAndExtract(competitor.url, label, true).then(
-    (value) => ({ ok: true as const, value }),
-    (reason: unknown) => ({ ok: false as const, reason }),
-  );
+  const fetched = await (prefetched ??
+    fetchAndExtract(competitor.url, label, true, deadline).then(
+      (value) => ({ ok: true as const, value }),
+      (reason: unknown) => ({ ok: false as const, reason }),
+    ));
 
   if (fetched.ok) {
     const { error: insertError } = await supabase.from("site_snapshots").insert({
@@ -342,12 +456,15 @@ async function runForCompetitor({
   }
 
   // --- Gap detection: hardcoded rules only, no free-form LLM generation here. ---
-  const candidates = await buildGapCandidates({
-    ownData,
-    competitorData,
-    competitorLabel: label,
-    competitorUrl: competitor.url,
-  });
+  const candidates = await buildGapCandidates(
+    {
+      ownData,
+      competitorData,
+      competitorLabel: label,
+      competitorUrl: competitor.url,
+    },
+    deadline,
+  );
 
   const { data: existingOpenGaps, error: existingGapsError } = await supabase
     .from("detected_gaps")

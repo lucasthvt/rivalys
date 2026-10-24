@@ -10,17 +10,32 @@
 // a Firecrawl outage working rather than hard-failing the comparator.
 
 export class FirecrawlError extends Error {
-  constructor(
-    message: string,
-    public readonly cause?: unknown,
-  ) {
+  /**
+   * `cause` est déclaré et assigné ici plutôt que par une « parameter property » : c'est la
+   * seule construction purement TypeScript que le mode strip-only de Node refuse, et ce
+   * module doit rester importable par `node --test` et par les scripts de mesure du
+   * pipeline. Même contournement que PerplexityError. Comportement inchangé.
+   */
+  readonly cause?: unknown;
+
+  constructor(message: string, cause?: unknown) {
     super(message);
     this.name = "FirecrawlError";
+    this.cause = cause;
   }
 }
 
 const SCRAPE_ENDPOINT = "https://api.firecrawl.dev/v2/scrape";
-const SCRAPE_TIMEOUT_MS = 30_000;
+/**
+ * Délai par défaut d'un scrape, quand l'appelant n'en impose pas.
+ *
+ * 15 s et non 30 : un scrape Firecrawl qui aboutit rend la page en 3 à 8 s, et une analyse
+ * entière dispose de 26 s (voir deadline.ts). À 30 s, un seul scrape lent pouvait consommer
+ * tout le budget d'une analyse et ne rien laisser aux autres étages. Au-delà de 15 s, la
+ * page coûte plus qu'elle ne rapporte — mieux vaut la déclarer non observée (contrat
+ * null-vs-[]) que faire attendre une minute pour un relevé secondaire.
+ */
+const SCRAPE_TIMEOUT_MS = 15_000;
 
 export interface ScrapedPage {
   /** Cleaned page content, ready to feed to the extractor. */
@@ -77,7 +92,8 @@ export async function scrapePage(
   {
     includeNavAndFooter = false,
     actions,
-  }: { includeNavAndFooter?: boolean; actions?: ScrapeAction[] } = {},
+    timeoutMs = SCRAPE_TIMEOUT_MS,
+  }: { includeNavAndFooter?: boolean; actions?: ScrapeAction[]; timeoutMs?: number } = {},
 ): Promise<ScrapedPage> {
   const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
   if (!apiKey) {
@@ -85,9 +101,14 @@ export async function scrapePage(
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SCRAPE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  // Le corps est lu DANS ce try, sous le même signal : la réponse d'un scrape pèse souvent
+  // plusieurs centaines de kilo-octets (markdown + HTML brut + liens), et un
+  // `clearTimeout` posé dès les en-têtes laissait sa lecture courir sans aucune borne. Le
+  // budget de l'analyse ne tenait alors plus sur cette étape.
   let res: Response;
+  let payload: FirecrawlScrapeResponse;
   try {
     res = await fetch(SCRAPE_ENDPOINT, {
       method: "POST",
@@ -103,17 +124,14 @@ export async function scrapePage(
         ...(actions && actions.length > 0 ? { actions } : {}),
       }),
     });
-  } catch (err) {
-    throw new FirecrawlError(`Firecrawl injoignable pour ${url} (réseau ou délai dépassé).`, err);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  let payload: FirecrawlScrapeResponse;
-  try {
     payload = (await res.json()) as FirecrawlScrapeResponse;
   } catch (err) {
-    throw new FirecrawlError(`Réponse Firecrawl illisible pour ${url}.`, err);
+    throw new FirecrawlError(
+      `Firecrawl injoignable ou réponse illisible pour ${url} (réseau, délai dépassé, ou corps invalide).`,
+      err,
+    );
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!res.ok || payload.success === false) {

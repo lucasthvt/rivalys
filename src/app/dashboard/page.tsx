@@ -14,11 +14,8 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PANEL_ACTION_LINK, PanelHeader } from "@/components/layout/Panel";
-import {
-  LockedResults,
-  SkeletonList,
-  SkeletonPanel,
-} from "@/components/billing/locked-results";
+import { FreePreviewPanel } from "@/components/billing/free-preview";
+import { buildFreePreview } from "@/lib/billing/free-preview";
 import { assessPricingCoverage } from "@/lib/compare/comparability";
 import { hasPaidAccess } from "@/lib/billing/access";
 import { Board } from "@/components/dashboard/board";
@@ -181,12 +178,23 @@ export default async function DashboardPage({
     />
   );
 
-  // Palier gratuit : l'analyse a tourné, ses résultats restent fermés. Seuls
-  // les agrégats sans contenu sortent d'ici (analyse effectuée, date, nombre
-  // d'écarts) ; ni les écarts eux-mêmes, ni le comparatif, ni le score ne sont
-  // envoyés au navigateur — voir components/billing/locked-results.tsx.
+  /*
+    Palier gratuit : l'analyse a tourné, et on en montre maintenant le début.
+
+    Avant, cet écran était un mur complet : un nombre d'écarts et rien d'autre. Quelqu'un qui
+    venait de donner deux URL et d'attendre son analyse repartait avec un chiffre qu'il
+    n'avait aucun moyen de croire. C'est le doute auquel l'analyse sans compte de la page
+    d'accueil répondait, en montrant UN écart en clair ; cette page-là n'existe plus, et la
+    réponse vit ici, sur le vrai relevé du compte — la même donnée en mieux, rattachée à un
+    utilisateur et suivie dans le temps.
+
+    Ce qui reste fermé n'est pas flouté : il n'est PAS ENVOYÉ au navigateur. buildFreePreview
+    ne laisse sortir que l'écart offert, des décomptes et des noms de familles ; les titres et
+    descriptions des autres restent côté serveur. Un flou CSS reste lisible dans le HTML.
+  */
   if (!unlocked) {
     const analysedAt = competitorSnapshotRes.data?.fetched_at ?? null;
+    const preview = buildFreePreview(gaps);
 
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
@@ -203,7 +211,7 @@ export default async function DashboardPage({
             <MetricCard
               label="Écarts détectés"
               value={analysedAt ? String(gaps.length) : "—"}
-              sublabel={analysedAt ? "Détail réservé aux offres payantes" : undefined}
+              sublabel={analysedAt ? "Le premier est ouvert ci-dessous" : undefined}
             />
             <MetricCard
               label="Concurrent suivi"
@@ -213,23 +221,20 @@ export default async function DashboardPage({
             />
           </div>
 
-          <LockedResults
-            description={
-              analysedAt
-                ? `L'analyse face à ${competitorLabel} est terminée et ${gaps.length} écart${
-                    gaps.length > 1 ? "s ont" : " a"
-                  } été détecté${gaps.length > 1 ? "s" : ""}. Le détail — score, comparatif des tarifs et actions à mener — s'ouvre avec une offre payante.`
-                : "Le détail des résultats — score, comparatif des tarifs et actions à mener — s'ouvre avec une offre payante."
-            }
-          >
-            <div className="flex flex-col gap-5">
-              <SkeletonPanel height="h-40" />
-              <div className="panel px-5 py-5">
-                <SkeletonList rows={3} />
-              </div>
-              <SkeletonPanel height="h-52" />
-            </div>
-          </LockedResults>
+          {analysedAt ? (
+            <FreePreviewPanel
+              preview={preview}
+              // Le score vient de score_history, comme au palier payant : il décrit l'état
+              // au moment de l'analyse, et non un calcul refait à l'affichage.
+              score={latestScore}
+              competitorLabel={competitorLabel}
+            />
+          ) : (
+            <EmptyState
+              title="Aucune analyse pour ce concurrent"
+              description={`Lance une première analyse face à ${competitorLabel} pour voir ton score et ton écart le plus prioritaire.`}
+            />
+          )}
         </div>
       </AppShell>
     );

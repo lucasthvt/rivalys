@@ -11,17 +11,24 @@
 
 import { assertPublicHttpUrl, UnsafeUrlError } from "./url-safety";
 import { canonicalHostname } from "@/lib/url";
-import { extractLinks, stripHtml } from "./html";
+import { capText, extractLinks, stripHtml } from "./html";
 import { FirecrawlError, isFirecrawlConfigured, scrapePage } from "./firecrawl";
 import { PURCHASE_LABEL_RE } from "./payment-methods";
+import { UNBOUNDED, type Deadline } from "./deadline";
 
 export class SiteFetchError extends Error {
-  constructor(
-    message: string,
-    public readonly cause?: unknown,
-  ) {
+  /**
+   * `cause` est déclaré et assigné ici plutôt que par une « parameter property » : c'est la
+   * seule construction purement TypeScript que le mode strip-only de Node refuse, et ce
+   * module doit rester importable par `node --test` et par les scripts de mesure du
+   * pipeline. Même contournement que PerplexityError. Comportement inchangé.
+   */
+  readonly cause?: unknown;
+
+  constructor(message: string, cause?: unknown) {
     super(message);
     this.name = "SiteFetchError";
+    this.cause = cause;
   }
 }
 
@@ -33,6 +40,21 @@ const LOGIN_FETCH_TIMEOUT_MS = 5_000;
 const MAX_REDIRECTS = 5;
 const PRICING_PATHS = ["/pricing", "/plans", "/tarifs", "/prix"] as const;
 const LOGIN_PATHS = ["/login", "/signin", "/sign-in", "/connexion"] as const;
+
+/**
+ * Part du budget d'analyse (voir deadline.ts) allouée à chaque page.
+ *
+ * La page d'accueil et celle des tarifs sont OBLIGATOIRES — tout le comparatif en dépend —
+ * et gardent le délai le plus long. La page de connexion est un bonus : elle n'alimente que
+ * le relevé des moyens d'authentification, et son absence est déjà un résultat acceptable
+ * (readAuthMethods renvoie null, aucune comparaison n'est bâtie dessus). Elle est donc la
+ * première à être sautée quand le budget se resserre.
+ */
+const HOMEPAGE_SCRAPE_MS = 12_000;
+const PRICING_SCRAPE_MS = 10_000;
+const LOGIN_SCRAPE_MS = 6_000;
+/** Le clic dans le navigateur attend 9 s à lui seul — il lui faut plus que les autres. */
+const CLICK_THROUGH_MS = 20_000;
 
 // Matches the canonical pricing routes plus the common singular/English variants, so link
 // discovery catches /price or /tarif without widening into unrelated pages.
@@ -129,13 +151,31 @@ function findSameOriginLink(
   return null;
 }
 
+/** Une page récupérée : statut, adresse finale et corps, le corps déjà lu sous le délai. */
+interface FetchedPage {
+  ok: boolean;
+  status: number;
+  /** Adresse réellement servie, après redirections. */
+  url: string;
+  body: string;
+}
+
 /**
  * Fetches `url`, following redirects manually (never `redirect: "follow"`): each hop's
  * target is re-validated with assertPublicHttpUrl before being followed, so a public URL
  * that redirects to a private/internal address (e.g. a metadata-endpoint bounce) is rejected
  * instead of silently visited. Caps at MAX_REDIRECTS hops.
+ *
+ * Rend le CORPS, pas la `Response` : le délai doit couvrir la lecture du corps, pas
+ * seulement l'arrivée des en-têtes. En rendant la Response, le chronomètre était arrêté dès
+ * les en-têtes reçus et un serveur qui envoyait son corps au goutte-à-goutte n'était plus
+ * borné par rien — le budget de l'analyse ne tenait plus. Lire ici, sous le même signal,
+ * ferme ce trou.
  */
-async function fetchWithTimeout(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  timeoutMs = FETCH_TIMEOUT_MS,
+): Promise<FetchedPage> {
   let currentUrl = url;
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
@@ -143,9 +183,8 @@ async function fetchWithTimeout(url: string, timeoutMs = FETCH_TIMEOUT_MS): Prom
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    let res: Response;
     try {
-      res = await fetch(currentUrl, {
+      const res = await fetch(currentUrl, {
         signal: controller.signal,
         redirect: "manual",
         headers: {
@@ -153,27 +192,33 @@ async function fetchWithTimeout(url: string, timeoutMs = FETCH_TIMEOUT_MS): Prom
           Accept: "text/html,application/xhtml+xml",
         },
       });
+
+      const isRedirect = res.status >= 300 && res.status < 400;
+      const location = res.headers.get("location");
+      if (!isRedirect || !location) {
+        // Un corps non lu laisse la connexion ouverte ; on le consomme dans tous les cas,
+        // y compris sur une réponse d'erreur dont l'appelant ne fera rien.
+        const body = await res.text();
+        return { ok: res.ok, status: res.status, url: res.url || currentUrl, body };
+      }
+
+      currentUrl = new URL(location, currentUrl).toString();
     } finally {
       clearTimeout(timer);
     }
-
-    const isRedirect = res.status >= 300 && res.status < 400;
-    const location = res.headers.get("location");
-    if (!isRedirect || !location) {
-      return res;
-    }
-
-    currentUrl = new URL(location, currentUrl).toString();
   }
 
   throw new SiteFetchError(`Trop de redirections (plus de ${MAX_REDIRECTS}) en suivant ${url}.`);
 }
 
 /** Firecrawl path: 1 scrape for the homepage, then at most 1 more for the pricing page. */
-async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
+async function fetchViaFirecrawl(origin: string, deadline: Deadline): Promise<FetchedSite> {
   // includeNavAndFooter: the pricing link and the social account links we need almost always
   // live in the footer, which Firecrawl's default main-content filter would strip.
-  const homepage = await scrapePage(origin, { includeNavAndFooter: true });
+  const homepage = await scrapePage(origin, {
+    includeNavAndFooter: true,
+    timeoutMs: deadline.capTimeout(HOMEPAGE_SCRAPE_MS),
+  });
 
   // Adresse réellement servie : c'est elle qui dit à quoi ressemblent les liens internes
   // de la page, pas celle saisie par l'utilisateur.
@@ -198,12 +243,23 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
   const [pricingResult, loginResult] = await Promise.allSettled([
     (async () => {
       guardUrl(pricingUrl);
-      return { url: pricingUrl, page: await scrapePage(pricingUrl) };
+      return {
+        url: pricingUrl,
+        page: await scrapePage(pricingUrl, {
+          timeoutMs: deadline.capTimeout(PRICING_SCRAPE_MS),
+        }),
+      };
     })(),
     (async () => {
       if (!loginUrl) return null;
+      // Bonus sauté quand le budget ne le couvre plus : mieux vaut ne pas avoir observé les
+      // moyens de connexion que faire attendre l'utilisateur pour eux.
+      if (!deadline.hasRoomFor(LOGIN_SCRAPE_MS)) return null;
       guardUrl(loginUrl);
-      return { url: loginUrl, page: await scrapePage(loginUrl) };
+      return {
+        url: loginUrl,
+        page: await scrapePage(loginUrl, { timeoutMs: deadline.capTimeout(LOGIN_SCRAPE_MS) }),
+      };
     })(),
   ]);
 
@@ -212,17 +268,19 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
   const pricing = pricingResult.status === "fulfilled" ? pricingResult.value : null;
   const login = loginResult.status === "fulfilled" ? loginResult.value : null;
 
-  const pricingText = pricing?.page.markdown ?? null;
+  // capText ici et pas plus loin : ces trois textes partent tels quels dans le prompt
+  // d'extraction, et le markdown de Firecrawl ne passe pas par stripHtml.
+  const pricingText = pricing?.page.markdown ? capText(pricing.page.markdown) : null;
   const pricingHtml = pricing?.page.rawHtml ?? null;
   const resolvedPricingUrl = pricing?.url ?? null;
 
   const pricingLinks = pricing?.page.links ?? [];
-  const loginText = login?.page.markdown ?? null;
+  const loginText = login?.page.markdown ? capText(login.page.markdown) : null;
   const resolvedLoginUrl = login?.url ?? null;
   const loginLinks = login?.page.links ?? [];
 
   return {
-    homepageText: homepage.markdown,
+    homepageText: capText(homepage.markdown),
     pricingText,
     homepageHtml: homepage.rawHtml,
     pricingHtml,
@@ -236,11 +294,11 @@ async function fetchViaFirecrawl(origin: string): Promise<FetchedSite> {
 }
 
 /** Direct-fetch path: original behaviour — homepage, then probe the four canonical routes. */
-async function fetchDirectly(origin: string): Promise<FetchedSite> {
+async function fetchDirectly(origin: string, deadline: Deadline): Promise<FetchedSite> {
   let homepageHtml: string;
   let homepageFinalUrl: string | null = null;
   try {
-    const res = await fetchWithTimeout(origin);
+    const res = await fetchWithTimeout(origin, deadline.capTimeout(FETCH_TIMEOUT_MS));
     // `res.url` porte la dernière adresse suivie : même raison que sur le chemin
     // Firecrawl, les liens de la page ressemblent à celle-là, pas à l'origine demandée.
     homepageFinalUrl = res.url || null;
@@ -249,7 +307,7 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
         `La page d'accueil de ${origin} a répondu avec le statut ${res.status}.`,
       );
     }
-    homepageHtml = await res.text();
+    homepageHtml = res.body;
     if (!homepageHtml.trim()) {
       throw new SiteFetchError(`La page d'accueil de ${origin} est vide.`);
     }
@@ -265,16 +323,30 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
   let pricingUrl: string | null = null;
   for (const path of PRICING_PATHS) {
     const candidateUrl = origin + path;
+    /*
+      Les tarifs sont OBLIGATOIRES : la sonde se raccourcit avec le budget, elle ne se saute
+      jamais.
+
+      Une version précédente s'arrêtait net quand il restait moins de 10 s. C'était un
+      mensonge coûteux : une sonde non effectuée donne `pricing_page_found: false`, et le
+      tableau de bord l'affiche à l'utilisateur comme « aucune page de tarifs n'a été
+      trouvée sur ton site » — sur SON site, qu'il connaît. Le relevé perdait aussi le
+      balisage des tarifs, de quoi déclencher une règle de paiement contre un côté jamais
+      lu.
+
+      capTimeout fait le travail sans mentir : chaque sonde reçoit ce qui reste, et le
+      plancher garantit qu'elle part. Les quatre routes ensemble ne peuvent donc plus
+      dépasser le budget, là où elles valaient 40 s à elles seules.
+    */
     try {
       // Délai complet, volontairement : une page de tarifs pèse souvent plusieurs
       // centaines de kilo-octets (515 Ko chez Notion), et l'écourter revient à conclure
       // « aucun tarif public » sur une page qui n'a simplement pas fini d'arriver — la
       // pire erreur possible ici, puisque tout le comparatif en dépend.
-      const res = await fetchWithTimeout(candidateUrl);
+      const res = await fetchWithTimeout(candidateUrl, deadline.capTimeout(FETCH_TIMEOUT_MS));
       if (!res.ok) continue;
-      const text = await res.text();
-      if (text.trim()) {
-        pricingHtml = text;
+      if (res.body.trim()) {
+        pricingHtml = res.body;
         pricingUrl = candidateUrl;
         break;
       }
@@ -307,12 +379,16 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
     : [origin + LOGIN_PATHS[0]];
 
   for (const candidateUrl of loginCandidates) {
+    // Bonus, sauté le premier : voir LOGIN_SCRAPE_MS.
+    if (!deadline.hasRoomFor(LOGIN_FETCH_TIMEOUT_MS)) break;
     try {
-      const res = await fetchWithTimeout(candidateUrl, LOGIN_FETCH_TIMEOUT_MS);
+      const res = await fetchWithTimeout(
+        candidateUrl,
+        deadline.capTimeout(LOGIN_FETCH_TIMEOUT_MS),
+      );
       if (!res.ok) continue;
-      const text = await res.text();
-      if (text.trim()) {
-        loginHtml = text;
+      if (res.body.trim()) {
+        loginHtml = res.body;
         loginUrl = candidateUrl;
         break;
       }
@@ -340,7 +416,10 @@ async function fetchDirectly(origin: string): Promise<FetchedSite> {
  * unreachable on every available path, throws SiteFetchError for the caller to surface
  * honestly. If no pricing route is found, returns pricingText: null rather than guessing.
  */
-export async function fetchSite(rawUrl: string): Promise<FetchedSite> {
+export async function fetchSite(
+  rawUrl: string,
+  deadline: Deadline = UNBOUNDED,
+): Promise<FetchedSite> {
   let origin: string;
   try {
     origin = new URL(rawUrl).origin;
@@ -355,7 +434,7 @@ export async function fetchSite(rawUrl: string): Promise<FetchedSite> {
 
   if (isFirecrawlConfigured()) {
     try {
-      return await fetchViaFirecrawl(origin);
+      return await fetchViaFirecrawl(origin, deadline);
     } catch (err) {
       // Firecrawl down, out of credits, or blocked on this site — degrade to the direct
       // fetch rather than failing the comparison outright.
@@ -366,7 +445,7 @@ export async function fetchSite(rawUrl: string): Promise<FetchedSite> {
     }
   }
 
-  return fetchDirectly(origin);
+  return fetchDirectly(origin, deadline);
 }
 
 /**
@@ -376,11 +455,17 @@ export async function fetchSite(rawUrl: string): Promise<FetchedSite> {
  * `/checkout` répond souvent par un 302 vers Stripe ou Whop, et cette réponse est
  * publique. On lit l'en-tête `Location` et on s'arrête là — on ne déroule pas le tunnel.
  */
-export async function peekRedirect(url: string): Promise<{ location: string | null }> {
+export async function peekRedirect(
+  url: string,
+  deadline: Deadline = UNBOUNDED,
+): Promise<{ location: string | null }> {
   guardUrl(url);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), LOGIN_FETCH_TIMEOUT_MS);
+  const timer = setTimeout(
+    () => controller.abort(),
+    deadline.capTimeout(LOGIN_FETCH_TIMEOUT_MS),
+  );
   try {
     const res = await fetch(url, {
       signal: controller.signal,
@@ -406,13 +491,19 @@ export async function peekRedirect(url: string): Promise<{ location: string | nu
  * n'est visible autrement. Renvoie null si Firecrawl n'est pas configuré ou si le clic
  * échoue — on ne conclut alors rien.
  */
-export async function clickThroughToPayment(pricingUrl: string): Promise<string | null> {
+export async function clickThroughToPayment(
+  pricingUrl: string,
+  deadline: Deadline = UNBOUNDED,
+): Promise<string | null> {
   // Désactivé par défaut. Ce niveau coûte un scrape par site, et l'observation dit qu'il
   // ne rend rien dans le cas le plus fréquent : un produit qui exige un compte avant de
   // payer renvoie sa page d'inscription. À activer quand la dépense se justifie, avec
   // RIVALYS_CLICK_THROUGH=1.
   if (process.env.RIVALYS_CLICK_THROUGH !== "1") return null;
   if (!isFirecrawlConfigured()) return null;
+  // Un scrape plus une attente de 9 s dans le navigateur : le niveau le plus cher du relevé
+  // de paiement, et le plus facile à sacrifier. Le repli est un prestataire non identifié.
+  if (!deadline.hasRoomFor(CLICK_THROUGH_MS)) return null;
 
   const script = `
     const motif = ${PURCHASE_LABEL_RE.toString()};
@@ -430,6 +521,7 @@ export async function clickThroughToPayment(pricingUrl: string): Promise<string 
         // prestataire passe par le réseau.
         { type: "wait", milliseconds: 9000 },
       ],
+      timeoutMs: deadline.capTimeout(CLICK_THROUGH_MS),
     });
     return page.finalUrl;
   } catch {

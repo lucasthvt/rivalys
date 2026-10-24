@@ -21,7 +21,16 @@ export class PerplexityError extends Error {
 }
 
 const AGENT_ENDPOINT = "https://api.perplexity.ai/v1/agent";
-const AGENT_TIMEOUT_MS = 30_000;
+/**
+ * Délai par défaut, quand l'appelant n'en impose pas.
+ *
+ * 8 s et non 30 : le préréglage `fast` effectue UNE recherche web et répond en 2 à 6 s.
+ * Les 30 s d'avant ne servaient qu'à attendre les cas pathologiques — or chaque appel ici
+ * est un ENRICHISSEMENT optionnel (une ligne de contexte, une présence de fiche), et il y
+ * en a jusqu'à cinq par analyse. Attendre une demi-minute pour un bonus, c'est faire payer
+ * à l'utilisateur un relevé dont il se passerait volontiers.
+ */
+const AGENT_TIMEOUT_MS = 8_000;
 
 export function isPerplexityConfigured(): boolean {
   return Boolean(process.env.PERPLEXITY_API_KEY?.trim());
@@ -52,12 +61,15 @@ function readOutputText(payload: AgentResponse): string | null {
  * cheapest configuration). Returns null rather than throwing on any failure: every caller
  * treats this as optional enrichment.
  */
-export async function askPerplexity(input: string): Promise<string | null> {
+export async function askPerplexity(
+  input: string,
+  { timeoutMs = AGENT_TIMEOUT_MS }: { timeoutMs?: number } = {},
+): Promise<string | null> {
   const apiKey = process.env.PERPLEXITY_API_KEY?.trim();
   if (!apiKey) return null;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), AGENT_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(AGENT_ENDPOINT, {

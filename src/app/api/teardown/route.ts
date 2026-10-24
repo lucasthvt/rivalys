@@ -9,6 +9,7 @@ import {
 import { assessPricingCoverage } from "@/lib/compare/comparability";
 import { countByPriority, computeScore } from "@/lib/compare/score";
 import { assertPublicHttpUrl, coerceUserUrl, UnsafeUrlError } from "@/lib/compare/url-safety";
+import { startDeadline } from "@/lib/compare/deadline";
 
 /**
  * POST /api/teardown — analyse une paire d'URL arbitraire, sans rien enregistrer.
@@ -109,11 +110,15 @@ export async function POST(request: Request) {
 
   // Les deux côtés sont indépendants : un site qui bloque le fetch ne doit pas emporter
   // l'autre. Même choix que /api/compare.
+  // Même budget de temps que côté produit : une prise de démo doit montrer la durée que
+  // l'utilisateur vit réellement, pas une version plus patiente du pipeline.
+  const deadline = startDeadline();
+
   const [ownResult, competitorResult] = await Promise.allSettled([
-    fetchAndExtract(own, ownLabel, false),
+    fetchAndExtract(own, ownLabel, false, deadline),
     // Le relevé de contenus tiers ne tourne que sur le second site, comme côté produit où
     // il est réservé au concurrent.
-    fetchAndExtract(rival, competitorLabel, true),
+    fetchAndExtract(rival, competitorLabel, true, deadline),
   ]);
 
   const failureNotes: string[] = [];
@@ -140,12 +145,15 @@ export async function POST(request: Request) {
   const ownData = ownResult.value.data;
   const competitorData = competitorResult.value.data;
 
-  const gaps = await buildGapCandidates({
-    ownData,
-    competitorData,
-    competitorLabel,
-    competitorUrl: rival,
-  });
+  const gaps = await buildGapCandidates(
+    {
+      ownData,
+      competitorData,
+      competitorLabel,
+      competitorUrl: rival,
+    },
+    deadline,
+  );
 
   // Le score d'une paire isolée : calculé sur les seuls écarts de cette analyse. Côté
   // produit il porte sur tous les écarts ouverts du compte — ici il n'y a pas de compte,

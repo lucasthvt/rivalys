@@ -29,6 +29,25 @@ function decodeEntities(text: string): string {
 /** Cap on cleaned text length sent to Claude, to keep prompts small and cheap. */
 export const MAX_CLEANED_TEXT_LENGTH = 15_000;
 
+/**
+ * Plafonne un texte déjà propre — le markdown que renvoie Firecrawl, qui ne passe pas par
+ * stripHtml et n'était donc plafonné par rien.
+ *
+ * C'est une correction de latence autant que de coût : la page de tarifs de Notion fait des
+ * dizaines de milliers de caractères, et l'extraction qui la lisait entière était le poste
+ * le plus lent du pipeline (9,3 s mesurées). Les paliers de tarifs et la promesse du produit
+ * sont en haut de page ; ce que la coupe retire, ce sont les mentions légales et le pied de
+ * page, dont le relevé ne tire rien.
+ *
+ * La marque de troncature est la même que celle de stripHtml : le modèle doit savoir qu'il
+ * lit un extrait, pour ne pas conclure « aucun autre palier » depuis une page coupée.
+ */
+export function capText(text: string): string {
+  return text.length > MAX_CLEANED_TEXT_LENGTH
+    ? `${text.slice(0, MAX_CLEANED_TEXT_LENGTH)}\n[...contenu tronqué...]`
+    : text;
+}
+
 const HREF_RE = /<a\b[^>]*?\shref\s*=\s*["']([^"']+)["']/gi;
 
 /**

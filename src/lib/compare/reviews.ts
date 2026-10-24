@@ -223,7 +223,10 @@ export function parseReviewLookupResponse(raw: string | null): ReviewPlatformId[
 export async function lookupReviewPresence(
   siteName: string,
   siteUrl: string,
+  { timeoutMs }: { timeoutMs?: number } = {},
 ): Promise<ReviewPlatformId[] | null> {
   if (!isPerplexityConfigured()) return null;
-  return parseReviewLookupResponse(await askPerplexity(buildReviewLookupPrompt(siteName, siteUrl)));
+  return parseReviewLookupResponse(
+    await askPerplexity(buildReviewLookupPrompt(siteName, siteUrl), { timeoutMs }),
+  );
 }

@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/brand/Logo";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { AmbientBackdrop } from "@/components/ui/AmbientBackdrop";
-import { FreeAnalysis } from "@/components/landing/free-analysis";
 import { ProofBand } from "@/components/landing/ProofBand";
 import { ScoreCard, type ScoreLine } from "@/components/landing/ScoreCard";
 import { fetchPublishedTestimonials } from "@/lib/testimonials/queries";
@@ -52,10 +51,13 @@ const PRIMARY_CTA =
 function heroCta(authenticated: boolean) {
   return authenticated
     ? { href: "/dashboard", label: "Ouvrir mon tableau de bord" }
-    : // Le bouton descend vers l'essai gratuit, pas vers l'inscription. Demander un compte
-      // avant d'avoir rien prouvé, c'est facturer la confiance d'avance ; l'essai la gagne
-      // en trente secondes et l'inscription vient après, une fois l'écart affiché.
-      { href: "#essai", label: "Analyser mon SaaS gratuitement" };
+    : // Le bouton mène à l'inscription, et plus à un formulaire à deux URL posé sur cette
+      // page. L'onboarding demande déjà les deux adresses et lance l'analyse : un second
+      // endroit pour les saisir faisait saisir deux fois la même chose, et l'écart obtenu
+      // sans compte n'était rattaché à rien — ni suivi dans le temps, ni transformé en
+      // tâches. L'aperçu gratuit vit maintenant dans le tableau de bord, sur le vrai relevé
+      // du compte (voir components/billing/free-preview.tsx).
+      { href: "/signup", label: "Analyser mon SaaS gratuitement" };
 }
 
 export default async function Home() {
@@ -73,16 +75,6 @@ export default async function Home() {
       <AmbientBackdrop />
 
       <Hero authenticated={authenticated} />
-      {/*
-        L'essai gratuit juste sous le hero, avant toute explication : un visiteur qui vient
-        de lire la promesse doit pouvoir la vérifier sur son propre site immédiatement.
-        Placé plus bas, il ne serait vu que par ceux qui ont déjà été convaincus par le
-        texte — c'est-à-dire par ceux qui en avaient le moins besoin.
-
-        Masqué pour un utilisateur connecté : il a déjà son relevé complet dans son tableau
-        de bord, et lui proposer une version bridée de ce qu'il paye n'a aucun sens.
-      */}
-      {authenticated ? null : <FreeAnalysis />}
       <WhatWeMeasure />
       <HowItWorks />
       <GapToTask />

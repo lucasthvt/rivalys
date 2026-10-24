@@ -298,10 +298,11 @@ export async function lookupThirdPartyMentions(
   siteName: string,
   siteUrl: string,
   platformIds: readonly MentionPlatformId[],
+  { timeoutMs }: { timeoutMs?: number } = {},
 ): Promise<ThirdPartyMention[] | null> {
   if (!isPerplexityConfigured()) return null;
   if (platformIds.length === 0) return null;
   return parseMentionsResponse(
-    await askPerplexity(buildMentionsLookupPrompt(siteName, siteUrl, platformIds)),
+    await askPerplexity(buildMentionsLookupPrompt(siteName, siteUrl, platformIds), { timeoutMs }),
   );
 }

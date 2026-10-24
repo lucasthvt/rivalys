@@ -58,6 +58,12 @@ export interface StoredExtractedData extends ExtractedSiteData {
   payment_providers?: string[];
 }
 
+/**
+ * `features` est un ÉCHANTILLON et non une liste exhaustive : l'extraction en demande au
+ * plus quatre par palier, parce que les tokens produits sont le premier poste de latence du
+ * pipeline (voir EXTRACTION_FORMAT dans extract.ts). Aucune règle ne doit en déduire qu'une
+ * fonctionnalité absente du tableau est absente du palier.
+ */
 function isPricingTier(value: unknown): value is PricingTier {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;

@@ -43,6 +43,16 @@ import {
   mergeReviewPlatforms,
 } from "@/lib/compare/reviews";
 import { askPerplexity, isPerplexityConfigured } from "@/lib/compare/perplexity";
+import { UNBOUNDED, type Deadline } from "@/lib/compare/deadline";
+
+/**
+ * Parts du budget d'analyse (voir deadline.ts) réservées aux étages optionnels de ce module.
+ * Chacun s'efface quand il ne reste plus de quoi l'exécuter : un relevé non effectué reste
+ * « non observé » grâce au contrat null-vs-[] de site-data, jamais « observé et vide ».
+ */
+const PERPLEXITY_LOOKUP_MS = 8_000;
+/** Deux sondes de redirection au plus, 5 s chacune (voir LOGIN_FETCH_TIMEOUT_MS). */
+const PEEK_REDIRECT_MS = 10_000;
 
 /**
  * Le pipeline d'analyse, sans base de données.
@@ -67,18 +77,69 @@ export async function fetchAndExtract(
   url: string,
   siteLabel: string,
   observeMentions: boolean,
+  deadline: Deadline = UNBOUNDED,
 ): Promise<{ raw: FetchedSite; data: StoredExtractedData }> {
-  const raw = await fetchSite(url);
-  const extracted = await extractSiteData({
-    homepageText: raw.homepageText,
-    pricingText: raw.pricingText,
-    pricingPageFound: raw.pricingUrl !== null,
-  });
+  const raw = await fetchSite(url, deadline);
+
   // Social platforms come from the site's own published links, not from the LLM — see
   // social.ts. Stored alongside the extraction so the gap rule can compare both sides.
   const socialPlatforms = detectSocialPlatforms(raw.homepageLinks);
+
+  // Moyens de paiement : la page d'accueil est toujours lue, donc un tableau vide est ici
+  // une vraie observation (« rien d'affiché »), pas une absence de mesure.
+  const paymentMarkup = [raw.homepageHtml ?? "", raw.pricingHtml ?? ""].join("\n");
+  const paymentLinks = [...raw.homepageLinks, ...raw.pricingLinks, ...raw.loginLinks];
+
+  // Relevé séparé : qui encaisse, à défaut de savoir avec quoi on paie. En second
+  // recours, on regarde où mène un bouton d'abonnement : beaucoup de sites pointent vers
+  // une route interne qui redirige aussitôt vers le prestataire.
+  const declaredProviders = detectPaymentProviders({
+    links: paymentLinks,
+    html: paymentMarkup,
+  });
+
+  /*
+    Les quatre relevés qui suivent sont lancés ENSEMBLE, et c'est le gain de latence le plus
+    important du pipeline.
+
+    Ils l'étaient à moitié : l'extraction Claude tournait d'abord, puis le prestataire de
+    paiement, puis seulement les deux relevés Perplexity. Or aucun des trois derniers ne lit
+    le résultat de l'extraction — ils ne travaillent que sur `raw`, déjà en main. Mesuré sur
+    notion.so/clickup.com, cela empilait 9,3 s d'extraction devant 4,3 s de relevés web qui
+    auraient pu courir en même temps, sur chacun des deux sites.
+
+    allSettled et non all : seule l'extraction est obligatoire. Les trois autres renvoient
+    null en cas d'échec, mais un `all` qui rejette sur l'extraction laisserait les autres
+    promesses se terminer dans le vide — et une rejection non récupérée fait tomber le
+    processus. On attend donc tout le monde, puis on relaie l'échec de l'extraction seule.
+  */
+  const [extractedResult, providersResult, reviewsResult, mentionsResult] =
+    await Promise.allSettled([
+      extractSiteData(
+        {
+          homepageText: raw.homepageText,
+          pricingText: raw.pricingText,
+          pricingPageFound: raw.pricingUrl !== null,
+        },
+        deadline,
+      ),
+      resolvePaymentProviders(declaredProviders, raw, url, deadline),
+      // Review platforms: presence on G2/Capterra/Trustpilot/Product Hunt, never a rating.
+      // The field is left out entirely when the check couldn't complete, so
+      // readReviewPlatforms returns null and no comparison is built on it.
+      observeReviewPlatforms(siteLabel, url, raw.homepageLinks, deadline),
+      observeMentions
+        ? observeThirdPartyMentions(siteLabel, url, socialPlatforms, deadline)
+        : Promise.resolve(null),
+    ]);
+
+  // L'extraction est la seule étape dont l'échec doit arrêter ce côté : sans elle il n'y a
+  // ni tarifs, ni promesse, ni public visé — rien à comparer. L'appelant transforme ce rejet
+  // en message honnête (voir describeFailure) plutôt qu'en relevé inventé.
+  if (extractedResult.status === "rejected") throw extractedResult.reason;
+
   const data: StoredExtractedData = {
-    ...extracted,
+    ...extractedResult.value,
     social_platforms: socialPlatforms,
   };
 
@@ -93,11 +154,6 @@ export async function fetchAndExtract(
     });
   }
 
-  // Moyens de paiement : la page d'accueil est toujours lue, donc un tableau vide est ici
-  // une vraie observation (« rien d'affiché »), pas une absence de mesure.
-  const paymentMarkup = [raw.homepageHtml ?? "", raw.pricingHtml ?? ""].join("\n");
-  const paymentLinks = [...raw.homepageLinks, ...raw.pricingLinks, ...raw.loginLinks];
-
   data.payment_methods = detectPaymentMethods({
     pricingText: raw.pricingText,
     homepageText: raw.homepageText,
@@ -105,28 +161,13 @@ export async function fetchAndExtract(
     html: paymentMarkup,
   });
 
-  // Relevé séparé : qui encaisse, à défaut de savoir avec quoi on paie. En second
-  // recours, on regarde où mène un bouton d'abonnement : beaucoup de sites pointent vers
-  // une route interne qui redirige aussitôt vers le prestataire.
-  const declaredProviders = detectPaymentProviders({
-    links: paymentLinks,
-    html: paymentMarkup,
-  });
-  data.payment_providers = await resolvePaymentProviders(declaredProviders, raw, url);
+  // Un relevé de prestataire qui a échoué n'est pas un site sans prestataire : on retombe
+  // sur ce que le balisage déclarait, qui est gratuit et déjà en main.
+  data.payment_providers =
+    providersResult.status === "fulfilled" ? providersResult.value : declaredProviders;
 
-  // Les deux relevés web-groundés sont indépendants l'un de l'autre : enchaînés, leurs
-  // deux délais de 30 s s'additionnaient sur chaque site. Lancés ensemble, le pire cas
-  // redevient celui du plus lent des deux.
-  //
-  // Review platforms: presence on G2/Capterra/Trustpilot/Product Hunt, never a rating.
-  // The field is left out entirely when the check couldn't complete, so readReviewPlatforms
-  // returns null and no comparison is built on it.
-  const [reviewPlatforms, mentions] = await Promise.all([
-    observeReviewPlatforms(siteLabel, url, raw.homepageLinks),
-    observeMentions
-      ? observeThirdPartyMentions(siteLabel, url, socialPlatforms)
-      : Promise.resolve(null),
-  ]);
+  const reviewPlatforms = reviewsResult.status === "fulfilled" ? reviewsResult.value : null;
+  const mentions = mentionsResult.status === "fulfilled" ? mentionsResult.value : null;
 
   if (reviewPlatforms !== null) data.review_platforms = reviewPlatforms;
   if (mentions !== null) data.third_party_mentions = mentions;
@@ -145,12 +186,15 @@ export async function fetchAndExtract(
  * le contrat null-vs-[] de site-data : un côté qu'on n'a pas pu mesurer n'est pas un côté
  * où l'on n'a rien trouvé, et seul le second cas justifie un écart.
  */
-export async function buildGapCandidates(input: {
-  ownData: StoredExtractedData;
-  competitorData: StoredExtractedData;
-  competitorLabel: string;
-  competitorUrl: string;
-}): Promise<GapCandidate[]> {
+export async function buildGapCandidates(
+  input: {
+    ownData: StoredExtractedData;
+    competitorData: StoredExtractedData;
+    competitorLabel: string;
+    competitorUrl: string;
+  },
+  deadline: Deadline = UNBOUNDED,
+): Promise<GapCandidate[]> {
   const { ownData, competitorData, competitorLabel, competitorUrl } = input;
 
   const candidates: GapCandidate[] = [
@@ -163,25 +207,30 @@ export async function buildGapCandidates(input: {
     ),
   ];
 
-  const veryDifferent = await classifyPositioning(
-    ownData.value_proposition,
-    competitorData.value_proposition,
-  );
-  const positioningGap = buildPositioningGap(ownData, competitorData, veryDifferent, competitorLabel);
-  if (positioningGap) candidates.push(positioningGap);
-
   // Social presence: detected from each site's own published links (deterministic), then
   // optionally enriched with one web-grounded Perplexity call. Both sides must actually have
   // been observed — see readSocialPlatforms' null-vs-[] contract.
   const ownSocial = readSocialPlatforms(ownData);
   const competitorSocial = readSocialPlatforms(competitorData);
+  const bothSocialObserved = ownSocial !== null && competitorSocial !== null;
+  const missingSocial = bothSocialObserved
+    ? missingPlatforms(ownSocial, competitorSocial)
+    : [];
 
-  if (ownSocial !== null && competitorSocial !== null) {
-    const missing = missingPlatforms(ownSocial, competitorSocial);
-    const socialNote =
-      missing.length > 0
-        ? await describeCompetitorSocial(competitorLabel, competitorUrl, missing)
-        : null;
+  // Les deux seuls appels modèle de cette fonction, lancés ensemble : le classificateur de
+  // positionnement ne lit pas la note sociale, et réciproquement. Enchaînés, ils ajoutaient
+  // 3,3 s mesurées à la fin de chaque analyse, après que tout le reste était déjà connu.
+  const [veryDifferent, socialNote] = await Promise.all([
+    classifyPositioning(ownData.value_proposition, competitorData.value_proposition, deadline),
+    missingSocial.length > 0
+      ? describeCompetitorSocial(competitorLabel, competitorUrl, missingSocial, deadline)
+      : Promise.resolve(null),
+  ]);
+
+  const positioningGap = buildPositioningGap(ownData, competitorData, veryDifferent, competitorLabel);
+  if (positioningGap) candidates.push(positioningGap);
+
+  if (bothSocialObserved) {
     const socialGap = detectSocialPresenceGap(
       ownSocial,
       competitorSocial,
@@ -261,14 +310,18 @@ async function observeThirdPartyMentions(
   siteLabel: string,
   siteUrl: string,
   linkedPlatforms: readonly string[],
+  deadline: Deadline,
 ): Promise<ThirdPartyMention[] | null> {
   if (!isPerplexityConfigured()) return null;
+  if (!deadline.hasRoomFor(PERPLEXITY_LOOKUP_MS)) return null;
 
   const linked = new Set(linkedPlatforms);
   const toCheck = MENTION_PLATFORM_IDS.filter((id) => !linked.has(id));
   if (toCheck.length === 0) return null;
 
-  return lookupThirdPartyMentions(siteLabel, siteUrl, toCheck);
+  return lookupThirdPartyMentions(siteLabel, siteUrl, toCheck, {
+    timeoutMs: deadline.capTimeout(PERPLEXITY_LOOKUP_MS),
+  });
 }
 
 /**
@@ -288,14 +341,31 @@ async function observeReviewPlatforms(
   siteLabel: string,
   siteUrl: string,
   homepageLinks: readonly string[],
+  deadline: Deadline,
 ): Promise<string[] | null> {
   const fromLinks = detectReviewPlatformsFromLinks(homepageLinks);
   if (fromLinks.length > 0) return fromLinks;
   // No key configured: the link scan is the whole observation, and the gap wording stays
   // scoped to it ("aucune fiche n'a été trouvée").
   if (!isPerplexityConfigured()) return fromLinks;
+  /*
+    Budget épuisé : null, et surtout pas `fromLinks`.
 
-  const looked = await lookupReviewPresence(siteLabel, siteUrl);
+    `fromLinks` vaut [] à ce point, et [] AFFIRME « ce site n'est listé nulle part » — ce qui
+    suffit à créer un écart « tu n'as aucune fiche d'avis ». Or on n'a pas regardé : un site
+    peut très bien avoir une fiche G2 sans y faire de lien depuis son pied de page, et c'est
+    précisément ce que la recherche web sert à trouver.
+
+    La branche « pas de clé Perplexity » juste au-dessus rend bien [], et c'est voulu : là,
+    le balayage de liens EST tout le relevé, toujours, et le libellé de l'écart s'y tient.
+    Ici le relevé existe et on choisit de ne pas le faire — c'est une mesure manquante, pas
+    une mesure vide.
+  */
+  if (!deadline.hasRoomFor(PERPLEXITY_LOOKUP_MS)) return null;
+
+  const looked = await lookupReviewPresence(siteLabel, siteUrl, {
+    timeoutMs: deadline.capTimeout(PERPLEXITY_LOOKUP_MS),
+  });
   if (looked === null) return null;
   return mergeReviewPlatforms(fromLinks, looked);
 }
@@ -309,8 +379,11 @@ async function describeCompetitorSocial(
   competitorLabel: string,
   competitorUrl: string,
   missing: readonly string[],
+  deadline: Deadline,
 ): Promise<string | null> {
   if (!isPerplexityConfigured() || missing.length === 0) return null;
+  // Une ligne de contexte sur un écart déjà constitué : le premier étage à sacrifier.
+  if (!deadline.hasRoomFor(PERPLEXITY_LOOKUP_MS)) return null;
 
   const platforms = labelPlatforms(missing).join(", ");
   const answer = await askPerplexity(
@@ -319,6 +392,7 @@ async function describeCompetitorSocial(
       `Base-toi uniquement sur des sources publiques que tu peux vérifier. ` +
       `Si tu ne trouves pas d'information fiable, réponds exactement : INCONNU. ` +
       `Ne donne aucun chiffre d'audience, aucun nombre d'abonnés, aucune estimation.`,
+    { timeoutMs: deadline.capTimeout(PERPLEXITY_LOOKUP_MS) },
   );
 
   if (!answer) return null;
@@ -359,14 +433,22 @@ async function resolvePaymentProviders(
   declared: string[],
   raw: FetchedSite,
   siteUrl: string,
+  deadline: Deadline,
 ): Promise<string[]> {
   if (declared.length > 0) return declared;
 
-  const followed = await followPurchaseLinks(raw.pricingLinks, peekRedirect);
+  // Jusqu'à deux redirections sondées l'une après l'autre : bonus, sauté quand le budget
+  // ne les couvre plus. Sans cette garde, le plancher de capTimeout les laissait partir
+  // après l'épuisement du budget et l'analyse débordait de quelques secondes.
+  if (!deadline.hasRoomFor(PEEK_REDIRECT_MS)) return declared;
+
+  const followed = await followPurchaseLinks(raw.pricingLinks, (url) =>
+    peekRedirect(url, deadline),
+  );
   if (followed.length > 0) return followed;
 
   if (!raw.pricingUrl) return [];
 
-  const landing = await clickThroughToPayment(raw.pricingUrl);
+  const landing = await clickThroughToPayment(raw.pricingUrl, deadline);
   return providerFromLandingUrl(landing, safeHostname(siteUrl)?.replace(/^www\./, "") ?? null);
 }

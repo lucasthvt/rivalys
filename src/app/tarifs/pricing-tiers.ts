@@ -62,11 +62,11 @@ export const PRICING_TIERS: PricingTier[] = [
     checkout: "pro",
     highlighted: true,
     plans: {
-      monthly: { price: "29 €", period: "par mois", note: "Sans engagement, résiliable en un clic." },
+      monthly: { price: "14,50 €", period: "par mois", note: "Sans engagement, résiliable en un clic." },
       yearly: {
-        price: "290 €",
+        price: "145 €",
         period: "par an",
-        note: "Soit 24,17 € par mois — deux mois offerts, facturés en une fois.",
+        note: "Soit 12,08 € par mois — deux mois offerts, facturés en une fois.",
       },
     },
   },
@@ -83,11 +83,11 @@ export const PRICING_TIERS: PricingTier[] = [
     cta: "Commencer avec Growth",
     checkout: "growth",
     plans: {
-      monthly: { price: "79 €", period: "par mois", note: "Sans engagement, résiliable en un clic." },
+      monthly: { price: "39,50 €", period: "par mois", note: "Sans engagement, résiliable en un clic." },
       yearly: {
-        price: "790 €",
+        price: "395 €",
         period: "par an",
-        note: "Soit 65,83 € par mois — deux mois offerts, facturés en une fois.",
+        note: "Soit 32,92 € par mois — deux mois offerts, facturés en une fois.",
       },
     },
   },

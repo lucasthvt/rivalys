@@ -17,7 +17,14 @@ interface CompareResponse {
  */
 type Feedback = { kind: "info" | "error"; message: string };
 
-export function RefreshButton() {
+/**
+ * `label` existe parce que ce bouton a deux sens selon l'écran.
+ *
+ * Quand aucune analyse n'a encore tourné pour ce concurrent, « Actualiser » ne veut rien
+ * dire : il n'y a rien à rafraîchir. C'est le cas que vit un compte dont la toute première
+ * analyse a échoué, et c'est précisément le moment où il a le plus besoin de la relancer.
+ */
+export function RefreshButton({ label = "Actualiser" }: { label?: string } = {}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -88,7 +95,7 @@ export function RefreshButton() {
         disabled={isPending}
         className="inline-flex h-11 items-center justify-center rounded-full bg-signal px-6 text-sm font-semibold text-paper shadow-signal-sm transition-colors hover:bg-signal-bright hover:text-void disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isPending ? `Analyse en cours… ${elapsed} s` : "Actualiser"}
+        {isPending ? `Analyse en cours… ${elapsed} s` : label}
       </button>
       {isPending && elapsed >= 45 && (
         <p className="max-w-[240px] text-right text-xs text-mist">

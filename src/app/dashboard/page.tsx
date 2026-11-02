@@ -199,7 +199,22 @@ export default async function DashboardPage({
     return (
       <AppShell userLabel={userLabel} tier={profile?.subscription_tier}>
         <div className="relative mx-auto w-full max-w-5xl px-6 py-14 sm:px-8 lg:py-16">
-          <PageHeader eyebrow="Tableau de bord" title="Où tu perds du terrain" />
+          {/*
+            Le bouton d'analyse appartient aussi au palier gratuit.
+
+            L'analyse tourne pour tout le monde — c'est le DÉTAIL de ce qu'elle trouve qui
+            est réservé aux offres payantes. Sans ce bouton, un compte dont la première
+            analyse a échoué (site injoignable, limite de débit, coupure réseau) arrivait
+            sur un tableau de bord qui lui disait de lancer une analyse sans lui en donner
+            le moyen : un cul-de-sac dès la fin de l'inscription. L'écran d'onboarding
+            promet d'ailleurs noir sur blanc qu'on peut « relancer l'analyse depuis le
+            tableau de bord ».
+          */}
+          <PageHeader
+            eyebrow="Tableau de bord"
+            title="Où tu perds du terrain"
+            action={<RefreshButton label={analysedAt ? "Actualiser" : "Lancer l'analyse"} />}
+          />
           {switcher}
 
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -233,6 +248,10 @@ export default async function DashboardPage({
             <EmptyState
               title="Aucune analyse pour ce concurrent"
               description={`Lance une première analyse face à ${competitorLabel} pour voir ton score et ton écart le plus prioritaire.`}
+              // Une consigne sans commande n'est pas une consigne. L'état vide porte donc
+              // le bouton lui-même, en plus de celui de l'en-tête : c'est ici que le regard
+              // se pose quand l'écran est vide.
+              action={<RefreshButton label="Lancer l'analyse" />}
             />
           )}
         </div>

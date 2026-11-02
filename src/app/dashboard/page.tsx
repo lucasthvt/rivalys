@@ -16,6 +16,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { PANEL_ACTION_LINK, PanelHeader } from "@/components/layout/Panel";
 import { FreePreviewPanel } from "@/components/billing/free-preview";
 import { buildFreePreview } from "@/lib/billing/free-preview";
+import { explainMissingSnapshot } from "@/lib/compare/analysis-state";
+import { parseLastRunAt } from "@/lib/compare/rate-limit";
 import { assessPricingCoverage } from "@/lib/compare/comparability";
 import { hasPaidAccess } from "@/lib/billing/access";
 import { Board } from "@/components/dashboard/board";
@@ -160,12 +162,43 @@ export default async function DashboardPage({
       .maybeSingle(),
   ]);
 
+  /*
+    Pourquoi ce concurrent n'a pas de relevé, quand il n'en a pas.
+
+    L'écran lisait cette absence comme « aucune analyse pour ce concurrent ». Mais une
+    analyse lit notre site PUIS celui d'en face : quand le second échoue, le premier relevé
+    est quand même écrit, et c'est lui qui arme la limite de 24 h. L'écran annonçait donc
+    « aucune analyse » pendant que le bouton répondait « analyse déjà effectuée il y a moins
+    de 24 h » — deux phrases contradictoires côte à côte.
+
+    `lastRunAt` est le relevé le plus récent du compte, tous côtés confondus : la même
+    valeur que celle dont /api/compare se sert pour décider. C'est ce qui garantit que les
+    deux racontent la même histoire.
+  */
+  const missingSnapshotReason = competitorSnapshotRes.data
+    ? null
+    : explainMissingSnapshot({
+        lastRunAt: parseLastRunAt(ownSnapshotRes.data?.fetched_at),
+        trackedSince:
+          parseLastRunAt(competitor.url_changed_at) ?? parseLastRunAt(competitor.created_at),
+        now: new Date(),
+      });
+
+  const analysisFailedLastRun = missingSnapshotReason?.kind === "failed";
+
   const snapshotLoadError = Boolean(ownSnapshotRes.error || competitorSnapshotRes.error);
   const ownData = parseExtractedData(ownSnapshotRes.data?.extracted_data);
   const competitorData = parseExtractedData(competitorSnapshotRes.data?.extracted_data);
   const ownFlags = parseObservationFlags(ownSnapshotRes.data?.extracted_data);
   const competitorFlags = parseObservationFlags(competitorSnapshotRes.data?.extracted_data);
   const competitorLabel = competitor.name?.trim() || safeHostname(competitor.url);
+
+  // Formulé ici, où le nom du concurrent est connu. Le délai annoncé vient de la même
+  // horloge que celle de /api/compare : les deux doivent donner le même chiffre.
+  const missingSnapshotNotice =
+    missingSnapshotReason?.kind === "failed"
+      ? `Une analyse a bien tourné, mais le site de ${competitorLabel} n'a pas pu être lu — rien n'a donc été comparé. La prochaine tentative sera possible dans ${missingSnapshotReason.retryIn}.`
+      : null;
 
   const switcher = (
     <CompetitorSwitcher
@@ -213,15 +246,32 @@ export default async function DashboardPage({
           <PageHeader
             eyebrow="Tableau de bord"
             title="Où tu perds du terrain"
-            action={<RefreshButton label={analysedAt ? "Actualiser" : "Lancer l'analyse"} />}
+            action={
+              <RefreshButton
+                // « Réessayer » et non « Lancer » quand la dernière analyse a échoué de ce
+                // côté : il y a bien eu une tentative, et le bouton va d'ailleurs répondre
+                // qu'elle date de moins de 24 h.
+                label={
+                  analysedAt ? "Actualiser" : analysisFailedLastRun ? "Réessayer" : "Lancer l'analyse"
+                }
+              />
+            }
           />
           {switcher}
 
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <MetricCard
               label="Analyse"
-              value={analysedAt ? "Terminée" : "Pas encore lancée"}
-              sublabel={analysedAt ? formatAnalysisDate(analysedAt) : "Lance-la pour comparer"}
+              value={
+                analysedAt ? "Terminée" : analysisFailedLastRun ? "Sans résultat" : "Pas encore lancée"
+              }
+              sublabel={
+                analysedAt
+                  ? formatAnalysisDate(analysedAt)
+                  : analysisFailedLastRun
+                    ? `Son site n'a pas pu être lu`
+                    : "Lance-la pour comparer"
+              }
             />
             <MetricCard
               label="Écarts détectés"
@@ -246,12 +296,19 @@ export default async function DashboardPage({
             />
           ) : (
             <EmptyState
-              title="Aucune analyse pour ce concurrent"
-              description={`Lance une première analyse face à ${competitorLabel} pour voir ton score et ton écart le plus prioritaire.`}
+              title={
+                analysisFailedLastRun
+                  ? `Le site de ${competitorLabel} n'a pas pu être lu`
+                  : "Aucune analyse pour ce concurrent"
+              }
+              description={
+                missingSnapshotNotice ??
+                `Lance une première analyse face à ${competitorLabel} pour voir ton score et ton écart le plus prioritaire.`
+              }
               // Une consigne sans commande n'est pas une consigne. L'état vide porte donc
               // le bouton lui-même, en plus de celui de l'en-tête : c'est ici que le regard
               // se pose quand l'écran est vide.
-              action={<RefreshButton label="Lancer l'analyse" />}
+              action={<RefreshButton label={analysisFailedLastRun ? "Réessayer" : "Lancer l'analyse"} />}
             />
           )}
         </div>
@@ -324,7 +381,9 @@ export default async function DashboardPage({
               <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-mist/50">
                 {competitorSnapshotRes.data?.fetched_at
                   ? formatAnalysisDate(competitorSnapshotRes.data.fetched_at)
-                  : "Pas encore analysé"}
+                  : analysisFailedLastRun
+                    ? "Relevé non abouti"
+                    : "Pas encore analysé"}
               </span>
             }
           />
@@ -340,7 +399,9 @@ export default async function DashboardPage({
                 }`}
               >
                 {!analysedForCurrentCompetitor
-                  ? "Pas encore analysé"
+                  ? analysisFailedLastRun
+                    ? "Site non lu"
+                    : "Pas encore analysé"
                   : gaps.length === 0
                     ? "Aligné"
                     : `${gaps.length} écart${gaps.length > 1 ? "s" : ""}`}
@@ -351,6 +412,20 @@ export default async function DashboardPage({
             </p>
           </div>
         </div>
+
+        {/*
+          Même raison qu'au palier gratuit : sans cette phrase, l'écran dit « pas encore
+          analysé » pendant que le bouton d'actualisation répond « analyse déjà effectuée il
+          y a moins de 24 h ».
+        */}
+        {missingSnapshotNotice && (
+          <div className="panel mb-6 px-6 py-5">
+            <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-mist">
+              Dernière analyse
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-mist">{missingSnapshotNotice}</p>
+          </div>
+        )}
 
         {coverageNotice && <CoverageNoticePanel notice={coverageNotice} />}
 

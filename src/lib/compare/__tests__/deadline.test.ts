@@ -76,6 +76,23 @@ describe("startDeadline", () => {
     assert.equal(deadline.capTimeout(16_000, 1), 16_000);
   });
 
+  test("capTimeout rend TOUJOURS un entier", () => {
+    // Le SDK Anthropic refuse un délai à virgule (« timeout must be an integer ») et
+    // transforme l'appel en erreur réseau. La division par le nombre de tentatives en
+    // produisait un dès que les millisecondes restantes étaient impaires : une extraction
+    // sur deux échouait, au hasard de l'horloge, et le relevé du site tombait avec elle.
+    for (const budget of [20_001, 19_999, 13_333, 7, 1]) {
+      for (const attempts of [1, 2, 3]) {
+        const deadline = startDeadline(budget, fakeClock().now);
+        const value = deadline.capTimeout(16_000, attempts);
+        assert.ok(
+          Number.isInteger(value),
+          `budget ${budget} sur ${attempts} tentatives a rendu ${value}`,
+        );
+      }
+    }
+  });
+
   test("hasRoomFor autorise tant que le budget couvre l'étage", () => {
     const clock = fakeClock();
     const deadline = startDeadline(10_000, clock.now);

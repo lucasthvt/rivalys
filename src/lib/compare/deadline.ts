@@ -78,10 +78,15 @@ export function startDeadline(
 
   return {
     remainingMs: remaining,
+    // Math.floor et non une simple division : le SDK Anthropic REFUSE un délai à virgule
+    // (« timeout must be an integer ») et l'appel part en erreur réseau. La division par le
+    // nombre de tentatives en produisait un dès que les millisecondes restantes étaient
+    // impaires — soit une extraction sur deux, au hasard de l'horloge. En arrondissant vers
+    // le bas, le pire cas de l'appel complet reste sous le budget.
     capTimeout: (wantedMs, attempts = 1) =>
       Math.max(
         MIN_REQUIRED_TIMEOUT_MS,
-        Math.min(wantedMs, remaining() / Math.max(1, attempts)),
+        Math.floor(Math.min(wantedMs, remaining() / Math.max(1, attempts))),
       ),
     hasRoomFor: (ms) => remaining() >= ms,
   };

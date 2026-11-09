@@ -41,6 +41,16 @@ export type PricingTier = {
  */
 export const DOWNSELL_PERCENT_OFF = 20;
 
+/**
+ * Le prix d'entrée, tel que les écrans verrouillés le citent à côté de leur bouton.
+ *
+ * Sans lui, « Voir les offres » envoie quelqu'un vers une page dont il ignore le prix, et
+ * le saut de l'inconnu coûte plus que le montant lui-même. C'est l'équivalent mensuel de
+ * Pro en annuel (190 € ÷ 12) : à tenir aligné à la main avec le tarif Pro ci-dessous, comme
+ * le reste de ce fichier.
+ */
+export const ENTRY_PRICE_LABEL = "Pro dès 15,83 € par mois en annuel";
+
 const FREE_PLAN: PlanPricing = { price: "0 €", period: "pour toujours" };
 
 export const PRICING_TIERS: PricingTier[] = [

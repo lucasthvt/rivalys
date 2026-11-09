@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/Button";
+import { ENTRY_PRICE_LABEL } from "@/app/tarifs/pricing-tiers";
 import { CATEGORY_LABEL, PRIORITY_COLOR, PRIORITY_LABEL } from "@/components/tasks/priority";
 import type { FreePreview } from "@/lib/billing/free-preview";
 
@@ -170,6 +171,7 @@ function Locked({ preview }: { preview: FreePreview }) {
             >
               Voir tout mon relevé
             </Link>
+            <p className="mt-3 text-xs text-mist">{ENTRY_PRICE_LABEL}</p>
           </div>
         </div>
       </div>

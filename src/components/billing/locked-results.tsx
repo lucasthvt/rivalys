@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/Button";
+import { ENTRY_PRICE_LABEL } from "@/app/tarifs/pricing-tiers";
 
 /**
  * Résultats d'analyse masqués pour un compte au palier gratuit.
@@ -42,6 +43,7 @@ export function LockedResults({
           >
             Voir les offres
           </Link>
+          <p className="mt-3 text-xs text-foreground-muted">{ENTRY_PRICE_LABEL}</p>
         </div>
       </div>
     </div>

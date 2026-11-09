@@ -111,9 +111,26 @@ export default async function TasksPage({
         ) : !unlocked ? (
           // Le nombre d'écarts reste annoncé dans l'en-tête ci-dessus : ce qui
           // est réservé, c'est leur contenu, pas le fait qu'ils existent.
+          // Les décomptes sont ceux de l'en-tête, déjà visibles : on les reprend pour dire ce
+          // qui attend, au lieu d'un « réservé » qui ne parle que du produit. Sans écart, on
+          // retombe sur la formulation générale — il n'y a alors rien de précis à annoncer.
           <LockedResults
-            title="Tâches réservées aux offres payantes"
-            description="Chaque écart détecté devient une action concrète à mener. Le détail des actions s'ouvre avec une offre payante."
+            title={
+              gaps.length > 0
+                ? `${gaps.length} action${gaps.length > 1 ? "s" : ""} ${
+                    gaps.length > 1 ? "sont prêtes" : "est prête"
+                  } pour toi`
+                : "Tâches réservées aux offres payantes"
+            }
+            description={
+              gaps.length > 0
+                ? `Chaque écart détecté face à ${
+                    competitor?.name?.trim() || (competitor ? safeHostname(competitor.url) : "ton concurrent")
+                  } est devenu une action concrète${
+                    highCount > 0 ? `, dont ${highCount} en priorité haute` : ""
+                  }. Ouvre une offre payante pour les lire et les cocher au fur et à mesure.`
+                : "Chaque écart détecté devient une action concrète à mener. Le détail des actions s'ouvre avec une offre payante."
+            }
           >
             <SkeletonList rows={4} />
           </LockedResults>

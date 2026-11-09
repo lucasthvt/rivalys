@@ -4,6 +4,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
+  ANALYSIS_COOLDOWN_LABEL,
   ANALYSIS_COOLDOWN_MS,
   checkAnalysisRateLimit,
   formatRetryDelay,
@@ -31,8 +32,12 @@ function refusal(decision: AnalysisRateLimitDecision): { retryAt: Date } {
 }
 
 describe("ANALYSIS_COOLDOWN_MS", () => {
-  test("is exactly 24 hours", () => {
-    assert.equal(ANALYSIS_COOLDOWN_MS, 24 * HOUR);
+  test("is exactly 7 days", () => {
+    assert.equal(ANALYSIS_COOLDOWN_MS, 7 * 24 * HOUR);
+  });
+
+  test("its French label says the same duration", () => {
+    assert.equal(ANALYSIS_COOLDOWN_LABEL, "7 jours");
   });
 });
 
@@ -64,19 +69,19 @@ describe("checkAnalysisRateLimit", () => {
     assert.deepEqual(decision, { allowed: true });
   });
 
-  test("refuses just under the 24 h boundary, by a single millisecond", () => {
+  test("refuses just under the 7-day boundary, by a single millisecond", () => {
     const now = plus(LAST_RUN, ANALYSIS_COOLDOWN_MS - 1);
     const { retryAt } = refusal(checkAnalysisRateLimit(LAST_RUN, now));
     assert.equal(retryAt.getTime(), LAST_RUN.getTime() + ANALYSIS_COOLDOWN_MS);
   });
 
-  test("refuses a few hours in — retryAt stays anchored on the last run, not on now", () => {
-    const now = plus(LAST_RUN, 17 * HOUR);
+  test("refuses the day after — retryAt stays anchored on the last run, not on now", () => {
+    const now = plus(LAST_RUN, 24 * HOUR);
     const { retryAt } = refusal(checkAnalysisRateLimit(LAST_RUN, now));
-    assert.equal(retryAt.toISOString(), "2026-08-28T09:00:00.000Z");
+    assert.equal(retryAt.toISOString(), "2026-09-03T09:00:00.000Z");
   });
 
-  test("allows exactly at the 24 h boundary (window is closed at its end)", () => {
+  test("allows exactly at the 7-day boundary (window is closed at its end)", () => {
     const now = plus(LAST_RUN, ANALYSIS_COOLDOWN_MS);
     assert.deepEqual(checkAnalysisRateLimit(LAST_RUN, now), { allowed: true });
   });
@@ -108,9 +113,9 @@ describe("checkAnalysisRateLimit", () => {
 });
 
 describe("retryAfterSeconds", () => {
-  test("a full cooldown is 86400 seconds", () => {
+  test("a full cooldown is 604800 seconds", () => {
     const retryAt = plus(LAST_RUN, ANALYSIS_COOLDOWN_MS);
-    assert.equal(retryAfterSeconds(retryAt, LAST_RUN), 86400);
+    assert.equal(retryAfterSeconds(retryAt, LAST_RUN), 604800);
   });
 
   test("rounds up to whole seconds so the header never sends the client back too early", () => {
@@ -126,10 +131,19 @@ describe("retryAfterSeconds", () => {
 });
 
 describe("formatRetryDelay", () => {
-  test("uses hours from 1 h up", () => {
+  test("uses hours from 1 h up to a day", () => {
     assert.equal(formatRetryDelay(plus(LAST_RUN, 7 * HOUR), LAST_RUN), "7 h");
     assert.equal(formatRetryDelay(plus(LAST_RUN, HOUR), LAST_RUN), "1 h");
-    assert.equal(formatRetryDelay(plus(LAST_RUN, 24 * HOUR), LAST_RUN), "24 h");
+  });
+
+  test("uses days from 24 h up, singular for one", () => {
+    assert.equal(formatRetryDelay(plus(LAST_RUN, 24 * HOUR), LAST_RUN), "1 jour");
+    assert.equal(formatRetryDelay(plus(LAST_RUN, 3 * 24 * HOUR), LAST_RUN), "3 jours");
+    assert.equal(formatRetryDelay(plus(LAST_RUN, ANALYSIS_COOLDOWN_MS), LAST_RUN), "7 jours");
+  });
+
+  test("rounds days up too: 2 days and 1 hour left is announced as 3 days", () => {
+    assert.equal(formatRetryDelay(plus(LAST_RUN, 2 * 24 * HOUR + HOUR), LAST_RUN), "3 jours");
   });
 
   test("uses minutes below one hour", () => {
@@ -156,7 +170,7 @@ describe("rateLimitMessage", () => {
     const message = rateLimitMessage(plus(LAST_RUN, 7 * HOUR), LAST_RUN);
     assert.equal(
       message,
-      "Analyse déjà effectuée il y a moins de 24 h. La prochaine sera possible dans 7 h.",
+      "Analyse déjà effectuée il y a moins de 7 jours. La prochaine sera possible dans 7 h.",
     );
   });
 

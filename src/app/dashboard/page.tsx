@@ -167,9 +167,9 @@ export default async function DashboardPage({
 
     L'écran lisait cette absence comme « aucune analyse pour ce concurrent ». Mais une
     analyse lit notre site PUIS celui d'en face : quand le second échoue, le premier relevé
-    est quand même écrit, et c'est lui qui arme la limite de 24 h. L'écran annonçait donc
+    est quand même écrit, et c'est lui qui arme la limite de 7 jours. L'écran annonçait donc
     « aucune analyse » pendant que le bouton répondait « analyse déjà effectuée il y a moins
-    de 24 h » — deux phrases contradictoires côte à côte.
+    de 7 jours » — deux phrases contradictoires côte à côte.
 
     `lastRunAt` est le relevé le plus récent du compte, tous côtés confondus : la même
     valeur que celle dont /api/compare se sert pour décider. C'est ce qui garantit que les
@@ -250,7 +250,7 @@ export default async function DashboardPage({
               <RefreshButton
                 // « Réessayer » et non « Lancer » quand la dernière analyse a échoué de ce
                 // côté : il y a bien eu une tentative, et le bouton va d'ailleurs répondre
-                // qu'elle date de moins de 24 h.
+                // qu'elle date de moins de 7 jours.
                 label={
                   analysedAt ? "Actualiser" : analysisFailedLastRun ? "Réessayer" : "Lancer l'analyse"
                 }
@@ -416,7 +416,7 @@ export default async function DashboardPage({
         {/*
           Même raison qu'au palier gratuit : sans cette phrase, l'écran dit « pas encore
           analysé » pendant que le bouton d'actualisation répond « analyse déjà effectuée il
-          y a moins de 24 h ».
+          y a moins de 7 jours ».
         */}
         {missingSnapshotNotice && (
           <div className="panel mb-6 px-6 py-5">

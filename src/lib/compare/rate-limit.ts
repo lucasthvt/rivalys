@@ -23,10 +23,23 @@
 // very first run half-failed waits without a result — and that run still cost real money,
 // which is what we are metering.
 
-export const ANALYSIS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_MINUTE = 60 * 1000;
+const MS_PER_DAY = 24 * MS_PER_HOUR;
+
+/**
+ * Une analyse par semaine, tous paliers confondus.
+ *
+ * Chaque exécution coûte de vrais crédits (voir plus haut), et les pages de tarifs d'un
+ * concurrent bougent rarement : relire une page inchangée chaque jour ne rend rien à
+ * l'utilisateur, mais coûte 30 exécutions par mois au lieu de 4. Le palier gratuit en
+ * relance aussi depuis le tableau de bord, donc la limite le borne autant que Pro.
+ *
+ * `ANALYSIS_COOLDOWN_LABEL` dit la même durée en français, pour les messages : les deux
+ * sont déclarés côte à côte pour qu'on ne change pas l'une sans l'autre.
+ */
+export const ANALYSIS_COOLDOWN_MS = 7 * MS_PER_DAY;
+export const ANALYSIS_COOLDOWN_LABEL = "7 jours";
 
 export type AnalysisRateLimitDecision =
   | { allowed: true }
@@ -71,7 +84,7 @@ export function retryAfterSeconds(retryAt: Date, now: Date): number {
 }
 
 /**
- * Human-readable remaining wait: hours from 1 h up, minutes below that.
+ * Human-readable remaining wait: days from 24 h up, hours from 1 h up, minutes below that.
  *
  * Always rounded UP, so the announced delay is never shorter than the real one — telling
  * someone "dans 7 h" and refusing them again at 7 h would be the annoying kind of wrong.
@@ -80,6 +93,10 @@ export function retryAfterSeconds(retryAt: Date, now: Date): number {
 export function formatRetryDelay(retryAt: Date, now: Date): string {
   const remainingMs = Math.max(0, retryAt.getTime() - now.getTime());
 
+  if (remainingMs >= MS_PER_DAY) {
+    const days = Math.ceil(remainingMs / MS_PER_DAY);
+    return days === 1 ? "1 jour" : `${days} jours`;
+  }
   if (remainingMs >= MS_PER_HOUR) {
     return `${Math.ceil(remainingMs / MS_PER_HOUR)} h`;
   }
@@ -88,5 +105,5 @@ export function formatRetryDelay(retryAt: Date, now: Date): string {
 
 /** User-facing French message returned with the 429. */
 export function rateLimitMessage(retryAt: Date, now: Date): string {
-  return `Analyse déjà effectuée il y a moins de 24 h. La prochaine sera possible dans ${formatRetryDelay(retryAt, now)}.`;
+  return `Analyse déjà effectuée il y a moins de ${ANALYSIS_COOLDOWN_LABEL}. La prochaine sera possible dans ${formatRetryDelay(retryAt, now)}.`;
 }

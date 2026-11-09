@@ -61,7 +61,7 @@ export default async function ConcurrentPage() {
   const usedSlots = competitors.length;
   const allowance = canAddCompetitor(tier, usedSlots);
 
-  // Le délai ne s'applique qu'en production, comme la limite de 24 h sur
+  // Le délai ne s'applique qu'en production, comme la limite de 7 jours sur
   // l'analyse : en développement il empêcherait de tester le remplacement.
   const cooldownEnforced = process.env.NODE_ENV === "production";
   const now = new Date();

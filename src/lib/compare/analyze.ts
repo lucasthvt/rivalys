@@ -330,7 +330,7 @@ async function observeThirdPartyMentions(
  * 1. The site's own links: a G2/Capterra/Product Hunt badge in the footer is proof of a
  *    listing at zero cost and zero hallucination risk. When that already names a platform we
  *    stop there — a Perplexity call could only re-confirm what we can see, and this pipeline
- *    runs at most once per user per 24 h precisely because each run costs real credits.
+ *    runs at most once per user per 7 days precisely because each run costs real credits.
  * 2. Otherwise, one web-grounded lookup whose every claim is re-verified against the
  *    platform's URL shape before it counts (see parseReviewLookupResponse).
  *

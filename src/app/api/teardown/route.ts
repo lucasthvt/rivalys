@@ -22,7 +22,7 @@ import { startDeadline } from "@/lib/compare/deadline";
  * Trois différences avec /api/compare, toutes voulues :
  *   - aucune écriture : ni relevé, ni écart, ni point de score. Les tournages ne polluent
  *     pas les données réelles, et le score_history reste l'historique du produit ;
- *   - pas de limite 24 h : elle protège la dépense d'un client, or ici c'est la nôtre, et
+ *   - pas de limite de 7 jours : elle protège la dépense d'un client, or ici c'est la nôtre, et
  *     refaire une prise ne doit pas attendre le lendemain ;
  *   - réservé à un seul compte (voir plus bas), justement parce que les deux points
  *     ci-dessus retirent les garde-fous de dépense.
@@ -45,7 +45,7 @@ export async function GET() {
  * Réservé au compte nommé par TEARDOWN_ADMIN_EMAIL.
  *
  * Chaque exécution dépense de vrais crédits Firecrawl, Claude et Perplexity, sans la limite
- * de 24 h qui borne /api/compare. Laissée ouverte, cette route viderait le budget en une
+ * de 7 jours qui borne /api/compare. Laissée ouverte, cette route viderait le budget en une
  * nuit — c'est un outil interne, pas une surface produit.
  *
  * Réponse 404 et non 403 : un 403 confirmerait que la route existe. Sans la variable

@@ -185,7 +185,7 @@ export async function replaceCompetitorUrl(
     // une place servirait de scanner illimité, et chaque remplacement relance un
     // cycle d'analyse payant.
     //
-    // Comme la limite de 24 h sur /api/compare, le délai ne s'applique qu'en
+    // Comme la limite de 7 jours sur /api/compare, le délai ne s'applique qu'en
     // production : en développement il rendrait le produit intestable.
     const cooldownEnforced = process.env.NODE_ENV === "production";
     const allowance = checkCompetitorChange(

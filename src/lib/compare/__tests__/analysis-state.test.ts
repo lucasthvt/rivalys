@@ -41,7 +41,7 @@ describe("explainMissingSnapshot", () => {
     if (reason.kind !== "failed") throw new Error("unreachable");
     assert.equal(reason.lastRunAt.getTime(), lastRunAt.getTime());
     assert.equal(reason.retryAt.getTime(), lastRunAt.getTime() + ANALYSIS_COOLDOWN_MS);
-    assert.match(reason.retryIn, /h$/);
+    assert.match(reason.retryIn, /jours$/);
   });
 
   test("le délai annoncé est celui que le bouton fera respecter", () => {
@@ -53,11 +53,12 @@ describe("explainMissingSnapshot", () => {
       now: NOW,
     });
     if (reason.kind !== "failed") throw new Error("expected a failure");
-    assert.equal(reason.retryIn, "23 h");
+    // 6 jours et 23 h restantes : arrondi au-dessus, jamais un délai plus court que le vrai.
+    assert.equal(reason.retryIn, "7 jours");
   });
 
   test("limite expirée : en attente, pas d'échec annoncé", () => {
-    // L'analyse a bien échoué il y a deux jours, mais plus rien ne bloque : ce qui compte
+    // L'analyse a bien échoué il y a plus de sept jours, mais plus rien ne bloque : ce qui compte
     // maintenant est que le bouton marche, pas l'histoire ancienne.
     const reason = explainMissingSnapshot({
       lastRunAt: ago(ANALYSIS_COOLDOWN_MS + HOUR),

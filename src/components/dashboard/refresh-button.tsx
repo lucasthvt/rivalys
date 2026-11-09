@@ -12,7 +12,7 @@ interface CompareResponse {
 }
 
 /**
- * A 429 is not a failure: the analysis already ran within the last 24 h and the limit is
+ * A 429 is not a failure: the analysis already ran within the last 7 days and the limit is
  * doing its job (see /api/compare's rate limit). It reads as information, not as an alarm.
  */
 type Feedback = { kind: "info" | "error"; message: string };
@@ -67,7 +67,7 @@ export function RefreshButton({ label = "Actualiser" }: { label?: string } = {})
             kind: "info",
             message:
               json?.error ??
-              "Analyse déjà effectuée il y a moins de 24 h. Reviens un peu plus tard.",
+              "Analyse déjà effectuée il y a moins de 7 jours. Reviens un peu plus tard.",
           });
           return;
         }

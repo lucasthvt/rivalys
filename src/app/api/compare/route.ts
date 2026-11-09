@@ -39,7 +39,7 @@ import type { Json } from "@/lib/supabase/database.types";
  * ensemble déclencherait les limites de débit de ces trois services, et un échec de limite
  * coûte autant qu'un succès.
  *
- * Rate-limited to one run per user per 24 h (see rate-limit.ts) — every run costs real
+ * Rate-limited to one run per user per 7 days (see rate-limit.ts) — every run costs real
  * Firecrawl/Claude/Perplexity credits, and CLAUDE.md forbids a full fetch on every click.
  *
  * Response: { ok: true, gapsCount: number, results: [...] }
@@ -102,7 +102,7 @@ export async function POST() {
   //
   // The cooldown exists to stop someone re-analysing THE SAME PAIRS repeatedly, not to block
   // work that has never been done. A freshly added or freshly replaced competitor is
-  // therefore let through even if a run happened less than 24 h ago — otherwise the product
+  // therefore let through even if a run happened less than 7 days ago — otherwise the product
   // reads as broken right after adding a competitor.
   //
   // That exemption is keyed on WHEN A PAIR LAST CHANGED, not on "the competitor has no
@@ -124,7 +124,7 @@ export async function POST() {
   const cooldownEnforced = process.env.NODE_ENV === "production";
   if (!cooldownEnforced) {
     console.warn(
-      "[compare] Limite de 24 h levée (hors production). Cette analyse consomme des crédits réels.",
+      "[compare] Limite de 7 jours levée (hors production). Cette analyse consomme des crédits réels.",
     );
   }
 
@@ -148,7 +148,7 @@ export async function POST() {
     const lastRunAt = parseLastRunAt(lastSnapshot?.fetched_at);
     // Le plus récent changement, tous concurrents confondus : ajouter un troisième
     // concurrent doit ouvrir une exécution même si les deux autres ont été analysés ce
-    // matin — sinon la place qu'on vient de payer reste vide vingt-quatre heures.
+    // matin — sinon la place qu'on vient de payer reste vide sept jours.
     const pairChangedAt = competitors.reduce<Date | null>((latest, competitor) => {
       const changed =
         parseLastRunAt(competitor.url_changed_at) ?? parseLastRunAt(competitor.created_at);
@@ -204,7 +204,7 @@ export async function POST() {
     Contrepartie assumée : le relevé du premier concurrent part avant qu'on sache si le
     nôtre a abouti. Quand notre côté échoue, cette exécution aura donc payé un relevé dont
     cette comparaison ne fera rien — il est alors ENREGISTRÉ plutôt que jeté (voir le 422
-    plus bas), ce qui le rend utile au prochain passage et, surtout, arme la limite de 24 h.
+    plus bas), ce qui le rend utile au prochain passage et, surtout, arme la limite de 7 jours.
   */
   const settle = <T,>(promise: Promise<T>) =>
     promise.then(
@@ -277,7 +277,7 @@ export async function POST() {
       peut-être abouti — et il a coûté de vrais crédits. On l'ENREGISTRE avant de renoncer.
 
       Ce n'est pas de l'économie de bouts de chandelle, c'est ce qui arme le garde-fou. La
-      limite de 24 h se lit sur le relevé le plus récent de l'utilisateur ; sans aucune
+      limite de 7 jours se lit sur le relevé le plus récent de l'utilisateur ; sans aucune
       ligne en base, `lastRunAt` reste null, la paire est jugée « nouvelle » à chaque fois,
       et la limite ne se déclenche jamais. Un compte dont le site bloque durablement le
       fetch pouvait alors relancer le pipeline complet autant de fois qu'il cliquait, en

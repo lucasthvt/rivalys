@@ -8,9 +8,9 @@ import { ANALYSIS_COOLDOWN_MS, formatRetryDelay } from "@/lib/compare/rate-limit
  *
  * Une analyse lit NOTRE site puis celui d'en face. Quand le second échoue — site qui bloque,
  * page injoignable, extraction qui n'aboutit pas — le premier relevé est quand même écrit,
- * et c'est lui qui arme la limite de 24 h (voir rate-limit.ts, qui compte le relevé le plus
+ * et c'est lui qui arme la limite de 7 jours (voir rate-limit.ts, qui compte le relevé le plus
  * récent du compte, quel que soit le côté). L'écran disait donc « aucune analyse » pendant
- * que le bouton répondait « analyse déjà effectuée il y a moins de 24 h ». Deux phrases qui
+ * que le bouton répondait « analyse déjà effectuée il y a moins de 7 jours ». Deux phrases qui
  * se contredisent à trois centimètres d'écart, sur un produit qui vend la justesse d'un
  * relevé : l'utilisateur conclut, à raison, que quelque chose est cassé.
  *
@@ -22,7 +22,7 @@ export type MissingSnapshotReason =
   | { kind: "pending" }
   /**
    * Une analyse a bien tourné, après l'ajout de ce concurrent, et n'a produit aucun relevé
-   * de son côté. Son site n'a pas pu être lu. La limite de 24 h court depuis cette analyse.
+   * de son côté. Son site n'a pas pu être lu. La limite de 7 jours court depuis cette analyse.
    */
   | { kind: "failed"; lastRunAt: Date; retryAt: Date; retryIn: string };
 

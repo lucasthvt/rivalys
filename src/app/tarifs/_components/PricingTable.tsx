@@ -24,7 +24,7 @@ export function PricingTable({
   authenticated: boolean;
   paymentOpen: boolean;
 }) {
-  const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  const [period, setPeriod] = useState<BillingPeriod>("yearly");
 
   return (
     <>

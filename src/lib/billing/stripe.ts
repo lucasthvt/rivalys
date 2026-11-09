@@ -69,6 +69,20 @@ export function resolvePriceId(tier: PaidTier, period: BillingPeriod): string | 
   return process.env[envKey]?.trim() || null;
 }
 
+/**
+ * Coupon de la seconde chance, offert à qui a quitté Checkout sans payer.
+ *
+ * Réservé à l'annuel : c'est là que la remise a un sens (du cash d'avance contre un
+ * prix réduit). Sur le mensuel, une remise ne ferait que rogner la marge. Renvoie null si
+ * la variable est absente — la fonctionnalité est alors simplement éteinte, aucune
+ * remise n'est proposée ni appliquée. Le coupon doit être créé côté Stripe avec une
+ * durée `once`, sinon la remise se reproduirait à chaque renouvellement.
+ */
+export function resolveDownsellCoupon(period: BillingPeriod): string | null {
+  if (period !== "yearly") return null;
+  return process.env.STRIPE_DOWNSELL_COUPON_ID?.trim() || null;
+}
+
 /** Palier correspondant à un identifiant de prix Stripe, ou null s'il ne nous appartient pas. */
 export function tierForPriceId(priceId: string): PaidTier | null {
   for (const tier of Object.keys(PRICE_ENV_KEYS) as PaidTier[]) {

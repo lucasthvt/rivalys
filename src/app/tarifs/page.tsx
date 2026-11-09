@@ -1,10 +1,17 @@
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { isStripeConfigured } from "@/lib/billing/stripe";
+import { isPaidTier, isStripeConfigured, resolveDownsellCoupon } from "@/lib/billing/stripe";
+import { DownsellBanner } from "./_components/DownsellBanner";
 import { PricingTable } from "./_components/PricingTable";
+import { PRICING_TIERS } from "./pricing-tiers";
 
-export default async function TarifsPage() {
+export default async function TarifsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ paiement?: string; palier?: string }>;
+}) {
+  const { paiement, palier } = await searchParams;
   // L'état de session ne sert qu'à router le bouton : un visiteur déconnecté part
   // s'inscrire, il n'a pas encore de compte auquel rattacher un abonnement.
   const supabase = await createClient();
@@ -13,6 +20,22 @@ export default async function TarifsPage() {
   } = await supabase.auth.getUser();
 
   const paymentOpen = isStripeConfigured();
+
+  // Seconde chance : uniquement après un abandon de Checkout, pour un palier connu, une
+  // personne connectée et un coupon réellement configuré. Sans le coupon, afficher
+  // l'offre promettrait une remise que le serveur n'appliquerait pas.
+  const downsellTier =
+    paymentOpen &&
+    Boolean(user) &&
+    paiement === "annule" &&
+    typeof palier === "string" &&
+    isPaidTier(palier) &&
+    resolveDownsellCoupon("yearly")
+      ? palier
+      : null;
+  const downsellTierName = downsellTier
+    ? PRICING_TIERS.find((tier) => tier.checkout === downsellTier)?.name
+    : undefined;
 
   return (
     <div className="bg-void text-paper">
@@ -33,6 +56,10 @@ export default async function TarifsPage() {
           </p>
         </div>
       </section>
+
+      {downsellTier && downsellTierName ? (
+        <DownsellBanner tier={downsellTier} tierName={downsellTierName} />
+      ) : null}
 
       <section className="border-b border-white/[0.06]">
         <div className="mx-auto w-full max-w-6xl px-6 py-16 lg:py-20">

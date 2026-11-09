@@ -8,6 +8,7 @@ import {
   isMissingCustomerError,
   isPaidTier,
   isStripeConfigured,
+  resolveDownsellCoupon,
   resolvePriceId,
   statusGrantsAccess,
   tierForPriceId,
@@ -28,6 +29,7 @@ const PRICE_ENV = [
   "STRIPE_PRICE_GROWTH_MONTHLY",
   "STRIPE_PRICE_GROWTH_YEARLY",
   "STRIPE_SECRET_KEY",
+  "STRIPE_DOWNSELL_COUPON_ID",
   "NEXT_PUBLIC_APP_URL",
   "VERCEL_URL",
 ];
@@ -47,6 +49,24 @@ afterEach(() => {
     else process.env[key] = value;
   }
   saved.clear();
+});
+
+describe("resolveDownsellCoupon", () => {
+  test("renvoie le coupon configuré pour l'annuel", () => {
+    process.env.STRIPE_DOWNSELL_COUPON_ID = "coupon_second_chance";
+    assert.equal(resolveDownsellCoupon("yearly"), "coupon_second_chance");
+  });
+
+  test("n'offre jamais la remise sur le mensuel", () => {
+    process.env.STRIPE_DOWNSELL_COUPON_ID = "coupon_second_chance";
+    assert.equal(resolveDownsellCoupon("monthly"), null);
+  });
+
+  test("renvoie null sans variable, ou avec une variable vide", () => {
+    assert.equal(resolveDownsellCoupon("yearly"), null);
+    process.env.STRIPE_DOWNSELL_COUPON_ID = "   ";
+    assert.equal(resolveDownsellCoupon("yearly"), null);
+  });
 });
 
 describe("resolvePriceId", () => {

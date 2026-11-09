@@ -7,6 +7,7 @@ import {
   isMissingCustomerError,
   isPaidTier,
   isStripeConfigured,
+  resolveDownsellCoupon,
   resolvePriceId,
 } from "@/lib/billing/stripe";
 import { forgetStripeCustomer } from "@/lib/billing/stale-customer";
@@ -65,6 +66,11 @@ export async function POST(request: NextRequest) {
   }
   const billingPeriod = typeof period === "string" && isBillingPeriod(period) ? period : "monthly";
 
+  // La seconde chance n'existe que sur l'annuel et si le coupon est configuré. Hors de ce
+  // cas, `downsell` est ignoré : le paiement s'ouvre au tarif affiché, sans remise.
+  const wantsDownsell = (body as { downsell?: unknown } | null)?.downsell === true;
+  const downsellCoupon = wantsDownsell ? resolveDownsellCoupon(billingPeriod) : null;
+
   const priceId = resolvePriceId(tier, billingPeriod);
   if (!priceId) {
     return NextResponse.json(
@@ -105,11 +111,19 @@ export async function POST(request: NextRequest) {
       // `customer.subscription.*` qui ne connaissent pas la session de Checkout.
       subscription_data: { metadata: { user_id: user.id, tier } },
       metadata: { user_id: user.id, tier },
-      allow_promotion_codes: true,
+      // Stripe refuse `discounts` et `allow_promotion_codes` ensemble : la remise de la
+      // seconde chance remplace le champ de code promo pour cette session.
+      ...(downsellCoupon
+        ? { discounts: [{ coupon: downsellCoupon }] }
+        : { allow_promotion_codes: true }),
       // Étiquette de suivi dans le Dashboard Stripe, pour comparer les parcours.
       integration_identifier: "rivalys-checkout-qkzmwbtn",
       success_url: `${appUrl}/dashboard?paiement=ok`,
-      cancel_url: `${appUrl}/tarifs?paiement=annule`,
+      // Le palier abandonné revient dans l'URL pour que /tarifs propose la seconde
+      // chance. Une session déjà remisée ne le porte pas : pas de seconde offre en boucle.
+      cancel_url: downsellCoupon
+        ? `${appUrl}/tarifs?paiement=annule`
+        : `${appUrl}/tarifs?paiement=annule&palier=${tier}`,
     });
 
   try {

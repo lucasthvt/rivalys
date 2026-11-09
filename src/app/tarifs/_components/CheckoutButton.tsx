@@ -19,12 +19,15 @@ export function CheckoutButton({
   label,
   authenticated,
   className,
+  downsell = false,
 }: {
   tier: "pro" | "growth";
   period?: "monthly" | "yearly";
   label: string;
   authenticated: boolean;
   className: string;
+  /** Demande la remise de la seconde chance. Le serveur décide si elle s'applique. */
+  downsell?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -43,7 +46,7 @@ export function CheckoutButton({
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier, period }),
+        body: JSON.stringify({ tier, period, downsell }),
       });
       const payload: unknown = await response.json().catch(() => null);
 

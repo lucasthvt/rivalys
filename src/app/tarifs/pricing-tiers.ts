@@ -32,6 +32,15 @@ export type PricingTier = {
   highlighted?: boolean;
 };
 
+/**
+ * Remise de la seconde chance, affichée après un abandon de Checkout.
+ *
+ * Comme les montants plus bas, c'est de l'affichage : la remise réellement appliquée est
+ * celle du coupon Stripe (STRIPE_DOWNSELL_COUPON_ID). Les deux doivent rester alignés à
+ * la main — créer le coupon avec ce pourcentage, durée `once`.
+ */
+export const DOWNSELL_PERCENT_OFF = 20;
+
 const FREE_PLAN: PlanPricing = { price: "0 €", period: "pour toujours" };
 
 export const PRICING_TIERS: PricingTier[] = [

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { canonicalHostname, canonicalUrl, isLikelyUrl, normalizeUrl } from "@/lib/url";
 import {
   canAddCompetitor,
@@ -209,7 +210,11 @@ export async function replaceCompetitorUrl(
   // `name` is reset only on a real change: it was the old competitor's name
   // and would otherwise label the new site. RLS already scopes this update to
   // the caller's rows; the explicit user_id filter is defense in depth.
-  const { error: updateError } = await supabase
+  // Écriture via service_role : la migration guard_user_writes interdit au navigateur de
+  // modifier url et url_changed_at, sans quoi le cooldown de remplacement tomberait.
+  // Le filtre user_id reste obligatoire : c'est lui qui borne l'écriture à ce compte.
+  const service = createServiceClient();
+  const { error: updateError } = await service
     .from("competitors")
     .update(
       urlChanged

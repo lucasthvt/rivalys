@@ -1,15 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-
-/**
- * Only follow `next` when it's an internal relative path — basic
- * anti-open-redirect, mirroring the same guard on /login.
- */
-function sanitizeNextPath(raw: string | null): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
-  return raw;
-}
+import { sanitizeNextPath } from "@/lib/auth/next-path";
 
 /**
  * Google OAuth return URL. Supabase sends the browser back here with a

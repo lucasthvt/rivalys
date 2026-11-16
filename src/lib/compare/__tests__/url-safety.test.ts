@@ -66,4 +66,18 @@ describe("assertPublicHttpUrl", () => {
   test("rejects a malformed URL", () => {
     assert.throws(() => assertPublicHttpUrl("not a url"), UnsafeUrlError);
   });
+
+  test("rejects IPv6 literals: loopback, IPv4-mapped, unique-local, link-local", () => {
+    for (const url of [
+      "http://[::1]/",
+      "http://[::ffff:127.0.0.1]/",
+      "http://[::ffff:a9fe:a9fe]/latest/meta-data/",
+      "http://[::ffff:7f00:1]/",
+      "http://[fd00::1]/",
+      "http://[fe80::1]/",
+      "http://[::]/",
+    ]) {
+      assert.throws(() => assertPublicHttpUrl(url), UnsafeUrlError, url);
+    }
+  });
 });

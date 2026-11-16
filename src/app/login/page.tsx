@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { sanitizeNextPath } from "@/lib/auth/next-path";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, type FormEvent, useCallback, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -18,17 +19,6 @@ function mapLoginError(message: string): string {
     return "Confirme ton email avant de te connecter — regarde ta boîte de réception.";
   }
   return "Impossible de te connecter pour le moment. Réessaie dans un instant.";
-}
-
-/**
- * Only follow `next` when it's an internal relative path — basic
- * anti-open-redirect. Anything else (absolute URL, protocol-relative
- * `//host/...`, missing) falls back to the caller's own default.
- */
-function sanitizeNextPath(raw: string | null): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
-  return raw;
 }
 
 function LoginForm() {

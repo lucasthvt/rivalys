@@ -93,8 +93,14 @@ export function assertPublicHttpUrl(url: string): void {
   if (isLocalhostHostname(hostname)) {
     throw new UnsafeUrlError(`Hôte non autorisé : ${hostname}`);
   }
-  if (hostname === "0.0.0.0" || hostname === "::" || hostname === "::1") {
+  if (hostname === "0.0.0.0") {
     throw new UnsafeUrlError(`Hôte non autorisé : ${hostname}`);
+  }
+  // Littéraux IPv6 : refusés en bloc. Les formes mappées IPv4 (::ffff:a9fe:a9fe), les plages
+  // privées (fc00::/7, fe80::/10) et les formes compatibles se contournent une à une ; aucun
+  // site public légitime d'un concurrent n'est désigné par une adresse IPv6 littérale.
+  if (hostname.includes(":")) {
+    throw new UnsafeUrlError(`Hôte non autorisé (adresse IPv6 littérale) : ${hostname}`);
   }
   if (isPrivateOrReservedIPv4(hostname)) {
     throw new UnsafeUrlError(`Hôte non autorisé (plage IP privée/réservée) : ${hostname}`);

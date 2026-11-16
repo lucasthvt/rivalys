@@ -412,6 +412,76 @@ async function fetchDirectly(origin: string, deadline: Deadline): Promise<Fetche
 }
 
 /**
+ * Crawl borné via la fonction Python (api/crawl.py), activé seulement si RIVALYS_CRAWLER_URL
+ * et CRAWLER_SECRET sont définis. Renvoie null quand le crawl ne donne pas de page de tarifs :
+ * le chemin existant prend alors le relais. Lève SiteFetchError quand le site refuse la lecture,
+ * et dans ce cas on n'essaie aucun autre chemin : un repli vers Firecrawl ou le fetch direct
+ * reviendrait à frapper le même site une seconde fois.
+ */
+const CRAWL_TIMEOUT_MS = 15_000;
+/** Le site a refusé la lecture (401/403/429/503 ou captcha) : aucun repli. */
+export class SiteRefusedError extends SiteFetchError {}
+const CRAWL_MAX_PAGES = 8;
+
+interface CrawledPage {
+  url: string;
+  status: number;
+  html: string;
+}
+
+async function fetchViaCrawler(origin: string, deadline: Deadline): Promise<FetchedSite | null> {
+  const endpoint = process.env.RIVALYS_CRAWLER_URL;
+  const secret = process.env.CRAWLER_SECRET;
+  if (!endpoint || !secret) return null;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-crawler-secret": secret },
+    body: JSON.stringify({ url: origin, maxPages: CRAWL_MAX_PAGES }),
+    signal: AbortSignal.timeout(deadline.capTimeout(CRAWL_TIMEOUT_MS)),
+  });
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as {
+    pages?: CrawledPage[];
+    haltedReason?: string | null;
+  };
+  const pages = data.pages ?? [];
+
+  const pathOf = (url: string) => {
+    try {
+      return new URL(url).pathname;
+    } catch {
+      return "";
+    }
+  };
+  const homepage = pages.find((page) => pathOf(page.url) === "/") ?? pages[0];
+  const pricing = pages.find((page) => PRICING_PATH_RE.test(pathOf(page.url)));
+  const login = pages.find((page) => LOGIN_PATH_RE.test(pathOf(page.url)));
+
+  if (!pricing) {
+    if (data.haltedReason?.startsWith("refus du site")) {
+      throw new SiteRefusedError(`Le site ${origin} refuse la lecture automatique (${data.haltedReason}).`);
+    }
+    return null;
+  }
+  if (!homepage) return null;
+
+  return {
+    homepageText: stripHtml(homepage.html),
+    pricingText: stripHtml(pricing.html),
+    homepageHtml: homepage.html,
+    pricingHtml: pricing.html,
+    pricingUrl: pricing.url,
+    homepageLinks: extractLinks(homepage.html, origin),
+    loginText: login ? stripHtml(login.html) : null,
+    loginUrl: login?.url ?? null,
+    loginLinks: login ? extractLinks(login.html, origin) : [],
+    pricingLinks: extractLinks(pricing.html, origin),
+  };
+}
+
+/**
  * Fetches a site's homepage and pricing page. Never fabricates data: if the homepage is
  * unreachable on every available path, throws SiteFetchError for the caller to surface
  * honestly. If no pricing route is found, returns pricingText: null rather than guessing.
@@ -431,6 +501,16 @@ export async function fetchSite(
   // every hop on its own, and the Firecrawl path has no hops of ours to check, so this is
   // the one place both paths are covered.
   guardUrl(origin);
+
+  try {
+    const crawled = await fetchViaCrawler(origin, deadline);
+    if (crawled) return crawled;
+  } catch (err) {
+    if (err instanceof SiteRefusedError) {
+      throw err;
+    }
+    console.warn(`fetchSite: crawl Python indisponible pour ${origin}, repli.`, err);
+  }
 
   if (isFirecrawlConfigured()) {
     try {
